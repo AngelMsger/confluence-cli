@@ -1,0 +1,19 @@
+# Build artifacts
+/bin/
+/dist/
+/confluence-cli
+
+# Local environment / secrets
+.env
+*.local
+
+# OS
+.DS_Store
+
+# Go
+*.test
+*.out
+
+# npm package (build/npm)
+node_modules/
+build/npm/binary/

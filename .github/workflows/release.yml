@@ -1,0 +1,59 @@
+name: Release
+
+# Triggered by pushing a version tag, e.g.  git tag v0.1.0 && git push origin v0.1.0
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write # create the GitHub Release
+  id-token: write # OIDC token for npm trusted publishing
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history + tags so `git describe` yields the tag
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: unit tests
+        run: go test ./...
+
+      - name: cross-compile binaries
+        run: make cross
+
+      - name: checksums
+        working-directory: dist
+        run: sha256sum confluence-cli-* > checksums.txt
+
+      - name: create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$TAG" dist/* --title "$TAG" --generate-notes
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+
+      # Publishes @angelmsger/confluence-cli via npm trusted publishing (OIDC):
+      # no token is needed — the `id-token: write` permission above lets the npm
+      # CLI authenticate, and provenance is attested automatically. Requires the
+      # package's trusted publisher to be configured on npmjs.com first (see
+      # docs/releasing.md). The GitHub Release above is already complete if this
+      # step fails.
+      - name: publish to npm
+        working-directory: build/npm
+        run: |
+          npm install -g npm@latest # trusted publishing needs npm >= 11.5.1
+          npm version "${TAG#v}" --no-git-tag-version --allow-same-version
+          npm publish --access public

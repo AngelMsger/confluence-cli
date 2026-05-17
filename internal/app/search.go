@@ -1,0 +1,59 @@
+package app
+
+import (
+	"github.com/angelmsger/confluence-cli/internal/apiclient"
+	"github.com/spf13/cobra"
+)
+
+func newSearchCmd(s *appState) *cobra.Command {
+	var (
+		params apiclient.CQLParams
+		limit  int
+		all    bool
+	)
+	cmd := &cobra.Command{
+		Use:   "search [cql]",
+		Short: "Search pages with CQL or filter flags",
+		Long: "Search Confluence content. Provide a raw CQL string as the argument,\n" +
+			"or build one from filter flags (--text, --author, --space, ...).",
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var cql string
+			if len(args) == 1 && args[0] != "" {
+				cql = args[0]
+			} else {
+				built, err := apiclient.BuildCQL(params)
+				if err != nil {
+					return err
+				}
+				cql = built
+			}
+			ctx, cancel := cmdContext(s)
+			defer cancel()
+			client, err := s.newClient(ctx)
+			if err != nil {
+				return err
+			}
+			items, err := collectList(func(cursor string) (apiclient.ListResult[apiclient.SearchHit], error) {
+				return client.Search(ctx, cql, apiclient.ListOpts{Limit: limit, Cursor: cursor})
+			}, limit, all)
+			if err != nil {
+				return err
+			}
+			return s.emit(items)
+		},
+	}
+	f := cmd.Flags()
+	f.StringVar(&params.Text, "text", "", "free-text match (CQL: text ~)")
+	f.StringVar(&params.Author, "author", "", "original creator (CQL: creator =)")
+	f.StringVar(&params.Contributor, "contributor", "", "any contributor (CQL: contributor =)")
+	f.StringVar(&params.Space, "space", "", "space key (CQL: space =)")
+	f.StringVar(&params.Label, "label", "", "label (CQL: label =)")
+	f.StringVar(&params.Type, "type", "", "content type: page, blogpost, comment, attachment")
+	f.StringVar(&params.After, "after", "", "modified on/after date, e.g. 2025-01-01")
+	f.StringVar(&params.Before, "before", "", "modified on/before date, e.g. 2025-12-31")
+	f.IntVar(&limit, "limit", 0, "page size (default from config)")
+	f.BoolVar(&all, "all", false, "fetch every page of results")
+	enumComplete(cmd, "type", "page", "blogpost", "comment", "attachment")
+	return cmd
+}

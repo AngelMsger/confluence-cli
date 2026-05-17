@@ -1,0 +1,29 @@
+{
+  "name": "@angelmsger/confluence-cli",
+  "version": "0.0.0",
+  "description": "Use a Confluence instance as a knowledge base for coding agents: read pages, search via CQL, manage comments.",
+  "keywords": ["confluence", "cli", "wiki", "agent", "claude", "cql"],
+  "homepage": "https://github.com/angelmsger/confluence-cli",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/angelmsger/confluence-cli.git"
+  },
+  "license": "MIT",
+  "bin": {
+    "confluence-cli": "bin/confluence-cli.js"
+  },
+  "main": "install.js",
+  "scripts": {
+    "postinstall": "node install.js"
+  },
+  "files": [
+    "bin/",
+    "install.js",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "os": ["darwin", "linux", "win32"],
+  "cpu": ["x64", "arm64"]
+}

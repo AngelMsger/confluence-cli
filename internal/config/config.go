@@ -1,0 +1,138 @@
+// Package config resolves CLI configuration from layered sources: CLI flags,
+// environment variables, a .env file, a YAML config file and built-in
+// defaults, in that precedence order (highest first).
+//
+// Secrets (tokens, passwords) are never stored in the YAML config file. They
+// are surfaced through Resolved.Secrets when supplied via flags/env/.env, or
+// loaded from the OS keychain by the auth package.
+package config
+
+import (
+	"strconv"
+	"time"
+
+	"github.com/angelmsger/confluence-cli/pkg/constants"
+)
+
+// Flavor values for the Confluence backend.
+const (
+	FlavorAuto       = "auto"
+	FlavorCloud      = "cloud"
+	FlavorDataCenter = "datacenter"
+)
+
+// Auth scheme values.
+const (
+	SchemePAT   = "pat"
+	SchemeBasic = "basic"
+)
+
+// Config holds the resolved, non-secret configuration.
+type Config struct {
+	BaseURL        string     `yaml:"server"`
+	Flavor         string     `yaml:"flavor"`
+	DetectedFlavor string     `yaml:"detected_flavor,omitempty"`
+	Auth           AuthConfig `yaml:"auth"`
+	Defaults       Defaults   `yaml:"defaults"`
+}
+
+// AuthConfig holds non-secret auth settings.
+type AuthConfig struct {
+	Scheme   string `yaml:"scheme"`
+	Username string `yaml:"username,omitempty"`
+}
+
+// Defaults holds tunable runtime defaults.
+type Defaults struct {
+	Format     string        `yaml:"format"`
+	PageSize   int           `yaml:"page_size"`
+	Timeout    time.Duration `yaml:"timeout"`
+	MaxRetries int           `yaml:"max_retries"`
+}
+
+// Secrets holds credentials observed in non-file layers. Empty fields mean the
+// secret was not supplied via flags/env/.env and must come from the keychain.
+type Secrets struct {
+	PAT      string
+	Password string
+	APIToken string
+}
+
+// Resolved is the outcome of Load: the merged Config plus provenance and any
+// transient secrets.
+type Resolved struct {
+	Config  Config
+	Secrets Secrets
+	// Sources maps a field key (see the field* constants) to the layer name
+	// that supplied its final value: "flag", "env", "dotenv", "file", "default".
+	Sources map[string]string
+}
+
+// Field keys used for layer maps and provenance tracking.
+const (
+	fieldServer         = "server"
+	fieldFlavor         = "flavor"
+	fieldDetectedFlavor = "detected_flavor"
+	fieldAuthScheme     = "auth.scheme"
+	fieldAuthUsername   = "auth.username"
+	fieldFormat         = "defaults.format"
+	fieldPageSize       = "defaults.page_size"
+	fieldTimeout        = "defaults.timeout"
+	fieldMaxRetries     = "defaults.max_retries"
+	// Secret field keys (never persisted to the YAML file).
+	fieldPAT      = "secret.pat"
+	fieldPassword = "secret.password"
+	fieldAPIToken = "secret.api_token"
+)
+
+// defaultLayer returns the built-in defaults as a layer map.
+func defaultLayer() map[string]string {
+	return map[string]string{
+		fieldFlavor:     FlavorAuto,
+		fieldAuthScheme: SchemePAT,
+		fieldFormat:     constants.DefaultFormat,
+		fieldPageSize:   strconv.Itoa(constants.DefaultPageSize),
+		fieldTimeout:    constants.DefaultTimeout.String(),
+		fieldMaxRetries: strconv.Itoa(constants.DefaultMaxRetries),
+	}
+}
+
+// configFromMap builds a Config from a fully merged layer map.
+func configFromMap(m map[string]string) Config {
+	c := Config{
+		BaseURL:        m[fieldServer],
+		Flavor:         m[fieldFlavor],
+		DetectedFlavor: m[fieldDetectedFlavor],
+		Auth: AuthConfig{
+			Scheme:   m[fieldAuthScheme],
+			Username: m[fieldAuthUsername],
+		},
+		Defaults: Defaults{
+			Format:     m[fieldFormat],
+			PageSize:   atoiOr(m[fieldPageSize], constants.DefaultPageSize),
+			Timeout:    durationOr(m[fieldTimeout], constants.DefaultTimeout),
+			MaxRetries: atoiOr(m[fieldMaxRetries], constants.DefaultMaxRetries),
+		},
+	}
+	return c
+}
+
+func atoiOr(s string, fallback int) int {
+	if s == "" {
+		return fallback
+	}
+	if n, err := strconv.Atoi(s); err == nil {
+		return n
+	}
+	return fallback
+}
+
+func durationOr(s string, fallback time.Duration) time.Duration {
+	if s == "" {
+		return fallback
+	}
+	if d, err := time.ParseDuration(s); err == nil {
+		return d
+	}
+	return fallback
+}
