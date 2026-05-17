@@ -1,20 +1,42 @@
 # confluence-cli
 
+[![CI](https://github.com/angelmsger/confluence-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/angelmsger/confluence-cli/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@angelmsger/confluence-cli.svg)](https://www.npmjs.com/package/@angelmsger/confluence-cli)
+[![Go version](https://img.shields.io/github/go-mod/go-version/angelmsger/confluence-cli.svg)](go.mod)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Docs](https://img.shields.io/badge/docs-online-success.svg)](https://angelmsger.github.io/confluence-cli/)
+[![Confluence](https://img.shields.io/badge/Confluence-Cloud%20%26%20Data%20Center-0052CC.svg)](https://www.atlassian.com/software/confluence)
+
+> Use Confluence as a knowledge base from your terminal — built for coding agents.
+
+`confluence-cli` lets coding agents (Claude Code and others) — and humans — read,
+search and comment on a Confluence instance from the command line. It speaks to
+both **Confluence Cloud** and **Data Center / Server**, returns agent-friendly
+JSON with structured errors, and ships a companion Skill that teaches an agent
+how to use it.
+
+📖 **Documentation site:** <https://angelmsger.github.io/confluence-cli/>
+
 ![confluence-cli — use Confluence as a knowledge base from your terminal](docs/image.png)
 
-A command-line tool that lets coding agents (Claude Code and others) use a
-Confluence instance as an external knowledge base. It reads pages, searches with
-CQL, browses spaces and page trees, and reads or posts comments.
+## Features
 
-- Supports **Confluence Cloud** and **Confluence Data Center / Server**.
-- **Agent-friendly**: JSON output by default, structured errors with recovery
-  hints, and partial page reads (`outline` / `section` / `keyword`) so an agent
-  spends minimal context.
-- Configurable via CLI flags, environment variables, a `.env` file, a YAML
-  config file, or an interactive `config init` wizard.
-- Ships with a companion `confluence` Skill (`skills/confluence/`).
+- **Cloud & Data Center** — one flavor-agnostic client; the backend is detected
+  automatically.
+- **Agent-friendly** — JSON output by default, structured errors with exit
+  codes and recovery hints, and partial page reads (`outline` / `section` /
+  `keyword`) so an agent spends minimal context.
+- **Read + comment** — fetch pages, browse page trees, CQL search, list and
+  download attachments, read and post comments.
+- **Flexible configuration** — CLI flags, environment variables, a `.env` file,
+  a YAML config file, or an interactive wizard; secrets stored in the OS
+  keychain.
+- **Companion Skill** — a `confluence` Skill, embedded in the binary, that
+  guides coding agents through the CLI.
 
-## Install
+## Installation
+
+### Install the CLI
 
 ```bash
 npm install -g @angelmsger/confluence-cli                                   # npm
@@ -23,9 +45,35 @@ make install                                                                # fr
 ```
 
 Or download a prebuilt binary from the
-[Releases page](https://github.com/angelmsger/confluence-cli/releases). Then
-enable shell completion and install the companion Skill — see the full
-[installation & setup guide](docs/installation.md).
+[Releases page](https://github.com/angelmsger/confluence-cli/releases). The full
+[installation guide](docs/installation.md) covers every method.
+
+### Shell completion (optional)
+
+`confluence-cli` completes subcommands, enum flag values and live space keys.
+Load the completion script for your shell once:
+
+```bash
+source <(confluence-cli completion bash)                       # bash, current shell
+confluence-cli completion zsh > "${fpath[1]}/_confluence-cli"   # zsh, persistent
+```
+
+fish, PowerShell and persistent setup are covered in
+[docs/installation.md](docs/installation.md#2-enable-shell-completion).
+
+### Companion Skill (optional)
+
+The `confluence` Skill is embedded in the binary; deploy it for your coding
+agent:
+
+```bash
+confluence-cli skill install            # -> ~/.claude/skills/confluence
+confluence-cli skill install --project  # -> ./.claude/skills/confluence
+```
+
+Re-run it after upgrading the CLI to keep the Skill version-matched. Details,
+including the `npx skills` workflow, are in
+[docs/installation.md](docs/installation.md#3-install-the-companion-skill).
 
 ## Quick start
 
@@ -43,9 +91,9 @@ confluence-cli comment list <id|url>
 
 Settings resolve in precedence order (highest first): CLI flags → environment
 variables (`CONFLUENCE_*`) → `.env` → `~/.confluence/config.yaml` → defaults.
-See `.env.example` and `skills/confluence/references/getting-started.md`.
-Secrets are stored in the OS keychain (with a `0600` file fallback) and never
-written to the config file.
+See `.env.example` and
+[docs/installation.md](docs/installation.md). Secrets are stored in the OS
+keychain (with a `0600` file fallback) and never written to the config file.
 
 ## Commands
 
@@ -57,37 +105,8 @@ written to the config file.
 | `space list` / `space get` | inspect spaces |
 | `comment list` / `comment add` | read or post comments (`add` is the only write) |
 | `attachment list` / `attachment download` | inspect and fetch attachments |
+| `skill install` | deploy the embedded companion Skill for coding agents |
 | `config` / `auth` / `doctor` / `version` | setup and diagnostics |
-
-## Shell completion
-
-`confluence-cli` completes subcommands, enum flag values (`--format`, `--flavor`,
-`--scope`, `--detail`, `--as`, `--type`, ...) and live space keys for
-`space get <key>`. Each shell needs the completion script loaded once:
-
-```bash
-source <(confluence-cli completion bash)     # bash, current shell
-confluence-cli completion zsh > "${fpath[1]}/_confluence-cli"   # zsh, persistent
-```
-
-See [docs/installation.md](docs/installation.md#2-enable-shell-completion) for
-every shell (bash / zsh / fish / PowerShell) and persistent setup.
-
-## Companion Skill
-
-The `confluence` Skill in [`skills/confluence/`](skills/confluence) teaches a
-coding agent how to drive this CLI. Install it with the
-[`skills`](https://github.com/vercel-labs/skills) tool:
-
-```bash
-npx skills add angelmsger/confluence-cli --skill confluence       # this project
-npx skills add angelmsger/confluence-cli --skill confluence -g    # all projects
-npx skills update confluence                                   # refresh after a CLI upgrade
-```
-
-No Node? `make install-skill` copies it into `~/.claude/skills/`. Full
-instructions, including how to keep the Skill in sync with CLI updates, are in
-[docs/installation.md](docs/installation.md#3-install-the-companion-skill).
 
 ## Development
 
@@ -98,5 +117,10 @@ make e2e-live   # additionally run read-only checks against the real server
 make lint       # gofmt + go vet
 ```
 
-See `docs/technical-design.md` for the architecture and `internal/` package
-layout.
+See [docs/technical-design.md](docs/technical-design.md) for the architecture
+and `internal/` package layout, and [docs/releasing.md](docs/releasing.md) for
+the release process.
+
+## License
+
+Released under the [MIT License](LICENSE).

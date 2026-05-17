@@ -64,6 +64,12 @@ Use an annotated tag and semantic versioning (`vMAJOR.MINOR.PATCH`).
 (`scripts/e2e.sh`). The live e2e checks are not run in CI — they require a real
 server and credentials.
 
+`.github/workflows/pages.yml` publishes `docs/` (the landing page
+`docs/index.html` plus the markdown guides) to GitHub Pages on every push to
+`main` that touches `docs/`. Enable it once: repository Settings → Pages →
+Source → **GitHub Actions**. The site is served at
+<https://angelmsger.github.io/confluence-cli/>.
+
 ## Release artifact contract
 
 The release asset names are **stable** and must not change — the npm installer
@@ -80,8 +86,12 @@ Download URL pattern:
 
 ## Companion Skill
 
-The `confluence` Skill is versioned independently via the `version:` field in
+The `confluence` Skill is **embedded into the binary** at build time
+(`//go:embed skills/confluence`, see `assets.go`), so every release ships a
+Skill that matches the CLI version; users deploy it with `confluence-cli skill
+install`. The Skill is also published in the git repository for the `npx skills`
+workflow.
+
+The Skill is versioned independently via the `version:` field in
 `skills/confluence/SKILL.md`. Bump it whenever the Skill or its `references/`
-change, so `npx skills update` picks up the new guidance. The Skill ships in the
-git repository (not in the npm package); users install it with `npx skills` or
-`make install-skill` — see [installation.md](installation.md#3-install-the-companion-skill).
+change — see [installation.md](installation.md#3-install-the-companion-skill).

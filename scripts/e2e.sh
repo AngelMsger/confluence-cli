@@ -96,6 +96,9 @@ assert_contains  "attachment list"        "spec.txt"       "${CLI[@]}" attachmen
 assert_contains  "attachment download"    "attachment payload" \
                                           "${CLI[@]}" attachment download att1 --output -
 assert_contains  "fields projection"      '"id"'           "${CLI[@]}" page get 123 --fields id,title
+assert_contains  "skill install"          "confluence Skill" \
+                                          "${CLI[@]}" skill install --dir "$(mktemp -d)"
+assert_contains  "skill show"             "name: confluence" "${CLI[@]}" skill show
 assert_exit      "missing page -> 6"      6                "${CLI[@]}" page get 404
 assert_exit      "bad flag -> 2"          2                "${CLI[@]}" page get 123 --bogus
 

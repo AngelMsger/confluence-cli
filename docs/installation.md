@@ -134,64 +134,49 @@ completion, `confluence-cli space get <TAB>` queries the configured server
 
 ## 3. Install the companion Skill
 
-The repository ships a `confluence` Skill at [`skills/confluence/`](../skills/confluence)
-that teaches a coding agent (Claude Code and others) how to drive this CLI.
+The `confluence` Skill teaches a coding agent (Claude Code and others) how to
+drive this CLI. It is **embedded in the `confluence-cli` binary**, so whichever
+way you installed the CLI — npm, `go install`, a prebuilt binary — you already
+have a version-matched copy of the Skill.
 
-### Recommended: the `skills` CLI
-
-The [`skills` tool](https://github.com/vercel-labs/skills) (`npx skills`)
-installs and updates agent skills for 18+ agents.
+### Recommended: `confluence-cli skill install`
 
 ```bash
-# install for the current project (-> .claude/skills/confluence)
-npx skills add angelmsger/confluence-cli --skill confluence
+confluence-cli skill install              # -> ~/.claude/skills/confluence
+confluence-cli skill install --project    # -> ./.claude/skills/confluence
+confluence-cli skill install --dir <path> # -> <path>/confluence (other agents)
 
-# install globally for every project (-> ~/.claude/skills/confluence)
-npx skills add angelmsger/confluence-cli --skill confluence -g
+confluence-cli skill path                 # show the install location + status
+confluence-cli skill show                 # print SKILL.md to stdout
+```
 
-# from a specific subdirectory URL
-npx skills add https://github.com/angelmsger/confluence-cli/tree/main/skills/confluence
+Because the Skill ships inside the binary, **updating is automatic**: upgrade
+the CLI (`npm update -g @angelmsger/confluence-cli`, `go install ...@latest`,
+etc.) and re-run `confluence-cli skill install` — the deployed Skill always
+matches the CLI version.
 
-# from a local checkout (no network)
-npx skills add ./skills/confluence
+### Alternative: the `skills` CLI
+
+If you manage agent skills with the [`skills` tool](https://github.com/vercel-labs/skills)
+(`npx skills`), you can install the Skill straight from the repository:
+
+```bash
+npx skills add angelmsger/confluence-cli --skill confluence       # this project
+npx skills add angelmsger/confluence-cli --skill confluence -g    # all projects
+npx skills add ./skills/confluence                                # local checkout
+npx skills update confluence                                      # refresh later
 ```
 
 Useful flags: `-a claude-code` targets a specific agent, `-y` runs
-non-interactively, `--list` previews the skills in a repo without installing.
-
-### Keeping the Skill up to date
-
-The Skill and the CLI evolve together. When you upgrade the binary, refresh the
-Skill so its guidance matches:
-
-```bash
-npx skills update confluence     # re-pull just this skill
-npx skills update                # re-pull every installed skill
-npx skills list                  # show installed skills and versions
-```
-
-`update` compares the `version` field in `SKILL.md`; this project bumps that
-field whenever the Skill's content changes, so `npx skills update` reliably
-picks up new guidance.
+non-interactively, `--list` previews a repo's skills.
 
 > **Maintainers:** bump `version:` in `skills/confluence/SKILL.md` on every
-> change to the Skill or its `references/`, so installed copies update cleanly.
-
-### Manual install (no Node / npx)
-
-```bash
-make install-skill                       # copies to ~/.claude/skills/confluence
-# or, project-local:
-mkdir -p .claude/skills
-cp -R skills/confluence .claude/skills/
-```
-
-To update a manually installed Skill, re-run the same copy command (or
-`make install-skill`) after pulling the latest repository changes.
+> change to the Skill or its `references/`, so both `confluence-cli skill show`
+> and `npx skills update` report the new version.
 
 ### Removing the Skill
 
 ```bash
-npx skills remove confluence            # if installed via the skills CLI
-rm -rf ~/.claude/skills/confluence      # if installed manually
+rm -rf ~/.claude/skills/confluence      # installed via `skill install` or manually
+npx skills remove confluence            # installed via the skills CLI
 ```

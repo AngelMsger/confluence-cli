@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>confluence-cli — use Confluence as a knowledge base from your terminal</title>
+<meta name="description" content="A command-line tool that lets coding agents use a Confluence instance as an external knowledge base. Supports Confluence Cloud and Data Center.">
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg-soft: #161b22;
+    --card: #1c2333;
+    --border: #2a3350;
+    --text: #e6e9f0;
+    --muted: #9aa4bf;
+    --accent: #4d7cff;
+    --confluence: #0052cc;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code, pre {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 24px; }
+  section { padding: 56px 0; border-top: 1px solid var(--border); }
+  h2 { font-size: 1.6rem; margin-bottom: 8px; }
+  h2 + .lead { color: var(--muted); margin-bottom: 28px; }
+  h3 { font-size: 1.05rem; margin-bottom: 6px; }
+
+  /* nav */
+  nav {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(13, 17, 23, 0.85);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+  }
+  nav .wrap { display: flex; align-items: center; gap: 22px; height: 56px; }
+  nav .brand { font-weight: 700; }
+  nav .links { margin-left: auto; display: flex; gap: 20px; flex-wrap: wrap; }
+  nav .links a { color: var(--muted); font-size: 0.92rem; }
+  nav .links a:hover { color: var(--text); text-decoration: none; }
+
+  /* hero */
+  .hero {
+    text-align: center;
+    padding: 84px 0 64px;
+    background:
+      radial-gradient(60% 80% at 50% -10%, rgba(77,124,255,0.22), transparent 70%),
+      radial-gradient(50% 60% at 90% 0%, rgba(123,92,255,0.18), transparent 70%);
+    border-top: none;
+  }
+  .hero h1 { font-size: 3rem; letter-spacing: -0.02em; }
+  .hero .tagline { color: var(--muted); font-size: 1.2rem; margin: 14px auto 0; max-width: 620px; }
+  .pills { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 26px 0; }
+  .pill {
+    border: 1px solid var(--border); background: var(--bg-soft);
+    color: var(--muted); border-radius: 999px; padding: 6px 14px; font-size: 0.85rem;
+  }
+  .cta { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+  .btn {
+    display: inline-block; padding: 11px 22px; border-radius: 10px; font-weight: 600;
+    border: 1px solid var(--border);
+  }
+  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn.primary:hover { background: #3f6ef0; text-decoration: none; }
+  .btn.ghost:hover { background: var(--bg-soft); text-decoration: none; }
+  .banner { margin: 44px auto 0; max-width: 880px; }
+  .banner img { width: 100%; border-radius: var(--radius); border: 1px solid var(--border); display: block; }
+
+  /* card grids */
+  .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+  }
+  .card .ico { font-size: 1.4rem; }
+  .card h3 { margin-top: 10px; }
+  .card p { color: var(--muted); font-size: 0.93rem; margin-top: 4px; }
+
+  /* code */
+  pre {
+    background: var(--bg-soft); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px 20px; overflow-x: auto;
+    font-size: 0.9rem; line-height: 1.7;
+  }
+  pre .c { color: #6f7896; }
+  p code {
+    background: var(--bg-soft); border: 1px solid var(--border);
+    border-radius: 6px; padding: 1px 6px; font-size: 0.88em;
+  }
+
+  /* table */
+  table { width: 100%; border-collapse: collapse; font-size: 0.93rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; }
+  td code { color: var(--accent); }
+
+  .twocol { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+
+  footer { border-top: 1px solid var(--border); padding: 36px 0; color: var(--muted); font-size: 0.9rem; }
+  footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <span class="brand">confluence-cli</span>
+    <div class="links">
+      <a href="#features">Features</a>
+      <a href="#install">Install</a>
+      <a href="#quickstart">Quick start</a>
+      <a href="#commands">Commands</a>
+      <a href="#docs">Docs</a>
+      <a href="https://github.com/angelmsger/confluence-cli">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap">
+    <h1>confluence-cli</h1>
+    <p class="tagline">Use Confluence as a knowledge base from your terminal — built for coding agents, designed for humans.</p>
+    <div class="pills">
+      <span class="pill">Confluence Cloud</span>
+      <span class="pill">Data Center / Server</span>
+      <span class="pill">Agent-Friendly</span>
+    </div>
+    <div class="cta">
+      <a class="btn primary" href="#install">Get started</a>
+      <a class="btn ghost" href="https://github.com/angelmsger/confluence-cli">View on GitHub</a>
+    </div>
+    <div class="banner">
+      <img src="image.png" alt="confluence-cli overview">
+    </div>
+  </div>
+</header>
+
+<section id="features">
+  <div class="wrap">
+    <h2>Features</h2>
+    <p class="lead">Everything an agent — or a developer — needs to read a Confluence wiki.</p>
+    <div class="grid">
+      <div class="card">
+        <div class="ico">⚡</div>
+        <h3>Fast &amp; Focused</h3>
+        <p>Partial page reads — outline, section or keyword — so an agent loads only the context it needs.</p>
+      </div>
+      <div class="card">
+        <div class="ico">🔍</div>
+        <h3>Powerful Search</h3>
+        <p>Search with raw CQL or simple filter flags: text, author, space, label, type and date ranges.</p>
+      </div>
+      <div class="card">
+        <div class="ico">💬</div>
+        <h3>Comments &amp; More</h3>
+        <p>Read page comments and post replies — the one write operation, kept deliberately explicit.</p>
+      </div>
+      <div class="card">
+        <div class="ico">🔒</div>
+        <h3>Secure by Default</h3>
+        <p>Credentials live in the OS keychain with a 0600 file fallback, never in the config file.</p>
+      </div>
+      <div class="card">
+        <div class="ico">🤖</div>
+        <h3>Agent-First Output</h3>
+        <p>JSON by default, structured errors with exit codes and recovery hints a coding agent can act on.</p>
+      </div>
+      <div class="card">
+        <div class="ico">☁️</div>
+        <h3>Cloud &amp; Data Center</h3>
+        <p>One flavor-agnostic client; the backend is detected automatically.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="capabilities">
+  <div class="wrap">
+    <h2>Everything you need</h2>
+    <p class="lead">The CLI surface, at a glance.</p>
+    <div class="grid">
+      <div class="card"><h3>Pages</h3><p>Get pages, render bodies, scope the read.</p></div>
+      <div class="card"><h3>Search</h3><p>CQL queries by text, author, space, label.</p></div>
+      <div class="card"><h3>Spaces</h3><p>List and inspect spaces.</p></div>
+      <div class="card"><h3>Comments</h3><p>Read threads and post replies.</p></div>
+      <div class="card"><h3>Attachments</h3><p>List and download page files.</p></div>
+      <div class="card"><h3>Trees</h3><p>Walk children and descendants.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap">
+    <h2>Install</h2>
+    <p class="lead">Pick whichever method suits you.</p>
+<pre><span class="c"># npm</span>
+npm install -g @angelmsger/confluence-cli
+
+<span class="c"># go</span>
+go install github.com/angelmsger/confluence-cli/cmd/confluence-cli@latest
+
+<span class="c"># from source</span>
+make install</pre>
+    <p style="margin-top:14px">Or download a prebuilt binary from the
+      <a href="https://github.com/angelmsger/confluence-cli/releases">Releases page</a>.</p>
+
+    <div class="twocol" style="margin-top:28px">
+      <div class="card">
+        <h3>Shell completion <span style="color:var(--muted);font-weight:400">(optional)</span></h3>
+        <p>Completes subcommands, flag values and live space keys. Load it once:</p>
+<pre>source &lt;(confluence-cli completion bash)</pre>
+      </div>
+      <div class="card">
+        <h3>Companion Skill</h3>
+        <p>A <code>confluence</code> Skill is embedded in the binary — deploy it for your coding agent:</p>
+<pre>confluence-cli skill install</pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="quickstart">
+  <div class="wrap">
+    <h2>Quick start</h2>
+    <p class="lead">Configure once, then read your wiki.</p>
+<pre><span class="c"># interactive setup, then verify connectivity</span>
+confluence-cli config init
+confluence-cli doctor
+
+<span class="c"># search, then read a page in stages</span>
+confluence-cli search --text "release process"
+confluence-cli page get &lt;id|url&gt; --scope outline
+confluence-cli page get &lt;id|url&gt; --scope section --section sec-2
+confluence-cli comment list &lt;id|url&gt;</pre>
+  </div>
+</section>
+
+<section id="commands">
+  <div class="wrap">
+    <h2>Commands</h2>
+    <p class="lead">The full command surface.</p>
+    <table>
+      <thead><tr><th>Command</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><code>page get</code></td><td>fetch a page; render body with <code>--scope</code> / <code>--detail</code> / <code>--as</code></td></tr>
+        <tr><td><code>page children</code> / <code>descendants</code></td><td>browse the page tree</td></tr>
+        <tr><td><code>search</code></td><td>CQL search, raw or built from filter flags</td></tr>
+        <tr><td><code>space list</code> / <code>get</code></td><td>inspect spaces</td></tr>
+        <tr><td><code>comment list</code> / <code>add</code></td><td>read or post comments (<code>add</code> is the only write)</td></tr>
+        <tr><td><code>attachment list</code> / <code>download</code></td><td>inspect and fetch attachments</td></tr>
+        <tr><td><code>skill install</code></td><td>deploy the embedded companion Skill</td></tr>
+        <tr><td><code>config</code> / <code>auth</code> / <code>doctor</code></td><td>setup and diagnostics</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="docs">
+  <div class="wrap">
+    <h2>Documentation</h2>
+    <p class="lead">Deeper guides, rendered on GitHub.</p>
+    <div class="grid">
+      <a class="card" href="https://github.com/angelmsger/confluence-cli/blob/main/docs/installation.md">
+        <h3>Installation &amp; setup →</h3>
+        <p>Install the CLI, enable completion, install the Skill — every method.</p>
+      </a>
+      <a class="card" href="https://github.com/angelmsger/confluence-cli/blob/main/docs/technical-design.md">
+        <h3>Technical design →</h3>
+        <p>Architecture, the flavor-agnostic API client, error model and rendering.</p>
+      </a>
+      <a class="card" href="https://github.com/angelmsger/confluence-cli/blob/main/docs/releasing.md">
+        <h3>Releasing →</h3>
+        <p>How releases are cut and published to GitHub and npm.</p>
+      </a>
+      <a class="card" href="https://github.com/angelmsger/confluence-cli/tree/main/skills/confluence">
+        <h3>Companion Skill →</h3>
+        <p>The <code>confluence</code> Skill that teaches a coding agent the CLI.</p>
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>confluence-cli — released under the MIT License.</span>
+    <span><a href="https://github.com/angelmsger/confluence-cli">github.com/angelmsger/confluence-cli</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

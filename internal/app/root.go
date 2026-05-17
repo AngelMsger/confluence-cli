@@ -75,6 +75,7 @@ func newRootCmd() *cobra.Command {
 		newConfigCmd(state),
 		newAuthCmd(state),
 		newDoctorCmd(state),
+		newSkillCmd(),
 		newVersionCmd(),
 	)
 	return root

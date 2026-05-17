@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -222,6 +223,37 @@ func TestCompletionSpaceKeys(t *testing.T) {
 	}
 	if !strings.Contains(out, "ENG") {
 		t.Errorf("space key completion missing ENG:\n%s", out)
+	}
+}
+
+func TestCmdSkillInstall(t *testing.T) {
+	srv := mockConfluence(t)
+	dir := t.TempDir()
+	out, err := runCLI(t, srv, "skill", "install", "--dir", dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "installed confluence Skill") {
+		t.Errorf("unexpected output: %q", out)
+	}
+	for _, f := range []string{
+		"confluence/SKILL.md",
+		"confluence/references/reading-pages.md",
+	} {
+		if _, statErr := os.Stat(filepath.Join(dir, f)); statErr != nil {
+			t.Errorf("expected installed file %s: %v", f, statErr)
+		}
+	}
+}
+
+func TestCmdSkillShow(t *testing.T) {
+	srv := mockConfluence(t)
+	out, err := runCLI(t, srv, "skill", "show")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "name: confluence") {
+		t.Errorf("skill show did not emit SKILL.md:\n%.120s", out)
 	}
 }
 
