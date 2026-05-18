@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `page get --as raw` emits the page body's untouched source — storage-format
+  XHTML, or server-rendered HTML with `--body-format view` — with no
+  markdown/text rendering. Use it to inspect macros, round-trip-edit a page or
+  debug. It requires `--scope full`.
+- `page get` now reports a `render_notes` field when markdown/text rendering
+  drops or degrades content (macros without a native rendering, images shown
+  as placeholders). Rendering loss was previously silent; when `render_notes`
+  is present, re-read with `--as raw` for the full source.
+
 ## [0.3.1] - 2026-05-19
 
 ### Fixed

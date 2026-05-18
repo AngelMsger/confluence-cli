@@ -351,6 +351,51 @@ func TestCmdSearchListEnvelope(t *testing.T) {
 	}
 }
 
+func TestCmdPageGetRenderNotes(t *testing.T) {
+	srv := mockConfluence(t)
+	out, err := runCLI(t, srv, "page", "get", "790")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	json.Unmarshal([]byte(out), &got)
+	notes, _ := got["render_notes"].([]any)
+	if len(notes) == 0 {
+		t.Fatalf("page with a view-file macro should report render_notes:\n%s", out)
+	}
+	if first, _ := notes[0].(string); !strings.Contains(first, "view-file") {
+		t.Errorf("render_notes should name the macro: %v", notes)
+	}
+}
+
+func TestCmdPageGetRaw(t *testing.T) {
+	srv := mockConfluence(t)
+	out, err := runCLI(t, srv, "page", "get", "790", "--as", "raw")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	json.Unmarshal([]byte(out), &got)
+	body, _ := got["body"].(string)
+	// raw emits the storage source untouched — the macro tag must survive.
+	if !strings.Contains(body, "<ac:structured-macro") {
+		t.Errorf("--as raw should return the unrendered source:\n%s", body)
+	}
+	if got["scope_applied"] != "raw" {
+		t.Errorf("scope_applied = %v, want raw", got["scope_applied"])
+	}
+	if _, leaked := got["render_notes"]; leaked {
+		t.Errorf("raw output renders nothing, so it must carry no render_notes")
+	}
+}
+
+func TestCmdPageGetRawRejectsPartialScope(t *testing.T) {
+	srv := mockConfluence(t)
+	if _, err := runCLI(t, srv, "page", "get", "790", "--as", "raw", "--scope", "outline"); err == nil {
+		t.Fatal("expected an error: --as raw supports only --scope full")
+	}
+}
+
 func TestCmdWhoami(t *testing.T) {
 	srv := mockConfluence(t)
 	out, err := runCLI(t, srv, "whoami")

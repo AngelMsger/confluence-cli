@@ -27,6 +27,9 @@ type pageOutput struct {
 	Body         string                `json:"body,omitempty"`
 	ScopeApplied string                `json:"scope_applied,omitempty"`
 	Truncated    bool                  `json:"truncated,omitempty"`
+	// RenderNotes lists content the markdown/text renderer could not represent
+	// (e.g. unrendered macros). When non-empty, re-read with --as raw.
+	RenderNotes []string `json:"render_notes,omitempty"`
 }
 
 // dryRunOutput is the result shape emitted for a --dry-run write.
@@ -154,12 +157,17 @@ func newPageGetCmd(s *appState) *cobra.Command {
 			"  outline  list the headings (start here when the structure is unknown)\n" +
 			"  section  one section, identified by --section <id> from the outline\n" +
 			"  keyword  blocks matching --keyword, with their heading for context\n" +
-			"  full     the entire body (default)",
+			"  full     the entire body (default)\n\n" +
+			"Rendering to markdown/text drops content it cannot represent (macros,\n" +
+			"images); when that happens the result carries a render_notes field.\n" +
+			"Use --as raw to get the untouched source body instead.",
 		Example: "  # render the whole page as Markdown\n" +
 			"  confluence-cli page get 123456\n\n" +
 			"  # list the headings, then read just one section\n" +
 			"  confluence-cli page get 123456 --scope outline\n" +
 			"  confluence-cli page get 123456 --scope section --section sec-2\n\n" +
+			"  # get the untouched storage XHTML (macros and all)\n" +
+			"  confluence-cli page get 123456 --as raw\n\n" +
 			"  # a page URL works in place of an ID\n" +
 			"  confluence-cli page get https://wiki.example.com/pages/viewpage.action?pageId=123456",
 		Args: cobra.ExactArgs(1),
@@ -187,17 +195,30 @@ func newPageGetCmd(s *appState) *cobra.Command {
 				Version: page.Version, Ancestors: page.Ancestors,
 			}
 			if !noBody && page.Body != nil {
-				rendered, err := render.Render(page.Body.Value, render.Options{
-					Scope: scope, Detail: detail, As: as,
-					SectionID: section, Keyword: keyword,
-				})
-				if err != nil {
-					return err
+				if as == "raw" {
+					// raw emits the body exactly as fetched, with no rendering;
+					// slicing the unparsed source is not supported.
+					if scope != render.ScopeFull {
+						return cerrors.New(cerrors.CategoryUsage, "RAW_NEEDS_FULL_SCOPE",
+							"--as raw supports only --scope full").
+							WithHint("Drop --scope, or drop --as raw to read a section.")
+					}
+					out.Body = page.Body.Value
+					out.ScopeApplied = "raw"
+				} else {
+					rendered, err := render.Render(page.Body.Value, render.Options{
+						Scope: scope, Detail: detail, As: as,
+						SectionID: section, Keyword: keyword,
+					})
+					if err != nil {
+						return err
+					}
+					out.Outline = rendered.Outline
+					out.Body = rendered.Body
+					out.ScopeApplied = rendered.ScopeApplied
+					out.Truncated = rendered.Truncated
+					out.RenderNotes = rendered.Notes
 				}
-				out.Outline = rendered.Outline
-				out.Body = rendered.Body
-				out.ScopeApplied = rendered.ScopeApplied
-				out.Truncated = rendered.Truncated
 			}
 			return s.emit(out)
 		},
@@ -208,12 +229,12 @@ func newPageGetCmd(s *appState) *cobra.Command {
 	f.StringVar(&scope, "scope", "full", "read scope: full, outline, section or keyword")
 	f.StringVar(&section, "section", "", "section ID (with --scope section)")
 	f.StringVar(&keyword, "keyword", "", "keyword (with --scope keyword)")
-	f.StringVar(&as, "as", "markdown", "render body as markdown or text")
+	f.StringVar(&as, "as", "markdown", "output form: markdown, text or raw (unrendered source)")
 	f.BoolVar(&noBody, "no-body", false, "fetch metadata only, skip the body")
 	enumComplete(cmd, "body-format", "storage", "view")
 	enumComplete(cmd, "detail", "simple", "with-ids", "full")
 	enumComplete(cmd, "scope", "full", "outline", "section", "keyword")
-	enumComplete(cmd, "as", "markdown", "text")
+	enumComplete(cmd, "as", "markdown", "text", "raw")
 	return cmd
 }
 

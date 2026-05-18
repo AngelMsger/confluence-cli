@@ -635,12 +635,16 @@ confirmation when stdin is a terminal.</p>
   outline  list the headings (start here when the structure is unknown)
   section  one section, identified by --section &lt;id&gt; from the outline
   keyword  blocks matching --keyword, with their heading for context
-  full     the entire body (default)</p>
+  full     the entire body (default)
+
+Rendering to markdown/text drops content it cannot represent (macros,
+images); when that happens the result carries a render_notes field.
+Use --as raw to get the untouched source body instead.</p>
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
-        <tr><td><code>--as</code></td><td><code>markdown</code></td><td>render body as markdown or text</td></tr>
+        <tr><td><code>--as</code></td><td><code>markdown</code></td><td>output form: markdown, text or raw (unrendered source)</td></tr>
         <tr><td><code>--body-format</code></td><td><code>storage</code></td><td>source body format: storage or view</td></tr>
         <tr><td><code>--detail</code></td><td><code>simple</code></td><td>block detail: simple, with-ids or full</td></tr>
         <tr><td><code>--keyword</code></td><td></td><td>keyword (with --scope keyword)</td></tr>
@@ -655,6 +659,9 @@ confirmation when stdin is a terminal.</p>
 <span class="c">  # list the headings, then read just one section</span>
   confluence-cli page get 123456 --scope outline
   confluence-cli page get 123456 --scope section --section sec-2
+
+<span class="c">  # get the untouched storage XHTML (macros and all)</span>
+  confluence-cli page get 123456 --as raw
 
 <span class="c">  # a page URL works in place of an ID</span>
   confluence-cli page get https://wiki.example.com/pages/viewpage.action?pageId=123456</pre>
