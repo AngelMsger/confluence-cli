@@ -54,9 +54,12 @@ jobs:
       # skips OIDC trusted publishing entirely. Omitting it leaves npm without
       # credentials, so it performs the trusted-publishing exchange. The public
       # registry is the default, so no registry config is needed.
+      # Node 24 bundles npm >= 11.5.1, which is required for trusted
+      # publishing — so there is no fragile `npm install -g npm@latest`
+      # self-upgrade step (it intermittently corrupts the npm install).
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
 
       # Publishes @angelmsger/confluence-cli via npm trusted publishing (OIDC):
       # no token is needed — the `id-token: write` permission above lets the npm
@@ -70,7 +73,6 @@ jobs:
       - name: publish to npm
         working-directory: build/npm
         run: |
-          npm install -g npm@latest # trusted publishing needs npm >= 11.5.1
           echo "node $(node --version) / npm $(npm --version)"
           echo "OIDC token endpoint present: ${ACTIONS_ID_TOKEN_REQUEST_URL:+yes}"
           VERSION="${TAG#v}"
