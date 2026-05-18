@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 
 	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
@@ -44,6 +46,13 @@ type Client interface {
 	ListAttachments(ctx context.Context, pageID string, opt ListOpts) (ListResult[Attachment], error)
 	GetAttachment(ctx context.Context, id string) (*Attachment, error)
 	DownloadAttachment(ctx context.Context, att Attachment, w io.Writer) (DownloadMeta, error)
+	UploadAttachment(ctx context.Context, req UploadAttachmentReq) (*Attachment, error)
+	UpdateAttachment(ctx context.Context, req UpdateAttachmentReq) (*Attachment, error)
+	DeleteAttachment(ctx context.Context, req DeleteAttachmentReq) error
+
+	ListLabels(ctx context.Context, pageID string, opt ListOpts) (ListResult[Label], error)
+	AddLabels(ctx context.Context, req AddLabelsReq) ([]Label, error)
+	RemoveLabel(ctx context.Context, req RemoveLabelReq) error
 }
 
 // apiClient is the single Client implementation. Per-flavor behaviour is
@@ -124,6 +133,75 @@ func (c *apiClient) doJSON(ctx context.Context, method, path string, query url.V
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
+
+	resp, err := c.http.Do(ctx, req)
+	if err != nil {
+		return cerrors.Wrap(err, cerrors.CategoryNetwork, "NETWORK",
+			fmt.Sprintf("request to %s failed", endpoint))
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return c.httpError(resp)
+	}
+	if out == nil {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		return nil
+	}
+	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+		return cerrors.Wrap(err, cerrors.CategoryParse, "DECODE",
+			"failed to decode server response")
+	}
+	return nil
+}
+
+// multipartFile is the binary file part of a multipart/form-data upload.
+type multipartFile struct {
+	FieldName string
+	FileName  string
+	Data      []byte
+}
+
+// doMultipart performs a multipart/form-data request: file is the binary part
+// and fields carries any additional text form fields. It sets the
+// X-Atlassian-Token header to bypass Confluence's XSRF guard, which every
+// upload endpoint requires. The JSON response, if any, is decoded into out.
+func (c *apiClient) doMultipart(ctx context.Context, method, path string, file multipartFile, fields map[string]string, out any) error {
+	var buf bytes.Buffer
+	mw := multipart.NewWriter(&buf)
+	encErr := func(err error) error {
+		return cerrors.Wrap(err, cerrors.CategoryInternal, "ENCODE", "failed to build multipart body")
+	}
+	fw, err := mw.CreateFormFile(file.FieldName, file.FileName)
+	if err != nil {
+		return encErr(err)
+	}
+	if _, err := fw.Write(file.Data); err != nil {
+		return encErr(err)
+	}
+	// Write fields in a stable order so the request body is deterministic.
+	keys := make([]string, 0, len(fields))
+	for k := range fields {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		if err := mw.WriteField(k, fields[k]); err != nil {
+			return encErr(err)
+		}
+	}
+	if err := mw.Close(); err != nil {
+		return encErr(err)
+	}
+
+	endpoint := c.baseURL + path
+	req, err := http.NewRequest(method, endpoint, &buf)
+	if err != nil {
+		return cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_REQUEST", "failed to build request")
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", mw.FormDataContentType())
+	req.Header.Set("X-Atlassian-Token", "nocheck")
 
 	resp, err := c.http.Do(ctx, req)
 	if err != nil {

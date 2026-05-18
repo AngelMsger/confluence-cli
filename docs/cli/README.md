@@ -8,9 +8,12 @@ is published at <https://angelmsger.github.io/confluence-cli/cli/>.
 
 | Command | Description |
 | --- | --- |
-| [`confluence-cli attachment`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-attachment) | List and download page attachments |
+| [`confluence-cli attachment`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-attachment) | Upload, list, download and delete page attachments |
+| [`confluence-cli attachment delete`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-attachment-delete) | Delete an attachment |
 | [`confluence-cli attachment download`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-attachment-download) | Download an attachment's content |
 | [`confluence-cli attachment list`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-attachment-list) | List the attachments of a page |
+| [`confluence-cli attachment update`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-attachment-update) | Replace an attachment's content with a new version |
+| [`confluence-cli attachment upload`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-attachment-upload) | Attach a file to a page |
 
 ## auth
 
@@ -46,6 +49,15 @@ is published at <https://angelmsger.github.io/confluence-cli/cli/>.
 | Command | Description |
 | --- | --- |
 | [`confluence-cli doctor`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-doctor) | Diagnose configuration, credentials and connectivity |
+
+## label
+
+| Command | Description |
+| --- | --- |
+| [`confluence-cli label`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-label) | List, add and remove page labels |
+| [`confluence-cli label add`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-label-add) | Add one or more labels to a page |
+| [`confluence-cli label list`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-label-list) | List the labels on a page |
+| [`confluence-cli label remove`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-label-remove) | Remove a label from a page |
 
 ## page
 

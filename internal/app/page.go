@@ -115,21 +115,22 @@ func stdinIsTTY() bool {
 	return fi.Mode()&os.ModeCharDevice != 0
 }
 
-// confirmDelete enforces the page-delete safety guard: --yes skips it, a
-// non-TTY without --yes is refused, and a TTY prompts on stderr.
-func confirmDelete(id string, yes bool) error {
+// confirmDelete enforces the delete safety guard: --yes skips it, a non-TTY
+// without --yes is refused, and a TTY prompts on stderr. prompt describes the
+// thing being deleted, e.g. "page 123 (moves it to the trash)".
+func confirmDelete(prompt string, yes bool) error {
 	if yes {
 		return nil
 	}
 	if !stdinIsTTY() {
-		return cerrors.New(cerrors.CategoryUsage, "PAGE_DELETE_NEEDS_YES",
-			"page delete requires --yes when stdin is not a terminal").
+		return cerrors.New(cerrors.CategoryUsage, "DELETE_NEEDS_YES",
+			"delete requires --yes when stdin is not a terminal").
 			WithHint("Re-run with --yes to confirm the deletion.")
 	}
-	fmt.Fprintf(os.Stderr, "Delete page %s? This moves it to the trash. [y/N] ", id)
+	fmt.Fprintf(os.Stderr, "Delete %s? [y/N] ", prompt)
 	line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
 	if ans := strings.ToLower(strings.TrimSpace(line)); ans != "y" && ans != "yes" {
-		return cerrors.New(cerrors.CategoryUsage, "PAGE_DELETE_ABORTED", "deletion cancelled")
+		return cerrors.New(cerrors.CategoryUsage, "DELETE_ABORTED", "deletion cancelled")
 	}
 	return nil
 }
@@ -422,7 +423,7 @@ func newPageDeleteCmd(s *appState) *cobra.Command {
 			if dryRun {
 				return emitDryRun(s, client, ctx, req)
 			}
-			if err := confirmDelete(id, yes); err != nil {
+			if err := confirmDelete("page "+id+" (moves it to the trash)", yes); err != nil {
 				return err
 			}
 			if err := client.DeletePage(ctx, req); err != nil {

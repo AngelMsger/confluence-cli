@@ -29,3 +29,42 @@ then `attachment download` with the chosen ID.
 When writing to a file, the command prints a JSON summary (`attachment_id`,
 `output`, `content_type`, `bytes`). With `--output -` the raw content goes to
 stdout and nothing else is printed.
+
+## Upload a file to a page
+
+```bash
+# attach a file; the attachment name defaults to the file's base name
+confluence-cli attachment upload <page-id|url> --file ./diagram.png
+
+# override the name, add a version comment
+confluence-cli attachment upload <page-id|url> --file ./report.pdf \
+  --name "Q3 Report.pdf" --comment "Q3 figures"
+
+# read the file from stdin (--name is then required)
+cat notes.txt | confluence-cli attachment upload <page-id|url> --file - --name notes.txt
+
+# preview the request without sending it
+confluence-cli attachment upload <page-id|url> --file ./diagram.png --dry-run
+```
+
+Uploading a file whose name matches an existing attachment stores it as a new
+version of that attachment rather than creating a duplicate.
+
+## Replace an attachment's content
+
+```bash
+# upload new content for an existing attachment (creates a new version)
+confluence-cli attachment update <attachment-id|url> --file ./diagram-v2.png
+```
+
+`update` takes the **attachment** ID (run `attachment list` to find it). The
+attachment keeps its name unless `--name` is given.
+
+## Delete an attachment
+
+```bash
+confluence-cli attachment delete <attachment-id|url> --yes
+```
+
+Deletion requires `--yes` (or an interactive confirmation when stdin is a
+terminal). Use `--dry-run` to preview the request.

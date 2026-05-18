@@ -294,6 +294,26 @@ func (c *apiClient) DescribeWrite(ctx context.Context, op any) (WriteRequestPlan
 		method, path, payload, err = c.buildMovePage(ctx, v)
 	case CopyPageReq:
 		method, path, payload, err = c.buildCopyPage(ctx, v)
+	case UploadAttachmentReq:
+		var file multipartFile
+		var fields map[string]string
+		method, path, file, fields, err = c.buildUploadAttachment(v)
+		if err == nil {
+			payload = multipartPlanOf(file, fields)
+		}
+	case UpdateAttachmentReq:
+		var file multipartFile
+		var fields map[string]string
+		method, path, file, fields, err = c.buildUpdateAttachment(v)
+		if err == nil {
+			payload = multipartPlanOf(file, fields)
+		}
+	case DeleteAttachmentReq:
+		method, path, err = c.buildDeleteAttachment(v)
+	case AddLabelsReq:
+		method, path, payload, err = c.buildAddLabels(v)
+	case RemoveLabelReq:
+		method, path, err = c.buildRemoveLabel(v)
 	default:
 		return WriteRequestPlan{}, cerrors.New(cerrors.CategoryInternal, "DRYRUN_BAD_OP",
 			"unsupported write operation for dry-run")

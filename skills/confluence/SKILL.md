@@ -1,7 +1,7 @@
 ---
 name: confluence
-version: 1.2.0
-description: "Use a Confluence wiki as an external knowledge base. Search, read and summarise Confluence pages, browse spaces and page trees, create and edit pages, read and post comments. Use this skill when the user gives a Confluence page URL or ID, mentions a Confluence/wiki page, asks to find or look up something in Confluence, asks to read/summarise/extract a Confluence page, browse a space, list child pages, create/update/delete/move/copy a page, read page comments, or post a comment. Works with both Confluence Cloud and Confluence Data Center / Server."
+version: 1.3.0
+description: "Use a Confluence wiki as an external knowledge base. Search, read and summarise Confluence pages, browse spaces and page trees, create and edit pages, read and post comments, upload and manage file attachments, and manage page labels. Use this skill when the user gives a Confluence page URL or ID, mentions a Confluence/wiki page, asks to find or look up something in Confluence, asks to read/summarise/extract a Confluence page, browse a space, list child pages, create/update/delete/move/copy a page, read page comments, post a comment, upload/replace/delete an attachment, or add/remove page labels. Works with both Confluence Cloud and Confluence Data Center / Server."
 metadata:
   requires:
     bins: ["confluence-cli"]
@@ -32,8 +32,12 @@ guess an ID — run `confluence-cli search` first, then act on the ID from the h
   `update` / `delete` / `move` / `copy` (see [writing-pages.md](references/writing-pages.md)).
 - User wants the **comments** on a page → `comment list`; to post one →
   `comment add` (see [comments.md](references/comments.md)).
-- User wants files on a page → `attachment list` / `attachment download`
-  (see [attachments.md](references/attachments.md)).
+- User wants files on a page → `attachment list` / `attachment download`; to
+  put a file on a page → `attachment upload`; to replace one → `attachment
+  update`; to remove one → `attachment delete` (see
+  [attachments.md](references/attachments.md)).
+- User wants to tag / categorise a page → `label list` / `label add` /
+  `label remove`.
 - A command fails → read the JSON error on stderr and follow `next_steps`
   (see [errors-and-exit-codes.md](references/errors-and-exit-codes.md)).
 - Nothing is configured yet → [getting-started.md](references/getting-started.md).
@@ -56,6 +60,12 @@ confluence-cli comment list <id|url>      # page comments
 confluence-cli comment add <id|url>       # post a comment
 confluence-cli attachment list <id|url>   # page attachments
 confluence-cli attachment download <id>   # download an attachment
+confluence-cli attachment upload <id|url> # attach a file (--file)
+confluence-cli attachment update <id>     # replace an attachment's content
+confluence-cli attachment delete <id>     # delete an attachment (needs --yes)
+confluence-cli label list <id|url>        # labels on a page
+confluence-cli label add <id|url> <l>...  # add labels to a page
+confluence-cli label remove <id|url> <l>  # remove a label from a page
 confluence-cli config init|show           # configuration
 confluence-cli auth status                # credential check
 confluence-cli doctor                     # diagnose setup + connectivity
@@ -77,8 +87,9 @@ Only fall back to `--scope full` when the whole page is genuinely needed.
 
 ## Large result sets
 
-`search`, `page children/descendants`, `comment list` and `attachment list`
-return one page of results by default and print a stderr note when more exist.
+`search`, `page children/descendants`, `comment list`, `attachment list` and
+`label list` return one page of results by default and print a stderr note
+when more exist.
 Add `--all` to fetch every page, or `--limit N` to size each request. For very
 large outputs use `--format ndjson` (one JSON object per line).
 
