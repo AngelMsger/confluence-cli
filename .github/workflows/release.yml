@@ -80,5 +80,5 @@ jobs:
           if npm view "@angelmsger/confluence-cli@$VERSION" version >/dev/null 2>&1; then
             echo "@angelmsger/confluence-cli@$VERSION already published — skipping"
           else
-            npm publish --access public --loglevel verbose
+            npm publish --access public
           fi
