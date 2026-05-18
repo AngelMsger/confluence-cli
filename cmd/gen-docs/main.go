@@ -222,73 +222,18 @@ const htmlTemplate = `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>confluence-cli — CLI reference</title>
-<style>
-  :root {
-    --bg: #0d1117; --bg-soft: #161b22; --card: #1c2333; --border: #2a3350;
-    --text: #e6e9f0; --muted: #9aa4bf; --accent: #4d7cff; --radius: 14px;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html { scroll-behavior: smooth; }
-  body {
-    background: var(--bg); color: var(--text);
-    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
-  }
-  a { color: var(--accent); text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  code, pre { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; }
-  nav {
-    position: sticky; top: 0; z-index: 10; background: rgba(13,17,23,0.85);
-    backdrop-filter: blur(8px); border-bottom: 1px solid var(--border);
-  }
-  nav .row { display: flex; align-items: center; gap: 22px; height: 56px; max-width: 1180px; margin: 0 auto; padding: 0 24px; }
-  nav .brand { font-weight: 700; color: var(--text); }
-  nav .links { margin-left: auto; display: flex; gap: 20px; }
-  nav .links a { color: var(--muted); font-size: 0.92rem; }
-  nav .links a:hover { color: var(--text); text-decoration: none; }
-  .layout {
-    display: grid; grid-template-columns: 240px 1fr; gap: 40px;
-    max-width: 1180px; margin: 0 auto; padding: 32px 24px 96px; align-items: start;
-  }
-  .side { position: sticky; top: 76px; max-height: calc(100vh - 100px); overflow-y: auto; font-size: 0.9rem; }
-  .side-group { margin-bottom: 18px; }
-  .side-title { color: var(--muted); text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.09em; margin-bottom: 6px; }
-  .side a { display: block; color: var(--text); padding: 3px 0; }
-  .side a:hover { color: var(--accent); text-decoration: none; }
-  main { min-width: 0; }
-  main > h1 { font-size: 1.9rem; letter-spacing: -0.01em; }
-  main > .lead { color: var(--muted); margin: 8px 0 8px; }
-  .cmd { border-top: 1px solid var(--border); padding-top: 30px; margin-top: 30px; }
-  .cmd h2 { font-size: 1.25rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-  .cmd .short { color: var(--muted); margin: 5px 0 14px; }
-  .cmd .long { white-space: pre-wrap; margin: 12px 0; }
-  .cmd h3 { font-size: 0.95rem; color: var(--muted); text-transform: uppercase;
-            letter-spacing: 0.07em; margin: 20px 0 8px; }
-  .group-tag { font-size: 0.72rem; color: var(--muted); border: 1px solid var(--border);
-               border-radius: 999px; padding: 2px 9px; margin-left: 8px; vertical-align: 3px; }
-  pre {
-    background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 16px 18px; overflow-x: auto; font-size: 0.88rem; line-height: 1.7;
-  }
-  pre .c { color: #6f7896; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
-  th { color: var(--muted); font-weight: 600; }
-  td code { color: var(--accent); }
-  footer { border-top: 1px solid var(--border); padding: 28px 24px; color: var(--muted);
-           font-size: 0.9rem; text-align: center; }
-  @media (max-width: 820px) {
-    .layout { grid-template-columns: 1fr; }
-    .side { position: static; max-height: none; }
-  }
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../style.css">
 </head>
 <body>
-<nav>
-  <div class="row">
+<nav class="nav">
+  <div class="nav-inner">
     <a class="brand" href="../">confluence-cli</a>
-    <div class="links">
+    <div class="nav-links">
       <a href="../">Home</a>
+      <a class="is-cli" href="../#commands">Commands</a>
       <a href="https://github.com/angelmsger/confluence-cli">GitHub</a>
     </div>
   </div>
@@ -301,10 +246,11 @@ const htmlTemplate = `<!doctype html>
       {{end}}</div>
     {{end}}
   </aside>
-  <main>
+  <main class="cli-main">
+    <span class="eyebrow">Reference</span>
     <h1>CLI reference</h1>
     <p class="lead">{{.Intro}}</p>
-    <p class="lead">This page is generated from the command tree, so it always matches <code>--help</code>.</p>
+    <p class="lead">Generated from the command tree, so it always matches <code>--help</code>.</p>
 
     <section class="cmd">
       <h2>Global flags</h2>
@@ -335,7 +281,12 @@ const htmlTemplate = `<!doctype html>
     {{end}}{{end}}
   </main>
 </div>
-<footer>confluence-cli — released under the MIT License.</footer>
+<footer class="footer">
+  <div class="wrap">
+    <span class="brand-foot">confluence-cli — MIT License</span>
+    <span><a href="https://github.com/angelmsger/confluence-cli">github.com/angelmsger/confluence-cli</a></span>
+  </div>
+</footer>
 </body>
 </html>
 `
