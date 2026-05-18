@@ -101,10 +101,11 @@ Only fall back to `--scope full` when the whole page is genuinely needed.
 ## Large result sets
 
 `search`, `page children/descendants`, `page history`, `comment list`,
-`attachment list` and `label list` return one page of results by default and
-print a stderr note when more exist.
-Add `--all` to fetch every page, or `--limit N` to size each request. For very
-large outputs use `--format ndjson` (one JSON object per line).
+`attachment list` and `label list` return a `{items, next, has_more}` envelope.
+By default they return one page; when `has_more` is true, pass `--cursor` with
+the `next` value to read the following page. Use `--all` to fetch every page in
+one call, or `--limit N` to size each request. For very large outputs use
+`--format ndjson` (one JSON object per line, items only).
 
 ## Global flags
 

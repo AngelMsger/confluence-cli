@@ -3,17 +3,21 @@
 ## 1. 目标与范围
 
 `confluence-cli` 是一个 Go 编写的命令行工具，让 Coding Agent（Claude Code 等）把
-Confluence 当作外部知识库进行检索与读取。
+Confluence 当作外部知识库进行检索、读取与维护。
 
 - **同时支持** Confluence Cloud 与 Confluence Data Center / Server（self-hosted），
   并兼容多个 REST API 版本。
 - **面向 Agent**：默认输出 JSON，错误结构化，正文支持分级 / 分段读取，错误信息携带
   可执行的下一步建议。
 - **配置多来源**：CLI 参数 / 环境变量 / `.env` / 配置文件，含交互式 `init` 引导。
-- **操作范围**：读 + 评论写。读覆盖取页面、CQL 搜索、列空间、子页 / 后代、附件、评论；
-  写仅实现「发布 / 回复评论」。不实现页面创建 / 编辑。
+- **操作范围**：读与写。读覆盖取页面、CQL 搜索、列空间、子页 / 后代、附件、评论、
+  标签、版本历史。写覆盖页面（创建 / 编辑 / 删除 / 移动 / 复制 / 恢复历史版本）、
+  附件（上传 / 替换 / 删除）、标签（增 / 删）、评论（发布 / 编辑 / 删除）、关注
+  （watch / unwatch）；另有 `whoami` 查询当前凭据对应的用户。每个写命令支持
+  `--dry-run` 预览将要发出的请求。
 
-非目标：页面创建 / 编辑、空间管理、用户管理、OAuth 2.0 三方授权（预留扩展点，本期不做）。
+非目标：空间的创建 / 删除 / 归档、页面权限（restrictions）、内容属性、博客内容类型、
+PDF 导出、OAuth 2.0 三方授权（预留扩展点，本期不做）。
 
 ## 2. API Flavor 差异矩阵
 
@@ -153,7 +157,11 @@ Defaults   { Format string         // json（默认）
 ### 6.1 输出
 
 `Formatter` 接口三实现：`json`（默认，面向 Agent，stdout）、`table`（人类可读）、
-`ndjson`（流式大结果集，配合迭代器）。`--fields a,b.c` 按点路径投影。stdout 仅放结果。
+`ndjson`（流式大结果集）。`--fields a,b.c` 按点路径投影。list 命令输出分页信封
+`{items, next, has_more}`，`--cursor` 可从上一页的 `next` 续读下一页。所有命令的
+成功输出统一为 stdout 上的 JSON（唯一例外：`version` 命令打印纯文本版本行，与
+`--version` flag 对齐）；交互式向导（`config init`、`auth login`）的提示走 stderr。
+错误只走 stderr。
 
 ### 6.2 错误
 
@@ -165,7 +173,7 @@ Defaults   { Format string         // json（默认）
   "retryable":false,"http_status":401}}
 ```
 
-category：`usage config auth not_found permission rate_limit network server parse internal`。
+category：`usage config auth not_found permission conflict rate_limit network server parse internal`。
 
 ### 6.3 退出码
 
@@ -176,7 +184,10 @@ category：`usage config auth not_found permission rate_limit network server par
 | 2 | usage | 8 | network |
 | 3 | config | 9 | server |
 | 4 | auth | 10 | parse |
-| 5 | permission | | |
+| 5 | permission | 11 | conflict |
+
+`conflict`（HTTP 409，exit 11）用于 `page update` / `comment update` 等写操作的
+版本冲突 —— 重新读取目标内容拿到当前版本号后再重试。
 
 `hints.go` 把 category 映射为 next_steps，引导 Agent 自我纠正。
 

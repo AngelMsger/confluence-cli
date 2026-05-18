@@ -16,8 +16,9 @@ func newLabelCmd(s *appState) *cobra.Command {
 
 func newLabelListCmd(s *appState) *cobra.Command {
 	var (
-		limit int
-		all   bool
+		limit  int
+		all    bool
+		cursor string
 	)
 	cmd := &cobra.Command{
 		Use:     "list <page-id|url>",
@@ -25,7 +26,7 @@ func newLabelListCmd(s *appState) *cobra.Command {
 		Example: "  confluence-cli label list 123456",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id, err := resolveID(args[0])
+			id, err := resolvePageID(args[0])
 			if err != nil {
 				return err
 			}
@@ -35,17 +36,16 @@ func newLabelListCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			items, err := collectList(func(cursor string) (apiclient.ListResult[apiclient.Label], error) {
+			items, info, err := collectPage(func(cursor string) (apiclient.ListResult[apiclient.Label], error) {
 				return client.ListLabels(ctx, id, apiclient.ListOpts{Limit: limit, Cursor: cursor})
-			}, limit, all)
+			}, cursor, all)
 			if err != nil {
 				return err
 			}
-			return s.emit(items)
+			return s.emit(newListOutput(items, info))
 		},
 	}
-	cmd.Flags().IntVar(&limit, "limit", 0, "page size (default from config)")
-	cmd.Flags().BoolVar(&all, "all", false, "fetch every page of results")
+	addListFlags(cmd, &limit, &all, &cursor)
 	return cmd
 }
 
@@ -58,7 +58,7 @@ func newLabelAddCmd(s *appState) *cobra.Command {
 			"  confluence-cli label add 123456 q3 reviewed --dry-run",
 		Args: cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id, err := resolveID(args[0])
+			id, err := resolvePageID(args[0])
 			if err != nil {
 				return err
 			}
@@ -91,7 +91,7 @@ func newLabelRemoveCmd(s *appState) *cobra.Command {
 		Example: "  confluence-cli label remove 123456 release-notes",
 		Args:    cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id, err := resolveID(args[0])
+			id, err := resolvePageID(args[0])
 			if err != nil {
 				return err
 			}

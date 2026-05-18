@@ -129,6 +129,82 @@ func TestEmitBadFormat(t *testing.T) {
 	}
 }
 
+// listEnv mirrors the list envelope app commands emit.
+type listEnv struct {
+	Items   []sampleRec `json:"items"`
+	Next    string      `json:"next,omitempty"`
+	HasMore bool        `json:"has_more"`
+}
+
+func TestEmitListEnvelopeTable(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	env := listEnv{Items: []sampleRec{mk("1", "Hello", "ENG"), mk("2", "World", "DEV")}, Next: "25", HasMore: true}
+	if err := Emit(env, Options{Format: FormatTable, Writer: &buf}); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	// The envelope must render its items as a table, not as a {items,...} KV table.
+	if !strings.Contains(out, "Hello") || !strings.Contains(out, "World") {
+		t.Errorf("table missing item rows:\n%s", out)
+	}
+	if strings.Contains(out, "has_more") {
+		t.Errorf("envelope keys leaked into the table:\n%s", out)
+	}
+	if !strings.Contains(out, "--cursor 25") {
+		t.Errorf("table should hint the next cursor:\n%s", out)
+	}
+}
+
+func TestEmitListEnvelopeNDJSON(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	env := listEnv{Items: []sampleRec{mk("1", "Hello", "ENG"), mk("2", "World", "DEV")}, HasMore: false}
+	if err := Emit(env, Options{Format: FormatNDJSON, Writer: &buf}); err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("ndjson should stream one item per line, got %d:\n%s", len(lines), buf.String())
+	}
+	for _, ln := range lines {
+		var rec map[string]any
+		if err := json.Unmarshal([]byte(ln), &rec); err != nil {
+			t.Fatalf("ndjson line not valid JSON: %v", err)
+		}
+		if _, isEnvelope := rec["has_more"]; isEnvelope {
+			t.Errorf("ndjson streamed the envelope, not its items: %s", ln)
+		}
+	}
+}
+
+func TestEmitListEnvelopeFields(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	env := listEnv{Items: []sampleRec{mk("1", "Hello", "ENG")}, HasMore: true, Next: "25"}
+	err := Emit(env, Options{Format: FormatJSON, Fields: []string{"id"}, Writer: &buf})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got struct {
+		Items   []map[string]any `json:"items"`
+		HasMore bool             `json:"has_more"`
+	}
+	if err := json.Unmarshal(buf.Bytes(), &got); err != nil {
+		t.Fatalf("output not a list envelope: %v\n%s", err, buf.String())
+	}
+	// --fields projects the items; the envelope wrapper is preserved.
+	if len(got.Items) != 1 || got.Items[0]["id"] != "1" {
+		t.Errorf("projected items = %v", got.Items)
+	}
+	if _, leaked := got.Items[0]["title"]; leaked {
+		t.Errorf("title should have been projected away: %v", got.Items[0])
+	}
+	if !got.HasMore {
+		t.Error("envelope has_more was lost")
+	}
+}
+
 func TestEmitError(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer

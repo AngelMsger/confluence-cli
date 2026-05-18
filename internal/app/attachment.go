@@ -43,8 +43,9 @@ func readUploadFile(path string) ([]byte, error) {
 
 func newAttachmentListCmd(s *appState) *cobra.Command {
 	var (
-		limit int
-		all   bool
+		limit  int
+		all    bool
+		cursor string
 	)
 	cmd := &cobra.Command{
 		Use:     "list <id|url>",
@@ -52,7 +53,7 @@ func newAttachmentListCmd(s *appState) *cobra.Command {
 		Example: "  confluence-cli attachment list 123456",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id, err := resolveID(args[0])
+			id, err := resolvePageID(args[0])
 			if err != nil {
 				return err
 			}
@@ -62,17 +63,16 @@ func newAttachmentListCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			items, err := collectList(func(cursor string) (apiclient.ListResult[apiclient.Attachment], error) {
+			items, info, err := collectPage(func(cursor string) (apiclient.ListResult[apiclient.Attachment], error) {
 				return client.ListAttachments(ctx, id, apiclient.ListOpts{Limit: limit, Cursor: cursor})
-			}, limit, all)
+			}, cursor, all)
 			if err != nil {
 				return err
 			}
-			return s.emit(items)
+			return s.emit(newListOutput(items, info))
 		},
 	}
-	cmd.Flags().IntVar(&limit, "limit", 0, "page size (default from config)")
-	cmd.Flags().BoolVar(&all, "all", false, "fetch every page of results")
+	addListFlags(cmd, &limit, &all, &cursor)
 	return cmd
 }
 
@@ -87,14 +87,14 @@ type downloadOutput struct {
 func newAttachmentDownloadCmd(s *appState) *cobra.Command {
 	var output string
 	cmd := &cobra.Command{
-		Use:   "download <attachment-id|url>",
+		Use:   "download <attachment-id>",
 		Short: "Download an attachment's content",
 		Long:  "Download an attachment by its content ID. Use --output - to stream to stdout.",
 		Example: "  confluence-cli attachment download att12345 --output spec.pdf\n" +
 			"  confluence-cli attachment download att12345 --output -",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			attID, err := resolveID(args[0])
+			attID, err := resolveAttachmentID(args[0])
 			if err != nil {
 				return err
 			}
@@ -163,7 +163,7 @@ func newAttachmentUploadCmd(s *appState) *cobra.Command {
 			"  confluence-cli attachment upload 123456 --file - --name notes.txt --dry-run",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			pageID, err := resolveID(args[0])
+			pageID, err := resolvePageID(args[0])
 			if err != nil {
 				return err
 			}
@@ -218,7 +218,7 @@ func newAttachmentUpdateCmd(s *appState) *cobra.Command {
 		minor, dryRun       bool
 	)
 	cmd := &cobra.Command{
-		Use:   "update <attachment-id|url> --file <PATH>",
+		Use:   "update <attachment-id> --file <PATH>",
 		Short: "Replace an attachment's content with a new version",
 		Long: "Upload new content for an existing attachment, creating a new version.\n" +
 			"The attachment keeps its name unless --name is given. Use --file - to\n" +
@@ -227,7 +227,7 @@ func newAttachmentUpdateCmd(s *appState) *cobra.Command {
 			"  confluence-cli attachment update att12345 --file report.pdf --comment \"fix totals\"",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			attID, err := resolveID(args[0])
+			attID, err := resolveAttachmentID(args[0])
 			if err != nil {
 				return err
 			}
@@ -291,14 +291,14 @@ func newAttachmentUpdateCmd(s *appState) *cobra.Command {
 func newAttachmentDeleteCmd(s *appState) *cobra.Command {
 	var yes, dryRun bool
 	cmd := &cobra.Command{
-		Use:   "delete <attachment-id|url>",
+		Use:   "delete <attachment-id>",
 		Short: "Delete an attachment",
 		Long: "Delete an attachment by its content ID. Deletion requires --yes, or an\n" +
 			"interactive confirmation when stdin is a terminal.",
 		Example: "  confluence-cli attachment delete att12345 --yes",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			attID, err := resolveID(args[0])
+			attID, err := resolveAttachmentID(args[0])
 			if err != nil {
 				return err
 			}

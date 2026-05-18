@@ -24,6 +24,9 @@ const (
 type Ref struct {
 	// PageID is the numeric content ID, empty if not resolvable from the input.
 	PageID string
+	// CommentID is the comment content ID, set when a URL carries a
+	// focusedCommentId query parameter.
+	CommentID string
 	// SpaceKey is the space key when present in the URL.
 	SpaceKey string
 	// Title is a human-readable title slug when present in the URL.
@@ -92,6 +95,10 @@ func Parse(s string) Ref {
 		if k := u.Query().Get("spaceKey"); k != "" {
 			ref.SpaceKey = k
 		}
+	}
+	// A comment-permalink URL carries the comment's own content ID.
+	if id := u.Query().Get("focusedCommentId"); id != "" {
+		ref.CommentID = id
 	}
 	return ref
 }

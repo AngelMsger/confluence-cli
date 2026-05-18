@@ -10,6 +10,16 @@ import (
 // emitTable renders a generic value as a human-readable text table.
 func emitTable(v any, opt Options) error {
 	w := opt.Writer
+	if items, ok := listEnvelope(v); ok {
+		if err := emitListTable(items, opt); err != nil {
+			return err
+		}
+		if next, _ := v.(map[string]any)["next"].(string); next != "" {
+			_, err := fmt.Fprintf(w, "\n(more results — re-run with --cursor %s)\n", next)
+			return err
+		}
+		return nil
+	}
 	switch t := v.(type) {
 	case []any:
 		return emitListTable(t, opt)

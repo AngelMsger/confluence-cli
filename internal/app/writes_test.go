@@ -102,10 +102,7 @@ func TestCmdLabelList(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var got []map[string]any
-	if err := json.Unmarshal([]byte(out), &got); err != nil {
-		t.Fatalf("output not a JSON array: %v\n%s", err, out)
-	}
+	got := decodeList(t, out)
 	if len(got) != 1 || got[0]["name"] != "release-notes" {
 		t.Errorf("labels = %v", got)
 	}
@@ -161,10 +158,7 @@ func TestCmdPageHistory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var got []map[string]any
-	if err := json.Unmarshal([]byte(out), &got); err != nil {
-		t.Fatalf("output not a JSON array: %v\n%s", err, out)
-	}
+	got := decodeList(t, out)
 	if len(got) != 2 || got[0]["number"].(float64) != 2 {
 		t.Errorf("versions = %v", got)
 	}
@@ -303,6 +297,57 @@ func TestCmdCommentDelete(t *testing.T) {
 	json.Unmarshal([]byte(out), &got)
 	if got["id"] != "c1" || got["status"] != "deleted" {
 		t.Errorf("delete output = %v", got)
+	}
+}
+
+func TestCmdCommentDeleteRejectsPageURL(t *testing.T) {
+	srv := mockConfluence(t)
+	// A page URL with no focusedCommentId must NOT be resolved to the page ID
+	// and deleted as if it were a comment.
+	pageURL := srv.URL + "/pages/viewpage.action?pageId=123"
+	_, err := runCLI(t, srv, "comment", "delete", pageURL, "--yes")
+	if err == nil {
+		t.Fatal("expected an error: a page URL is not a comment reference")
+	}
+}
+
+func TestCmdCommentDeleteAcceptsCommentURL(t *testing.T) {
+	srv := mockConfluence(t)
+	// A comment permalink carries focusedCommentId — that is the content to act on.
+	commentURL := srv.URL + "/pages/viewpage.action?pageId=123&focusedCommentId=c1"
+	out, err := runCLI(t, srv, "comment", "delete", commentURL, "--yes")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	json.Unmarshal([]byte(out), &got)
+	if got["id"] != "c1" {
+		t.Errorf("comment delete from permalink targeted %v, want c1", got["id"])
+	}
+}
+
+func TestCmdAttachmentDeleteRejectsURL(t *testing.T) {
+	srv := mockConfluence(t)
+	if _, err := runCLI(t, srv, "attachment", "delete", srv.URL+"/download/attachments/123/f.pdf", "--yes"); err == nil {
+		t.Fatal("expected an error: an attachment URL carries no attachment content ID")
+	}
+}
+
+func TestCmdSearchListEnvelope(t *testing.T) {
+	srv := mockConfluence(t)
+	out, err := runCLI(t, srv, "search", "--text", "welcome")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var env struct {
+		Items   []map[string]any `json:"items"`
+		HasMore bool             `json:"has_more"`
+	}
+	if err := json.Unmarshal([]byte(out), &env); err != nil {
+		t.Fatalf("output not a list envelope: %v\n%s", err, out)
+	}
+	if len(env.Items) != 1 || env.HasMore {
+		t.Errorf("envelope = %+v", env)
 	}
 }
 

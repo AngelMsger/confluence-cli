@@ -37,7 +37,15 @@ func Emit(v any, opt Options) error {
 		return err
 	}
 	if len(opt.Fields) > 0 {
-		generic = project(generic, opt.Fields)
+		// For a list envelope, --fields projects the items, not the
+		// {items,next,has_more} wrapper itself.
+		if items, ok := listEnvelope(generic); ok {
+			env := generic.(map[string]any)
+			env["items"] = project(items, opt.Fields)
+			generic = env
+		} else {
+			generic = project(generic, opt.Fields)
+		}
 	}
 
 	switch opt.Format {
@@ -75,7 +83,28 @@ func emitJSON(v any, w io.Writer) error {
 	return enc.Encode(v)
 }
 
+// listEnvelope reports whether v is a list envelope ({items,next,has_more})
+// and, if so, returns its items slice.
+func listEnvelope(v any) ([]any, bool) {
+	m, ok := v.(map[string]any)
+	if !ok {
+		return nil, false
+	}
+	if _, ok := m["has_more"]; !ok {
+		return nil, false
+	}
+	items, ok := m["items"].([]any)
+	if !ok {
+		return nil, false
+	}
+	return items, true
+}
+
 func emitNDJSON(v any, w io.Writer) error {
+	// ndjson streams the records themselves; unwrap a list envelope to its items.
+	if items, ok := listEnvelope(v); ok {
+		v = items
+	}
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
 	if list, ok := v.([]any); ok {

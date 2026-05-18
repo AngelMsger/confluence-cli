@@ -29,7 +29,7 @@ func newPageSetWatchCmd(s *appState, watching bool) *cobra.Command {
 		Example: example,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id, err := resolveID(args[0])
+			id, err := resolvePageID(args[0])
 			if err != nil {
 				return err
 			}
@@ -63,7 +63,7 @@ func newPageWatchStatusCmd(s *appState) *cobra.Command {
 		Example: "  confluence-cli page watch-status 123456",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id, err := resolveID(args[0])
+			id, err := resolvePageID(args[0])
 			if err != nil {
 				return err
 			}

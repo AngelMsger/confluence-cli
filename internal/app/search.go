@@ -10,6 +10,7 @@ func newSearchCmd(s *appState) *cobra.Command {
 		params apiclient.CQLParams
 		limit  int
 		all    bool
+		cursor string
 	)
 	cmd := &cobra.Command{
 		Use:   "search [cql]",
@@ -38,13 +39,13 @@ func newSearchCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			items, err := collectList(func(cursor string) (apiclient.ListResult[apiclient.SearchHit], error) {
+			items, info, err := collectPage(func(cursor string) (apiclient.ListResult[apiclient.SearchHit], error) {
 				return client.Search(ctx, cql, apiclient.ListOpts{Limit: limit, Cursor: cursor})
-			}, limit, all)
+			}, cursor, all)
 			if err != nil {
 				return err
 			}
-			return s.emit(items)
+			return s.emit(newListOutput(items, info))
 		},
 	}
 	f := cmd.Flags()
@@ -56,8 +57,7 @@ func newSearchCmd(s *appState) *cobra.Command {
 	f.StringVar(&params.Type, "type", "", "content type: page, blogpost, comment, attachment")
 	f.StringVar(&params.After, "after", "", "modified on/after date, e.g. 2025-01-01")
 	f.StringVar(&params.Before, "before", "", "modified on/before date, e.g. 2025-12-31")
-	f.IntVar(&limit, "limit", 0, "page size (default from config)")
-	f.BoolVar(&all, "all", false, "fetch every page of results")
+	addListFlags(cmd, &limit, &all, &cursor)
 	enumComplete(cmd, "type", "page", "blogpost", "comment", "attachment")
 	return cmd
 }

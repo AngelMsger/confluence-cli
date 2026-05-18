@@ -21,6 +21,18 @@ type contextRow struct {
 	AuthScheme string `json:"auth_scheme,omitempty"`
 }
 
+// configInitOutput is the result shape emitted by `config init`.
+type configInitOutput struct {
+	ConfigFile string              `json:"config_file"`
+	Contexts   []initContextResult `json:"contexts"`
+	NextSteps  []string            `json:"next_steps"`
+}
+
+type initContextResult struct {
+	Name              string `json:"name"`
+	CredentialBackend string `json:"credential_backend"`
+}
+
 func newConfigCmd(s *appState) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
@@ -42,7 +54,9 @@ func newConfigInitCmd(s *appState) *cobra.Command {
 			"configure additional named contexts for working with several servers.",
 		Example: "  confluence-cli config init",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			result, err := config.RunWizard(os.Stdin, os.Stdout, wizardHooks(s))
+			// The wizard's prompts are human interaction — keep them on stderr
+			// so stdout carries only the final JSON result.
+			result, err := config.RunWizard(os.Stdin, os.Stderr, wizardHooks(s))
 			if err != nil {
 				return cerrors.Wrap(err, cerrors.CategoryConfig, "INIT_ABORTED", err.Error())
 			}
@@ -50,26 +64,22 @@ func newConfigInitCmd(s *appState) *cobra.Command {
 				return cerrors.Wrap(err, cerrors.CategoryConfig, "CONFIG_WRITE",
 					"failed to write the config file")
 			}
-			fmt.Fprintf(os.Stdout, "\nConfiguration saved to %s\n", config.ConfigFilePath(s.cfgDir))
-			multi := len(result.Creds) > 1
+			out := configInitOutput{
+				ConfigFile: config.ConfigFilePath(s.cfgDir),
+				NextSteps:  config.SuggestedNextSteps(),
+			}
 			for _, cr := range result.Creds {
 				cred := credentialFromContext(cr.Context, cr.Secrets)
 				backend, err := auth.Save(cr.Context.BaseURL, cred, s.store)
 				if err != nil {
 					return err
 				}
-				if multi {
-					fmt.Fprintf(os.Stdout, "  context %q: credential stored in the %s\n",
-						cr.Context.Name, backend)
-				} else {
-					fmt.Fprintf(os.Stdout, "Credential stored in the %s.\n", backend)
-				}
+				out.Contexts = append(out.Contexts, initContextResult{
+					Name:              cr.Context.Name,
+					CredentialBackend: fmt.Sprint(backend),
+				})
 			}
-			fmt.Fprintln(os.Stdout, "\nNext steps:")
-			for _, step := range config.SuggestedNextSteps() {
-				fmt.Fprintf(os.Stdout, "  %s\n", step)
-			}
-			return nil
+			return s.emit(out)
 		},
 	}
 }
@@ -117,8 +127,7 @@ func newConfigPathCmd(s *appState) *cobra.Command {
 		Use:   "path",
 		Short: "Print the config file path",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			fmt.Fprintln(os.Stdout, config.ConfigFilePath(s.cfgDir))
-			return nil
+			return s.emit(map[string]any{"path": config.ConfigFilePath(s.cfgDir)})
 		},
 	}
 }
@@ -219,8 +228,7 @@ func newConfigUseContextCmd(s *appState) *cobra.Command {
 				return cerrors.Wrap(err, cerrors.CategoryConfig, "CONFIG_WRITE",
 					"failed to write the config file")
 			}
-			fmt.Fprintf(os.Stdout, "Switched to context %q.\n", name)
-			return nil
+			return s.emit(map[string]any{"context": name, "status": "current"})
 		},
 	}
 	cmd.ValidArgsFunction = completeContextNames(s)
@@ -269,8 +277,7 @@ func newConfigDeleteContextCmd(s *appState) *cobra.Command {
 				return cerrors.Wrap(err, cerrors.CategoryConfig, "CONFIG_WRITE",
 					"failed to write the config file")
 			}
-			fmt.Fprintf(os.Stdout, "Deleted context %q.\n", name)
-			return nil
+			return s.emit(map[string]any{"context": name, "status": "deleted"})
 		},
 	}
 	cmd.ValidArgsFunction = completeContextNames(s)

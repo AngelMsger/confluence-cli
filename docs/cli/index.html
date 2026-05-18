@@ -151,7 +151,7 @@ Data Center / Server, and emits agent-friendly JSON with structured errors.</p>
     <section class="cmd" id="confluence-cli-attachment-delete">
       <h2>confluence-cli attachment delete</h2>
       <p class="short">Delete an attachment</p>
-      <pre>confluence-cli attachment delete &lt;attachment-id|url&gt; [flags]</pre>
+      <pre>confluence-cli attachment delete &lt;attachment-id&gt; [flags]</pre>
       <p class="long">Delete an attachment by its content ID. Deletion requires --yes, or an
 interactive confirmation when stdin is a terminal.</p>
       <h3>Options</h3>
@@ -168,7 +168,7 @@ interactive confirmation when stdin is a terminal.</p>
     <section class="cmd" id="confluence-cli-attachment-download">
       <h2>confluence-cli attachment download</h2>
       <p class="short">Download an attachment&#39;s content</p>
-      <pre>confluence-cli attachment download &lt;attachment-id|url&gt; [flags]</pre>
+      <pre>confluence-cli attachment download &lt;attachment-id&gt; [flags]</pre>
       <p class="long">Download an attachment by its content ID. Use --output - to stream to stdout.</p>
       <h3>Options</h3>
       <table>
@@ -191,6 +191,7 @@ interactive confirmation when stdin is a terminal.</p>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
         <tr><td><code>--all</code></td><td><code>false</code></td><td>fetch every page of results</td></tr>
+        <tr><td><code>--cursor</code></td><td></td><td>start from this pagination cursor (the &#39;next&#39; of a prior page)</td></tr>
         <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
         </tbody>
       </table>
@@ -200,7 +201,7 @@ interactive confirmation when stdin is a terminal.</p>
     <section class="cmd" id="confluence-cli-attachment-update">
       <h2>confluence-cli attachment update</h2>
       <p class="short">Replace an attachment&#39;s content with a new version</p>
-      <pre>confluence-cli attachment update &lt;attachment-id|url&gt; --file &lt;PATH&gt; [flags]</pre>
+      <pre>confluence-cli attachment update &lt;attachment-id&gt; --file &lt;PATH&gt; [flags]</pre>
       <p class="long">Upload new content for an existing attachment, creating a new version.
 The attachment keeps its name unless --name is given. Use --file - to
 read from stdin.</p>
@@ -300,7 +301,7 @@ comment.</p>
         <tbody>
         <tr><td><code>--body</code></td><td></td><td>comment body text</td></tr>
         <tr><td><code>--body-file</code></td><td></td><td>read body from a file (&#39;-&#39; for stdin)</td></tr>
-        <tr><td><code>--format</code></td><td><code>storage</code></td><td>body format: storage or wiki</td></tr>
+        <tr><td><code>--body-format</code></td><td><code>storage</code></td><td>body format: storage or wiki</td></tr>
         <tr><td><code>--parent</code></td><td></td><td>parent comment ID, to post a reply</td></tr>
         </tbody>
       </table>
@@ -338,6 +339,7 @@ interactive confirmation when stdin is a terminal.</p>
         <tbody>
         <tr><td><code>--all</code></td><td><code>false</code></td><td>fetch every page of results</td></tr>
         <tr><td><code>--as</code></td><td><code>markdown</code></td><td>render comment bodies as markdown or text</td></tr>
+        <tr><td><code>--cursor</code></td><td></td><td>start from this pagination cursor (the &#39;next&#39; of a prior page)</td></tr>
         <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
         </tbody>
       </table>
@@ -357,8 +359,8 @@ version &#43; 1; pass --version to assert the version you last read.</p>
         <tbody>
         <tr><td><code>--body</code></td><td></td><td>new comment body text</td></tr>
         <tr><td><code>--body-file</code></td><td></td><td>read body from a file (&#39;-&#39; for stdin)</td></tr>
+        <tr><td><code>--body-format</code></td><td><code>storage</code></td><td>body format: storage or wiki</td></tr>
         <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>print the request without sending it</td></tr>
-        <tr><td><code>--format</code></td><td><code>storage</code></td><td>body format: storage or wiki</td></tr>
         <tr><td><code>--version</code></td><td><code>0</code></td><td>expected current version (fetched when omitted)</td></tr>
         </tbody>
       </table>
@@ -491,6 +493,7 @@ a single command with the global --use-context flag instead.</p>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
         <tr><td><code>--all</code></td><td><code>false</code></td><td>fetch every page of results</td></tr>
+        <tr><td><code>--cursor</code></td><td></td><td>start from this pagination cursor (the &#39;next&#39; of a prior page)</td></tr>
         <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
         </tbody>
       </table>
@@ -531,6 +534,7 @@ a single command with the global --use-context flag instead.</p>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
         <tr><td><code>--all</code></td><td><code>false</code></td><td>fetch every page of results</td></tr>
+        <tr><td><code>--cursor</code></td><td></td><td>start from this pagination cursor (the &#39;next&#39; of a prior page)</td></tr>
         <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
         </tbody>
       </table>
@@ -564,15 +568,15 @@ carries the title and body only, not child pages or attachments.</p>
       <pre>confluence-cli page create --space &lt;KEY&gt; --title &lt;TITLE&gt; [flags]</pre>
       <p class="long">Create a page in a space. Use --parent to nest it under an existing
 page. The body may be storage-format XHTML, Confluence wiki markup or
-Markdown (--format markdown, converted on a best-effort basis).</p>
+Markdown (--body-format markdown, converted on a best-effort basis).</p>
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
         <tr><td><code>--body</code></td><td></td><td>body text</td></tr>
         <tr><td><code>--body-file</code></td><td></td><td>read body from a file (&#39;-&#39; for stdin)</td></tr>
+        <tr><td><code>--body-format</code></td><td><code>storage</code></td><td>body format: storage, wiki or markdown</td></tr>
         <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>print the request without sending it</td></tr>
-        <tr><td><code>--format</code></td><td><code>storage</code></td><td>body format: storage, wiki or markdown</td></tr>
         <tr><td><code>--parent</code></td><td></td><td>parent page ID or URL</td></tr>
         <tr><td><code>--space</code></td><td></td><td>space key for the new page</td></tr>
         <tr><td><code>--title</code></td><td></td><td>page title</td></tr>
@@ -580,7 +584,7 @@ Markdown (--format markdown, converted on a best-effort basis).</p>
       </table>
       <h3>Examples</h3><pre><span class="c">  # create a page from a Markdown file, nested under a parent</span>
   confluence-cli page create --space ENG --title &#34;Release Notes&#34; \
-    --parent 123456 --format markdown --body-file notes.md
+    --parent 123456 --body-format markdown --body-file notes.md
 
 <span class="c">  # preview the request without sending it</span>
   confluence-cli page create --space ENG --title Draft --body &#34;&lt;p&gt;hi&lt;/p&gt;&#34; --dry-run</pre>
@@ -616,6 +620,7 @@ confirmation when stdin is a terminal.</p>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
         <tr><td><code>--all</code></td><td><code>false</code></td><td>fetch every page of results</td></tr>
+        <tr><td><code>--cursor</code></td><td></td><td>start from this pagination cursor (the &#39;next&#39; of a prior page)</td></tr>
         <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
         </tbody>
       </table>
@@ -665,6 +670,7 @@ confirmation when stdin is a terminal.</p>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
         <tr><td><code>--all</code></td><td><code>false</code></td><td>fetch every page of results</td></tr>
+        <tr><td><code>--cursor</code></td><td></td><td>start from this pagination cursor (the &#39;next&#39; of a prior page)</td></tr>
         <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
         </tbody>
       </table>
@@ -741,8 +747,8 @@ version you last read (a mismatch fails with a conflict error).</p>
         <tbody>
         <tr><td><code>--body</code></td><td></td><td>body text</td></tr>
         <tr><td><code>--body-file</code></td><td></td><td>read body from a file (&#39;-&#39; for stdin)</td></tr>
+        <tr><td><code>--body-format</code></td><td><code>storage</code></td><td>body format: storage, wiki or markdown</td></tr>
         <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>print the request without sending it</td></tr>
-        <tr><td><code>--format</code></td><td><code>storage</code></td><td>body format: storage, wiki or markdown</td></tr>
         <tr><td><code>--message</code></td><td></td><td>version comment for the edit</td></tr>
         <tr><td><code>--minor</code></td><td><code>false</code></td><td>mark the edit as minor</td></tr>
         <tr><td><code>--title</code></td><td></td><td>new page title (kept when omitted)</td></tr>
@@ -753,7 +759,7 @@ version you last read (a mismatch fails with a conflict error).</p>
   confluence-cli page update 123456 --title &#34;New Title&#34;
 
 <span class="c">  # replace the body from Markdown, asserting the version last read</span>
-  confluence-cli page update 123456 --format markdown --body-file body.md --version 7</pre>
+  confluence-cli page update 123456 --body-format markdown --body-file body.md --version 7</pre>
     </section>
     
     <section class="cmd" id="confluence-cli-page-watch">
@@ -795,6 +801,7 @@ or build one from filter flags (--text, --author, --space, ...).</p>
         <tr><td><code>--author</code></td><td></td><td>original creator (CQL: creator =)</td></tr>
         <tr><td><code>--before</code></td><td></td><td>modified on/before date, e.g. 2025-12-31</td></tr>
         <tr><td><code>--contributor</code></td><td></td><td>any contributor (CQL: contributor =)</td></tr>
+        <tr><td><code>--cursor</code></td><td></td><td>start from this pagination cursor (the &#39;next&#39; of a prior page)</td></tr>
         <tr><td><code>--label</code></td><td></td><td>label (CQL: label =)</td></tr>
         <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
         <tr><td><code>--space</code></td><td></td><td>space key (CQL: space =)</td></tr>
@@ -912,6 +919,7 @@ from each one found.</p>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
         <tr><td><code>--all</code></td><td><code>false</code></td><td>fetch every page of results</td></tr>
+        <tr><td><code>--cursor</code></td><td></td><td>start from this pagination cursor (the &#39;next&#39; of a prior page)</td></tr>
         <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
         <tr><td><code>--type</code></td><td></td><td>filter by type: global or personal</td></tr>
         </tbody>
