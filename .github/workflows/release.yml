@@ -56,7 +56,7 @@ jobs:
       # registry is the default, so no registry config is needed.
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       # Publishes @angelmsger/confluence-cli via npm trusted publishing (OIDC):
       # no token is needed — the `id-token: write` permission above lets the npm
@@ -71,6 +71,8 @@ jobs:
         working-directory: build/npm
         run: |
           npm install -g npm@latest # trusted publishing needs npm >= 11.5.1
+          echo "node $(node --version) / npm $(npm --version)"
+          echo "OIDC token endpoint present: ${ACTIONS_ID_TOKEN_REQUEST_URL:+yes}"
           VERSION="${TAG#v}"
           npm version "$VERSION" --no-git-tag-version --allow-same-version
           if npm view "@angelmsger/confluence-cli@$VERSION" version >/dev/null 2>&1; then

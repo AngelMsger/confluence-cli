@@ -10,7 +10,7 @@
     "claude",
     "cql"
   ],
-  "homepage": "https://github.com/angelmsger/confluence-cli",
+  "homepage": "https://angelmsger.github.io/confluence-cli/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/angelmsger/confluence-cli.git"
