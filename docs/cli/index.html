@@ -74,8 +74,13 @@
       <a href="#confluence-cli-page-delete">confluence-cli page delete</a>
       <a href="#confluence-cli-page-descendants">confluence-cli page descendants</a>
       <a href="#confluence-cli-page-get">confluence-cli page get</a>
+      <a href="#confluence-cli-page-history">confluence-cli page history</a>
       <a href="#confluence-cli-page-move">confluence-cli page move</a>
+      <a href="#confluence-cli-page-restore">confluence-cli page restore</a>
+      <a href="#confluence-cli-page-unwatch">confluence-cli page unwatch</a>
       <a href="#confluence-cli-page-update">confluence-cli page update</a>
+      <a href="#confluence-cli-page-watch">confluence-cli page watch</a>
+      <a href="#confluence-cli-page-watch-status">confluence-cli page watch-status</a>
       </div>
     <div class="side-group">
       <div class="side-title">search</div>
@@ -606,6 +611,23 @@ confirmation when stdin is a terminal.</p>
   confluence-cli page get https://wiki.example.com/pages/viewpage.action?pageId=123456</pre>
     </section>
     
+    <section class="cmd" id="confluence-cli-page-history">
+      <h2>confluence-cli page history</h2>
+      <p class="short">List a page&#39;s version history</p>
+      <pre>confluence-cli page history &lt;id|url&gt; [flags]</pre>
+      
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--all</code></td><td><code>false</code></td><td>fetch every page of results</td></tr>
+        <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre>  confluence-cli page history 123456
+  confluence-cli page history 123456 --all --format table</pre>
+    </section>
+    
     <section class="cmd" id="confluence-cli-page-move">
       <h2>confluence-cli page move</h2>
       <p class="short">Move a page under a new parent and/or space</p>
@@ -625,6 +647,41 @@ confirmation when stdin is a terminal.</p>
 
 <span class="c">  # move a page into another space</span>
   confluence-cli page move 123456 --target-space DOCS</pre>
+    </section>
+    
+    <section class="cmd" id="confluence-cli-page-restore">
+      <h2>confluence-cli page restore</h2>
+      <p class="short">Restore a page to an earlier version</p>
+      <pre>confluence-cli page restore &lt;id|url&gt; --version &lt;N&gt; [flags]</pre>
+      <p class="long">Republish an earlier version&#39;s body as a new version. The restore is
+non-destructive: the version history is left intact. Run `page history`
+first to find the version number to restore.</p>
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>print the request without sending it</td></tr>
+        <tr><td><code>--message</code></td><td></td><td>version comment for the restore</td></tr>
+        <tr><td><code>--version</code></td><td><code>0</code></td><td>the version number to restore</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre>  confluence-cli page restore 123456 --version 3
+  confluence-cli page restore 123456 --version 3 --message &#34;roll back bad edit&#34;</pre>
+    </section>
+    
+    <section class="cmd" id="confluence-cli-page-unwatch">
+      <h2>confluence-cli page unwatch</h2>
+      <p class="short">Stop watching a page</p>
+      <pre>confluence-cli page unwatch &lt;id|url&gt; [flags]</pre>
+      
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>print the request without sending it</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre>  confluence-cli page unwatch 123456</pre>
     </section>
     
     <section class="cmd" id="confluence-cli-page-update">
@@ -653,6 +710,30 @@ version you last read (a mismatch fails with a conflict error).</p>
 
 <span class="c">  # replace the body from Markdown, asserting the version last read</span>
   confluence-cli page update 123456 --format markdown --body-file body.md --version 7</pre>
+    </section>
+    
+    <section class="cmd" id="confluence-cli-page-watch">
+      <h2>confluence-cli page watch</h2>
+      <p class="short">Watch a page (subscribe to its notifications)</p>
+      <pre>confluence-cli page watch &lt;id|url&gt; [flags]</pre>
+      
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>print the request without sending it</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre>  confluence-cli page watch 123456</pre>
+    </section>
+    
+    <section class="cmd" id="confluence-cli-page-watch-status">
+      <h2>confluence-cli page watch-status</h2>
+      <p class="short">Report whether you watch a page</p>
+      <pre>confluence-cli page watch-status &lt;id|url&gt;</pre>
+      
+      
+      <h3>Examples</h3><pre>  confluence-cli page watch-status 123456</pre>
     </section>
     
     <section class="cmd" id="confluence-cli-search">

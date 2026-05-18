@@ -46,6 +46,8 @@ func newPageCmd(s *appState) *cobra.Command {
 		newPageGetCmd(s), newPageChildrenCmd(s), newPageDescendantsCmd(s),
 		newPageCreateCmd(s), newPageUpdateCmd(s), newPageDeleteCmd(s),
 		newPageMoveCmd(s), newPageCopyCmd(s),
+		newPageHistoryCmd(s), newPageRestoreCmd(s),
+		newPageWatchCmd(s), newPageUnwatchCmd(s), newPageWatchStatusCmd(s),
 	)
 	return cmd
 }

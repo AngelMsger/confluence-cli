@@ -1,7 +1,7 @@
 ---
 name: confluence
-version: 1.3.0
-description: "Use a Confluence wiki as an external knowledge base. Search, read and summarise Confluence pages, browse spaces and page trees, create and edit pages, read and post comments, upload and manage file attachments, and manage page labels. Use this skill when the user gives a Confluence page URL or ID, mentions a Confluence/wiki page, asks to find or look up something in Confluence, asks to read/summarise/extract a Confluence page, browse a space, list child pages, create/update/delete/move/copy a page, read page comments, post a comment, upload/replace/delete an attachment, or add/remove page labels. Works with both Confluence Cloud and Confluence Data Center / Server."
+version: 1.4.0
+description: "Use a Confluence wiki as an external knowledge base. Search, read and summarise Confluence pages, browse spaces and page trees, create and edit pages, view version history and restore earlier versions, read and post comments, upload and manage file attachments, manage page labels, and watch pages. Use this skill when the user gives a Confluence page URL or ID, mentions a Confluence/wiki page, asks to find or look up something in Confluence, asks to read/summarise/extract a Confluence page, browse a space, list child pages, create/update/delete/move/copy a page, view a page's history or restore an old version, read page comments, post a comment, upload/replace/delete an attachment, add/remove page labels, or watch/unwatch a page. Works with both Confluence Cloud and Confluence Data Center / Server."
 metadata:
   requires:
     bins: ["confluence-cli"]
@@ -30,6 +30,11 @@ guess an ID — run `confluence-cli search` first, then act on the ID from the h
 - User wants the structure under a page → `page children` / `page descendants`.
 - User wants to **create, edit, delete, move or copy** a page → `page create` /
   `update` / `delete` / `move` / `copy` (see [writing-pages.md](references/writing-pages.md)).
+- User wants a page's **version history**, or to **roll back** a page →
+  `page history` / `page restore --version N` (see
+  [writing-pages.md](references/writing-pages.md)).
+- User wants to **watch / unwatch** a page, or check if they watch it →
+  `page watch` / `page unwatch` / `page watch-status`.
 - User wants the **comments** on a page → `comment list`; to post one →
   `comment add` (see [comments.md](references/comments.md)).
 - User wants files on a page → `attachment list` / `attachment download`; to
@@ -53,6 +58,9 @@ confluence-cli page update <id|url>       # edit a page's title / body
 confluence-cli page delete <id|url>       # trash a page (needs --yes)
 confluence-cli page move <id|url>         # reparent / move to another space
 confluence-cli page copy <id|url>         # shallow-copy a page
+confluence-cli page history <id|url>      # list a page's version history
+confluence-cli page restore <id|url>      # restore an old version (--version N)
+confluence-cli page watch <id|url>        # watch / unwatch / check watch status
 confluence-cli search [cql]               # CQL search, or use --text/--author/...
 confluence-cli space list                 # list spaces
 confluence-cli space get <key>            # one space
@@ -87,9 +95,9 @@ Only fall back to `--scope full` when the whole page is genuinely needed.
 
 ## Large result sets
 
-`search`, `page children/descendants`, `comment list`, `attachment list` and
-`label list` return one page of results by default and print a stderr note
-when more exist.
+`search`, `page children/descendants`, `page history`, `comment list`,
+`attachment list` and `label list` return one page of results by default and
+print a stderr note when more exist.
 Add `--all` to fetch every page, or `--limit N` to size each request. For very
 large outputs use `--format ndjson` (one JSON object per line).
 

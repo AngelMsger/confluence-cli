@@ -71,3 +71,29 @@ confluence-cli page copy 12345 --title "Copy of Plan" --space DOCS
 
 `move` reparents a page and/or moves it to another space. `copy` is **shallow**:
 it duplicates the title and body only — not child pages or attachments.
+
+## Version history and restore
+
+```bash
+# list a page's versions (newest first)
+confluence-cli page history 12345
+
+# restore the page to an earlier version
+confluence-cli page history 12345                       # find the version number
+confluence-cli page restore 12345 --version 3
+confluence-cli page restore 12345 --version 3 --message "roll back bad edit"
+```
+
+Each history entry has `number`, `when`, `by`, `message` and `minor_edit`.
+`restore` is **non-destructive**: it republishes the chosen version's body as a
+new version, so the history is never lost. Use `--dry-run` to preview it.
+
+## Watching a page
+
+```bash
+confluence-cli page watch 12345          # subscribe to the page's notifications
+confluence-cli page unwatch 12345        # unsubscribe
+confluence-cli page watch-status 12345   # report whether you watch the page
+```
+
+These act on the user behind the configured credentials.

@@ -314,6 +314,10 @@ func (c *apiClient) DescribeWrite(ctx context.Context, op any) (WriteRequestPlan
 		method, path, payload, err = c.buildAddLabels(v)
 	case RemoveLabelReq:
 		method, path, err = c.buildRemoveLabel(v)
+	case RestorePageReq:
+		method, path, payload, err = c.buildRestorePage(ctx, v)
+	case WatchReq:
+		method, path, err = c.buildSetWatch(v)
 	default:
 		return WriteRequestPlan{}, cerrors.New(cerrors.CategoryInternal, "DRYRUN_BAD_OP",
 			"unsupported write operation for dry-run")

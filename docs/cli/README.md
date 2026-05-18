@@ -70,8 +70,13 @@ is published at <https://angelmsger.github.io/confluence-cli/cli/>.
 | [`confluence-cli page delete`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-page-delete) | Delete a page (move it to the trash) |
 | [`confluence-cli page descendants`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-page-descendants) | List all descendant pages of a page |
 | [`confluence-cli page get`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-page-get) | Fetch a page and render its body |
+| [`confluence-cli page history`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-page-history) | List a page's version history |
 | [`confluence-cli page move`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-page-move) | Move a page under a new parent and/or space |
+| [`confluence-cli page restore`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-page-restore) | Restore a page to an earlier version |
+| [`confluence-cli page unwatch`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-page-unwatch) | Stop watching a page |
 | [`confluence-cli page update`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-page-update) | Update a page's title and/or body |
+| [`confluence-cli page watch`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-page-watch) | Watch a page (subscribe to its notifications) |
+| [`confluence-cli page watch-status`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-page-watch-status) | Report whether you watch a page |
 
 ## search
 
