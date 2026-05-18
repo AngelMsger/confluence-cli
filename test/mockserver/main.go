@@ -93,6 +93,11 @@ func routes() http.Handler {
 		w.Write([]byte("attachment payload\n"))
 	})
 
+	// Stand-in for the GitHub "latest release" API used by the update check.
+	mux.HandleFunc("GET /releases/latest", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, map[string]any{"tag_name": "v99.0.0"})
+	})
+
 	return mux
 }
 

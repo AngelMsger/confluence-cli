@@ -51,7 +51,9 @@ assert_exit() {
 }
 
 echo "==> building confluence-cli"
-go build -o "$BIN" ./cmd/confluence-cli || { echo "build failed"; exit 1; }
+# Pin a release-like version so the update check exercises real comparison.
+LDFLAGS="-X github.com/angelmsger/confluence-cli/pkg/constants.Version=0.0.1"
+go build -ldflags "$LDFLAGS" -o "$BIN" ./cmd/confluence-cli || { echo "build failed"; exit 1; }
 
 echo "==> starting mock Confluence server"
 MOCK_LOG="$(mktemp)"
@@ -73,12 +75,17 @@ echo "    mock server at $MOCK_URL"
 export CONFLUENCE_SERVER="$MOCK_URL"
 export CONFLUENCE_FLAVOR="datacenter"
 export CONFLUENCE_PERSONAL_ACCESS_TOKEN="e2e-token"
+# Point the release-update check at the mock server, not the real GitHub API.
+export CONFLUENCE_RELEASE_API="$MOCK_URL/releases/latest"
 TMPCFG="$(mktemp -d)"
 CLI=("$BIN" --config "$TMPCFG")
 
 echo "==> mock e2e checks"
 assert_contains  "version"                "confluence-cli" "${CLI[@]}" version
 assert_contains  "doctor healthy"         '"healthy": true' "${CLI[@]}" doctor
+assert_contains  "doctor reports update"  '"available": true' "${CLI[@]}" doctor
+assert_contains  "doctor --no-update-check skips it" '"healthy": true' \
+                                          "${CLI[@]}" doctor --no-update-check
 assert_contains  "page get"               "Welcome"        "${CLI[@]}" page get 123
 assert_contains  "page get outline scope" '"scope_applied": "outline"' \
                                           "${CLI[@]}" page get 123 --scope outline

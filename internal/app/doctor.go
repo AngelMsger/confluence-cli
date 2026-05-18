@@ -1,11 +1,21 @@
 package app
 
 import (
+	"context"
+	"net/http"
+	"time"
+
 	"github.com/angelmsger/confluence-cli/internal/apiclient"
 	"github.com/angelmsger/confluence-cli/internal/auth"
 	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
+	"github.com/angelmsger/confluence-cli/internal/update"
+	"github.com/angelmsger/confluence-cli/pkg/constants"
 	"github.com/spf13/cobra"
 )
+
+// updateCheckTimeout caps the release-update lookup so an offline or slow
+// network never stalls `doctor` for the full request timeout.
+const updateCheckTimeout = 5 * time.Second
 
 // doctorCheck is a single diagnostic result.
 type doctorCheck struct {
@@ -16,16 +26,18 @@ type doctorCheck struct {
 
 // doctorReport is the result shape for `doctor`.
 type doctorReport struct {
-	Healthy bool          `json:"healthy"`
-	Checks  []doctorCheck `json:"checks"`
+	Healthy bool           `json:"healthy"`
+	Checks  []doctorCheck  `json:"checks"`
+	Update  *update.Status `json:"update,omitempty"`
 }
 
 func newDoctorCmd(s *appState) *cobra.Command {
-	return &cobra.Command{
+	var skipUpdate bool
+	cmd := &cobra.Command{
 		Use:   "doctor",
 		Short: "Diagnose configuration, credentials and connectivity",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			report := runDoctor(s)
+			report := runDoctor(s, skipUpdate)
 			if err := s.emit(report); err != nil {
 				return err
 			}
@@ -38,9 +50,12 @@ func newDoctorCmd(s *appState) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&skipUpdate, "no-update-check", false,
+		"skip the check for a newer confluence-cli release")
+	return cmd
 }
 
-func runDoctor(s *appState) doctorReport {
+func runDoctor(s *appState, skipUpdate bool) doctorReport {
 	var checks []doctorCheck
 	cfg := s.cfg()
 
@@ -93,7 +108,27 @@ func runDoctor(s *appState) doctorReport {
 			healthy = false
 		}
 	}
-	return doctorReport{Healthy: healthy, Checks: checks}
+	report := doctorReport{Healthy: healthy, Checks: checks}
+
+	// Release-update check: informational only, it never affects Healthy and
+	// never fails the command — being out of date is not a misconfiguration.
+	if !skipUpdate {
+		ctx, cancel := updateContext(s)
+		defer cancel()
+		st := update.Check(ctx, &http.Client{Timeout: updateCheckTimeout}, constants.Version)
+		report.Update = &st
+	}
+	return report
+}
+
+// updateContext bounds the release-update lookup by updateCheckTimeout, or the
+// configured request timeout when that is shorter.
+func updateContext(s *appState) (context.Context, context.CancelFunc) {
+	d := updateCheckTimeout
+	if t := s.timeout(); t > 0 && t < d {
+		d = t
+	}
+	return context.WithTimeout(context.Background(), d)
 }
 
 func pick(ok bool, yes, no string) string {

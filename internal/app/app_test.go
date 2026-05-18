@@ -44,6 +44,10 @@ func mockConfluence(t *testing.T) *httptest.Server {
 			"space":{"key":"ENG"},"_links":{"webui":"/display/ENG/Welcome"}},
 			"title":"Welcome","excerpt":"hello"}],"size":1,"limit":25}`))
 	})
+	// Stand-in for the GitHub "latest release" API used by the update check.
+	mux.HandleFunc("/releases/latest", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"tag_name":"v99.0.0"}`))
+	})
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 	return srv
@@ -57,6 +61,8 @@ func runCLI(t *testing.T, srv *httptest.Server, args ...string) (string, error) 
 	t.Setenv("CONFLUENCE_SERVER", srv.URL)
 	t.Setenv("CONFLUENCE_FLAVOR", "datacenter")
 	t.Setenv("CONFLUENCE_PERSONAL_ACCESS_TOKEN", "test-token")
+	// Keep the update check off the real GitHub API during tests.
+	t.Setenv("CONFLUENCE_RELEASE_API", srv.URL+"/releases/latest")
 
 	full := append([]string{"--config", dir}, args...)
 	root := newRootCmd()
@@ -186,6 +192,75 @@ func TestCmdDoctor(t *testing.T) {
 	json.Unmarshal([]byte(out), &report)
 	if report["healthy"] != true {
 		t.Errorf("doctor not healthy:\n%s", out)
+	}
+	// doctor folds in a release-update check; the mock advertises v99.0.0.
+	// The test binary reports version "dev", so the comparison is skipped —
+	// what we assert here is the wiring: the block is present and the latest
+	// release was fetched from the (mocked) release API.
+	upd, ok := report["update"].(map[string]any)
+	if !ok {
+		t.Fatalf("doctor report has no update block:\n%s", out)
+	}
+	if upd["latest"] != "99.0.0" {
+		t.Errorf("update.latest = %v, want 99.0.0", upd["latest"])
+	}
+}
+
+func TestCmdDoctorNoUpdateCheck(t *testing.T) {
+	srv := mockConfluence(t)
+	out, err := runCLI(t, srv, "doctor", "--no-update-check")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var report map[string]any
+	json.Unmarshal([]byte(out), &report)
+	if report["healthy"] != true {
+		t.Errorf("doctor not healthy:\n%s", out)
+	}
+	if _, present := report["update"]; present {
+		t.Errorf("--no-update-check should omit the update block:\n%s", out)
+	}
+}
+
+// TestCmdDoctorUpdateNonFatal proves that a failed update lookup is purely
+// informational: doctor stays healthy and exits 0 even when the release API
+// is unreachable.
+func TestCmdDoctorUpdateNonFatal(t *testing.T) {
+	srv := mockConfluence(t)
+	dir := t.TempDir()
+	t.Setenv("CONFLUENCE_SERVER", srv.URL)
+	t.Setenv("CONFLUENCE_FLAVOR", "datacenter")
+	t.Setenv("CONFLUENCE_PERSONAL_ACCESS_TOKEN", "test-token")
+	// Point the update check at a closed port.
+	t.Setenv("CONFLUENCE_RELEASE_API", "http://127.0.0.1:0/releases/latest")
+
+	root := newRootCmd()
+	root.SetArgs([]string{"--config", dir, "doctor"})
+
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	outCh := make(chan string)
+	go func() { b, _ := io.ReadAll(r); outCh <- string(b) }()
+	err := root.Execute()
+	w.Close()
+	os.Stdout = old
+	out := <-outCh
+
+	if err != nil {
+		t.Fatalf("doctor failed despite update check being non-fatal: %v", err)
+	}
+	var report map[string]any
+	json.Unmarshal([]byte(out), &report)
+	if report["healthy"] != true {
+		t.Errorf("doctor not healthy:\n%s", out)
+	}
+	upd, ok := report["update"].(map[string]any)
+	if !ok {
+		t.Fatalf("missing update block:\n%s", out)
+	}
+	if upd["available"] != false {
+		t.Errorf("update.available = %v, want false on lookup failure", upd["available"])
 	}
 }
 

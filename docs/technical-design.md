@@ -143,7 +143,7 @@ Defaults   { Format string         // json（默认）
 | `attachment download <id\|url>` | `--output --pageID` | 下载附件，`-` 为 stdout |
 | `config init\|show\|path` | `--explain` | 配置管理 |
 | `auth status\|login\|logout` | — | 凭证管理 |
-| `doctor` | — | 连通性 / 配置 / flavor 诊断 |
+| `doctor` | `--no-update-check` | 连通性 / 配置 / flavor 诊断，并检查是否有新版本发布 |
 | `version` | — | 版本信息 |
 
 ## 6. 输出与错误模型

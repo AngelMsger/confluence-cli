@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.3] - 2026-05-18
+
+### Added
+
+- `doctor` now checks GitHub for a newer `confluence-cli` release and reports it
+  in an `update` block. The check is informational only — it never changes the
+  `healthy` verdict or the exit code — and can be skipped with
+  `--no-update-check`.
+
 ## [0.0.2] - 2026-05-18
 
 ### Added
@@ -45,6 +54,7 @@ Initial release.
 - Distribution via npm (`@angelmsger/confluence-cli`), `go install`, prebuilt
   release binaries and `make install`.
 
-[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.0.2...HEAD
+[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.0.3...HEAD
+[0.0.3]: https://github.com/angelmsger/confluence-cli/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/angelmsger/confluence-cli/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/angelmsger/confluence-cli/releases/tag/v0.0.1

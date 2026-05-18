@@ -1,6 +1,6 @@
 {
   "name": "@angelmsger/confluence-cli",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Use a Confluence instance as a knowledge base for coding agents: read pages, search via CQL, manage comments.",
   "keywords": [
     "confluence",
