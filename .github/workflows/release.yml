@@ -16,11 +16,11 @@ jobs:
     env:
       TAG: ${{ github.ref_name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0 # full history + tags so `git describe` yields the tag
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
           cache: true
@@ -57,7 +57,7 @@ jobs:
       # Node 24 bundles npm >= 11.5.1, which is required for trusted
       # publishing — so there is no fragile `npm install -g npm@latest`
       # self-upgrade step (it intermittently corrupts the npm install).
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
 
