@@ -48,10 +48,15 @@ jobs:
             gh release create "$TAG" dist/* --title "$TAG" --generate-notes
           fi
 
+      # No registry-url on purpose: actions/setup-node's registry-url writes an
+      # .npmrc with `_authToken=${NODE_AUTH_TOKEN}`. With no token set that
+      # expands to an empty string, and npm then uses (empty) token auth and
+      # skips OIDC trusted publishing entirely. Omitting it leaves npm without
+      # credentials, so it performs the trusted-publishing exchange. The public
+      # registry is the default, so no registry config is needed.
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          registry-url: 'https://registry.npmjs.org'
 
       # Publishes @angelmsger/confluence-cli via npm trusted publishing (OIDC):
       # no token is needed — the `id-token: write` permission above lets the npm
