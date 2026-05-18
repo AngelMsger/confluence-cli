@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.4] - 2026-05-18
+
+### Added
+
+- `skill install` now supports **Codex** alongside Claude Code. With no flags it
+  probes for installed agents (`~/.claude`, `~/.codex`, or project markers) and
+  installs the Skill into each one found; `--agent claude-code,codex` targets
+  agents explicitly.
+- `skill uninstall` removes a previously installed Skill, taking the same
+  `--agent` / `--project` / `--dir` flags as `skill install`.
+
+### Changed
+
+- `skill path` lists every known agent's install location and status.
+
 ## [0.0.3] - 2026-05-18
 
 ### Added
@@ -54,7 +69,8 @@ Initial release.
 - Distribution via npm (`@angelmsger/confluence-cli`), `go install`, prebuilt
   release binaries and `make install`.
 
-[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.0.3...HEAD
+[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.0.4...HEAD
+[0.0.4]: https://github.com/angelmsger/confluence-cli/compare/v0.0.3...v0.0.4
 [0.0.3]: https://github.com/angelmsger/confluence-cli/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/angelmsger/confluence-cli/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/angelmsger/confluence-cli/releases/tag/v0.0.1

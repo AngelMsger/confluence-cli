@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	confluencecli "github.com/angelmsger/confluence-cli"
@@ -17,58 +18,235 @@ import (
 func newSkillCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "skill",
-		Short: "Install the companion Skill for coding agents",
+		Short: "Install the companion Skill for coding agents (Claude Code, Codex)",
 	}
-	cmd.AddCommand(newSkillInstallCmd(), newSkillPathCmd(), newSkillShowCmd())
+	cmd.AddCommand(
+		newSkillInstallCmd(),
+		newSkillUninstallCmd(),
+		newSkillPathCmd(),
+		newSkillShowCmd(),
+	)
 	return cmd
 }
 
-// skillTarget resolves the destination directory for the Skill.
-func skillTarget(project bool, dir string) (string, error) {
-	if dir != "" {
-		return filepath.Join(dir, "confluence"), nil
+// agentSpec describes where a coding agent loads Skills from, and how to tell
+// that the agent is in use on this machine / in this project.
+type agentSpec struct {
+	id            string   // "claude-code" / "codex"
+	homeSub       string   // dir under $HOME holding the global skills dir
+	homeMarkers   []string // paths under $HOME proving the agent is installed
+	projectSkills string   // skills dir relative to the project root
+	projectMarks  []string // paths under the cwd proving the agent is used here
+}
+
+// agentSpecs lists every coding agent the Skill can be installed for.
+var agentSpecs = []agentSpec{
+	{
+		id:            "claude-code",
+		homeSub:       ".claude",
+		homeMarkers:   []string{".claude"},
+		projectSkills: ".claude/skills",
+		projectMarks:  []string{".claude"},
+	},
+	{
+		id:            "codex",
+		homeSub:       ".codex",
+		homeMarkers:   []string{".codex"},
+		projectSkills: ".agents/skills",
+		projectMarks:  []string{".agents", "AGENTS.md"},
+	},
+}
+
+func agentByID(id string) (agentSpec, bool) {
+	for _, s := range agentSpecs {
+		if s.id == id {
+			return s, true
+		}
 	}
-	base := ".claude/skills"
+	return agentSpec{}, false
+}
+
+func agentIDs() []string {
+	ids := make([]string, len(agentSpecs))
+	for i, s := range agentSpecs {
+		ids[i] = s.id
+	}
+	return ids
+}
+
+// skillDest is a resolved install location for the Skill.
+type skillDest struct {
+	agent string // agent id, or "" for an explicit --dir target
+	path  string // the `confluence` directory itself
+}
+
+// agentDest returns the `confluence` Skill directory for an agent.
+func agentDest(spec agentSpec, project bool) (string, error) {
+	if project {
+		return filepath.Join(spec.projectSkills, "confluence"), nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", cerrors.Wrap(err, cerrors.CategoryConfig, "NO_HOME",
+			"could not determine the home directory")
+	}
+	return filepath.Join(home, spec.homeSub, "skills", "confluence"), nil
+}
+
+// detectAgents returns the agents whose directories exist — globally (under
+// $HOME) or, with project set, in the current directory.
+func detectAgents(project bool) []agentSpec {
+	var found []agentSpec
+	base := "."
 	if !project {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			return "", cerrors.Wrap(err, cerrors.CategoryConfig, "NO_HOME",
-				"could not determine the home directory")
+			return nil
 		}
-		base = filepath.Join(home, ".claude", "skills")
+		base = home
 	}
-	return filepath.Join(base, "confluence"), nil
+	for _, spec := range agentSpecs {
+		markers := spec.homeMarkers
+		if project {
+			markers = spec.projectMarks
+		}
+		for _, m := range markers {
+			if _, err := os.Stat(filepath.Join(base, m)); err == nil {
+				found = append(found, spec)
+				break
+			}
+		}
+	}
+	return found
+}
+
+// resolveTargets maps the install/uninstall flags to concrete destinations.
+func resolveTargets(agents []string, project bool, dir string) ([]skillDest, error) {
+	if dir != "" {
+		if len(agents) > 0 || project {
+			return nil, cerrors.New(cerrors.CategoryUsage, "SKILL_FLAGS",
+				"--dir cannot be combined with --agent or --project").
+				WithHint("--dir is an explicit, agent-agnostic path; drop --agent/--project")
+		}
+		return []skillDest{{path: filepath.Join(dir, "confluence")}}, nil
+	}
+
+	var specs []agentSpec
+	if len(agents) > 0 {
+		for _, a := range agents {
+			spec, ok := agentByID(a)
+			if !ok {
+				return nil, cerrors.Newf(cerrors.CategoryUsage, "SKILL_AGENT",
+					"unknown agent %q", a).
+					WithHint("supported agents: " + strings.Join(agentIDs(), ", "))
+			}
+			specs = append(specs, spec)
+		}
+	} else {
+		specs = detectAgents(project)
+		if len(specs) == 0 {
+			return nil, cerrors.New(cerrors.CategoryUsage, "SKILL_NO_AGENT",
+				"no coding agent detected").
+				WithHint("pass --agent (" + strings.Join(agentIDs(), ", ") +
+					") or --dir <path> to choose a target explicitly")
+		}
+	}
+
+	var dests []skillDest
+	for _, spec := range specs {
+		p, err := agentDest(spec, project)
+		if err != nil {
+			return nil, err
+		}
+		dests = append(dests, skillDest{agent: spec.id, path: p})
+	}
+	return dests, nil
+}
+
+// label renders the trailing " [agent]" tag, empty for explicit --dir targets.
+func (d skillDest) label() string {
+	if d.agent == "" {
+		return ""
+	}
+	return " [" + d.agent + "]"
 }
 
 func newSkillInstallCmd() *cobra.Command {
 	var (
 		project bool
 		dir     string
+		agents  []string
 	)
 	cmd := &cobra.Command{
 		Use:   "install",
-		Short: "Deploy the embedded Skill into an agent's skills directory",
+		Short: "Deploy the embedded Skill into a coding agent's skills directory",
 		Long: "Write the companion `confluence` Skill — bundled inside this binary —\n" +
-			"into a coding agent's skills directory. Re-run it after upgrading the\n" +
-			"CLI to refresh the Skill to the matching version.",
+			"into a coding agent's skills directory. With no flags it probes for\n" +
+			"installed agents (Claude Code, Codex) and installs into each one found.\n" +
+			"Re-run it after upgrading the CLI to refresh the Skill to the matching\n" +
+			"version.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			dest, err := skillTarget(project, dir)
+			dests, err := resolveTargets(agents, project, dir)
 			if err != nil {
 				return err
 			}
-			n, err := writeSkill(dest)
-			if err != nil {
-				return err
+			for _, d := range dests {
+				n, err := writeSkill(d.path)
+				if err != nil {
+					return err
+				}
+				fmt.Fprintf(os.Stdout, "installed confluence Skill %s -> %s (%d files)%s\n",
+					embeddedSkillVersion(), d.path, n, d.label())
 			}
-			fmt.Fprintf(os.Stdout, "installed confluence Skill %s -> %s (%d files)\n",
-				embeddedSkillVersion(), dest, n)
 			return nil
 		},
 	}
 	cmd.Flags().BoolVar(&project, "project", false,
-		"install into ./.claude/skills instead of ~/.claude/skills")
+		"install into the project (./.claude/skills, ./.agents/skills) instead of $HOME")
 	cmd.Flags().StringVar(&dir, "dir", "",
-		"explicit skills base directory (for agents other than Claude Code)")
+		"explicit skills base directory; installs into <dir>/confluence")
+	cmd.Flags().StringSliceVar(&agents, "agent", nil,
+		"target agents instead of auto-detecting ("+strings.Join(agentIDs(), ", ")+")")
+	return cmd
+}
+
+func newSkillUninstallCmd() *cobra.Command {
+	var (
+		project bool
+		dir     string
+		agents  []string
+	)
+	cmd := &cobra.Command{
+		Use:   "uninstall",
+		Short: "Remove the companion Skill from a coding agent's skills directory",
+		Long: "Delete a previously installed `confluence` Skill. With no flags it\n" +
+			"probes for installed agents (Claude Code, Codex) and removes the Skill\n" +
+			"from each one found.",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			dests, err := resolveTargets(agents, project, dir)
+			if err != nil {
+				return err
+			}
+			for _, d := range dests {
+				if _, statErr := os.Stat(filepath.Join(d.path, "SKILL.md")); statErr != nil {
+					fmt.Fprintf(os.Stdout, "not installed -> %s%s\n", d.path, d.label())
+					continue
+				}
+				if err := os.RemoveAll(d.path); err != nil {
+					return cerrors.Wrap(err, cerrors.CategoryConfig, "SKILL_REMOVE",
+						"failed to remove the Skill directory")
+				}
+				fmt.Fprintf(os.Stdout, "removed confluence Skill -> %s%s\n", d.path, d.label())
+			}
+			return nil
+		},
+	}
+	cmd.Flags().BoolVar(&project, "project", false,
+		"remove from the project (./.claude/skills, ./.agents/skills) instead of $HOME")
+	cmd.Flags().StringVar(&dir, "dir", "",
+		"explicit skills base directory; removes <dir>/confluence")
+	cmd.Flags().StringSliceVar(&agents, "agent", nil,
+		"target agents instead of auto-detecting ("+strings.Join(agentIDs(), ", ")+")")
 	return cmd
 }
 
@@ -76,25 +254,45 @@ func newSkillPathCmd() *cobra.Command {
 	var (
 		project bool
 		dir     string
+		agents  []string
 	)
 	cmd := &cobra.Command{
 		Use:   "path",
-		Short: "Print where the Skill would be installed",
+		Short: "Print where the Skill would be installed, and whether it is",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			dest, err := skillTarget(project, dir)
-			if err != nil {
-				return err
+			var dests []skillDest
+			if dir != "" || len(agents) > 0 {
+				resolved, err := resolveTargets(agents, project, dir)
+				if err != nil {
+					return err
+				}
+				dests = resolved
+			} else {
+				// No flags: list every known agent so the user sees all options.
+				for _, spec := range agentSpecs {
+					p, err := agentDest(spec, project)
+					if err != nil {
+						return err
+					}
+					dests = append(dests, skillDest{agent: spec.id, path: p})
+				}
+				sort.Slice(dests, func(i, j int) bool { return dests[i].agent < dests[j].agent })
 			}
-			status := "not installed"
-			if _, err := os.Stat(filepath.Join(dest, "SKILL.md")); err == nil {
-				status = "installed"
+			for _, d := range dests {
+				status := "not installed"
+				if _, err := os.Stat(filepath.Join(d.path, "SKILL.md")); err == nil {
+					status = "installed"
+				}
+				fmt.Fprintf(os.Stdout, "%s (%s)%s\n", d.path, status, d.label())
 			}
-			fmt.Fprintf(os.Stdout, "%s (%s)\n", dest, status)
 			return nil
 		},
 	}
-	cmd.Flags().BoolVar(&project, "project", false, "use ./.claude/skills")
+	cmd.Flags().BoolVar(&project, "project", false,
+		"use the project skills directories instead of $HOME")
 	cmd.Flags().StringVar(&dir, "dir", "", "explicit skills base directory")
+	cmd.Flags().StringSliceVar(&agents, "agent", nil,
+		"limit to specific agents ("+strings.Join(agentIDs(), ", ")+")")
 	return cmd
 }
 

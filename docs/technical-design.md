@@ -144,6 +144,8 @@ Defaults   { Format string         // json（默认）
 | `config init\|show\|path` | `--explain` | 配置管理 |
 | `auth status\|login\|logout` | — | 凭证管理 |
 | `doctor` | `--no-update-check` | 连通性 / 配置 / flavor 诊断，并检查是否有新版本发布 |
+| `skill install\|uninstall` | `--agent claude-code\|codex`、`--project`、`--dir` | 部署 / 移除内嵌 Skill；无 flag 时探测已安装的 Agent 目录 |
+| `skill path\|show` | `--agent`、`--project`、`--dir` | 打印安装位置 / 状态、打印 SKILL.md |
 | `version` | — | 版本信息 |
 
 ## 6. 输出与错误模型
@@ -222,6 +224,13 @@ storage XHTML → `golang.org/x/net/html` 解析为节点树（Confluence 宏特
 - `errors-and-exit-codes.md` — 退出码表 + 按 category 的恢复动作。
 
 核心黄金法则：操作前先把 URL / 名称解析成 ID。
+
+同一份 SKILL.md 同时适配 **Claude Code** 与 **Codex**（两者都只要求 frontmatter 的
+`name` + `description`）。`skill install` 用一张 agent 路径表（`internal/app/skill.go`
+的 `agentSpecs`）描述各 Agent 的全局 / 项目 skills 目录与探测标记：Claude Code 用
+`~/.claude/skills`、`./.claude/skills`；Codex 用 `~/.codex/skills`、`./.agents/skills`。
+无 flag 时探测目录是否存在，装入 / 移除每个命中的 Agent；`--agent` 显式指定，`--dir`
+为 agent 无关的显式路径。
 
 ## 10. 测试策略
 

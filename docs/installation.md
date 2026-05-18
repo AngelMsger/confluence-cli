@@ -134,21 +134,37 @@ completion, `confluence-cli space get <TAB>` queries the configured server
 
 ## 3. Install the companion Skill
 
-The `confluence` Skill teaches a coding agent (Claude Code and others) how to
-drive this CLI. It is **embedded in the `confluence-cli` binary**, so whichever
-way you installed the CLI — npm, `go install`, a prebuilt binary — you already
-have a version-matched copy of the Skill.
+The `confluence` Skill teaches a coding agent — **Claude Code** and **Codex** —
+how to drive this CLI. It is **embedded in the `confluence-cli` binary**, so
+whichever way you installed the CLI — npm, `go install`, a prebuilt binary —
+you already have a version-matched copy of the Skill.
 
 ### Recommended: `confluence-cli skill install`
 
-```bash
-confluence-cli skill install              # -> ~/.claude/skills/confluence
-confluence-cli skill install --project    # -> ./.claude/skills/confluence
-confluence-cli skill install --dir <path> # -> <path>/confluence (other agents)
+With no flags, `skill install` **probes for installed agents** and installs the
+Skill into every one it finds:
 
-confluence-cli skill path                 # show the install location + status
+```bash
+confluence-cli skill install              # auto-detect; install for each agent found
+confluence-cli skill install --agent codex          # only Codex
+confluence-cli skill install --agent claude-code,codex
+confluence-cli skill install --project    # project dirs instead of $HOME
+confluence-cli skill install --dir <path> # explicit base -> <path>/confluence
+
+confluence-cli skill path                 # show every agent's location + status
 confluence-cli skill show                 # print SKILL.md to stdout
 ```
+
+Install locations per agent:
+
+| Agent | Global (default) | Project (`--project`) |
+|-------|------------------|-----------------------|
+| Claude Code | `~/.claude/skills/confluence` | `./.claude/skills/confluence` |
+| Codex | `~/.codex/skills/confluence` | `./.agents/skills/confluence` |
+
+Auto-detection looks for `~/.claude` / `~/.codex` (global) or `./.claude` /
+`./.agents` / `./AGENTS.md` (project). If nothing is detected, pass `--agent`
+or `--dir` explicitly.
 
 Because the Skill ships inside the binary, **updating is automatic**: upgrade
 the CLI (`npm update -g @angelmsger/confluence-cli`, `go install ...@latest`,
@@ -177,6 +193,11 @@ non-interactively, `--list` previews a repo's skills.
 ### Removing the Skill
 
 ```bash
-rm -rf ~/.claude/skills/confluence      # installed via `skill install` or manually
-npx skills remove confluence            # installed via the skills CLI
+confluence-cli skill uninstall          # auto-detect; remove from each agent found
+confluence-cli skill uninstall --agent codex
+confluence-cli skill uninstall --dir <path>
+npx skills remove confluence            # if installed via the skills CLI
 ```
+
+`skill uninstall` takes the same `--agent` / `--project` / `--dir` flags as
+`skill install`; removing a Skill that is not installed is a no-op.

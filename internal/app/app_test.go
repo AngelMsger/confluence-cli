@@ -340,6 +340,89 @@ func TestCmdSkillInstall(t *testing.T) {
 	}
 }
 
+func TestCmdSkillInstallAgent(t *testing.T) {
+	srv := mockConfluence(t)
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	out, err := runCLI(t, srv, "skill", "install", "--agent", "codex")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "[codex]") {
+		t.Errorf("output missing [codex] tag: %q", out)
+	}
+	want := filepath.Join(home, ".codex", "skills", "confluence", "SKILL.md")
+	if _, statErr := os.Stat(want); statErr != nil {
+		t.Errorf("expected installed file %s: %v", want, statErr)
+	}
+}
+
+func TestCmdSkillInstallDetect(t *testing.T) {
+	srv := mockConfluence(t)
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	for _, m := range []string{".claude", ".codex"} {
+		if err := os.Mkdir(filepath.Join(home, m), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	out, err := runCLI(t, srv, "skill", "install")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tag := range []string{"[claude-code]", "[codex]"} {
+		if !strings.Contains(out, tag) {
+			t.Errorf("output missing %s tag: %q", tag, out)
+		}
+	}
+	for _, p := range []string{
+		filepath.Join(home, ".claude", "skills", "confluence", "SKILL.md"),
+		filepath.Join(home, ".codex", "skills", "confluence", "SKILL.md"),
+	} {
+		if _, statErr := os.Stat(p); statErr != nil {
+			t.Errorf("expected installed file %s: %v", p, statErr)
+		}
+	}
+}
+
+func TestCmdSkillInstallNoAgent(t *testing.T) {
+	srv := mockConfluence(t)
+	t.Setenv("HOME", t.TempDir())
+	_, err := runCLI(t, srv, "skill", "install")
+	if err == nil {
+		t.Fatal("expected an error when no agent is detected")
+	}
+	if cerrors.ExitCode(err) != cerrors.ExitUsage {
+		t.Errorf("exit code = %d, want %d", cerrors.ExitCode(err), cerrors.ExitUsage)
+	}
+}
+
+func TestCmdSkillUninstall(t *testing.T) {
+	srv := mockConfluence(t)
+	dir := t.TempDir()
+	if _, err := runCLI(t, srv, "skill", "install", "--dir", dir); err != nil {
+		t.Fatal(err)
+	}
+	out, err := runCLI(t, srv, "skill", "uninstall", "--dir", dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "removed confluence Skill") {
+		t.Errorf("unexpected output: %q", out)
+	}
+	if _, statErr := os.Stat(filepath.Join(dir, "confluence")); !os.IsNotExist(statErr) {
+		t.Errorf("Skill directory was not removed: %v", statErr)
+	}
+	// A second uninstall is a no-op, not an error.
+	out, err = runCLI(t, srv, "skill", "uninstall", "--dir", dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "not installed") {
+		t.Errorf("expected 'not installed' on repeat uninstall: %q", out)
+	}
+}
+
 func TestCmdSkillShow(t *testing.T) {
 	srv := mockConfluence(t)
 	out, err := runCLI(t, srv, "skill", "show")

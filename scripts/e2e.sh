@@ -103,8 +103,15 @@ assert_contains  "attachment list"        "spec.txt"       "${CLI[@]}" attachmen
 assert_contains  "attachment download"    "attachment payload" \
                                           "${CLI[@]}" attachment download att1 --output -
 assert_contains  "fields projection"      '"id"'           "${CLI[@]}" page get 123 --fields id,title
+SKILL_DIR="$(mktemp -d)"
 assert_contains  "skill install"          "confluence Skill" \
-                                          "${CLI[@]}" skill install --dir "$(mktemp -d)"
+                                          "${CLI[@]}" skill install --dir "$SKILL_DIR"
+assert_contains  "skill install --agent codex" "[codex]" \
+                                          env HOME="$(mktemp -d)" "${CLI[@]}" skill install --agent codex
+assert_contains  "skill uninstall"        "removed confluence Skill" \
+                                          "${CLI[@]}" skill uninstall --dir "$SKILL_DIR"
+assert_contains  "skill uninstall (repeat)" "not installed" \
+                                          "${CLI[@]}" skill uninstall --dir "$SKILL_DIR"
 assert_contains  "skill show"             "name: confluence" "${CLI[@]}" skill show
 assert_exit      "missing page -> 6"      6                "${CLI[@]}" page get 404
 assert_exit      "bad flag -> 2"          2                "${CLI[@]}" page get 123 --bogus

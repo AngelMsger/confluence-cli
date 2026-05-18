@@ -222,7 +222,7 @@ make install</pre>
       </div>
       <div class="card">
         <h3>Companion Skill</h3>
-        <p>A <code>confluence</code> Skill is embedded in the binary — deploy it for your coding agent:</p>
+        <p>A <code>confluence</code> Skill is embedded in the binary — it detects your coding agent (Claude Code, Codex) and deploys for each one found:</p>
 <pre>confluence-cli skill install</pre>
       </div>
     </div>
@@ -258,7 +258,7 @@ confluence-cli comment list &lt;id|url&gt;</pre>
         <tr><td><code>space list</code> / <code>get</code></td><td>inspect spaces</td></tr>
         <tr><td><code>comment list</code> / <code>add</code></td><td>read or post comments (<code>add</code> is the only write)</td></tr>
         <tr><td><code>attachment list</code> / <code>download</code></td><td>inspect and fetch attachments</td></tr>
-        <tr><td><code>skill install</code></td><td>deploy the embedded companion Skill</td></tr>
+        <tr><td><code>skill install</code> / <code>skill uninstall</code></td><td>deploy or remove the embedded companion Skill (Claude Code, Codex)</td></tr>
         <tr><td><code>config</code> / <code>auth</code> / <code>doctor</code></td><td>setup and diagnostics</td></tr>
       </tbody>
     </table>

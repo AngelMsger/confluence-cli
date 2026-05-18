@@ -64,11 +64,13 @@ fish, PowerShell and persistent setup are covered in
 ### Companion Skill (optional)
 
 The `confluence` Skill is embedded in the binary; deploy it for your coding
-agent:
+agent. `skill install` probes for installed agents (**Claude Code**, **Codex**)
+and installs into each one found:
 
 ```bash
-confluence-cli skill install            # -> ~/.claude/skills/confluence
-confluence-cli skill install --project  # -> ./.claude/skills/confluence
+confluence-cli skill install            # auto-detect; install for each agent found
+confluence-cli skill install --agent codex
+confluence-cli skill uninstall          # remove it again
 ```
 
 Re-run it after upgrading the CLI to keep the Skill version-matched. Details,
@@ -105,7 +107,7 @@ keychain (with a `0600` file fallback) and never written to the config file.
 | `space list` / `space get` | inspect spaces |
 | `comment list` / `comment add` | read or post comments (`add` is the only write) |
 | `attachment list` / `attachment download` | inspect and fetch attachments |
-| `skill install` | deploy the embedded companion Skill for coding agents |
+| `skill install` / `skill uninstall` | deploy or remove the embedded companion Skill (Claude Code, Codex) |
 | `config` / `auth` / `doctor` / `version` | setup and diagnostics |
 
 ## Development
