@@ -43,11 +43,31 @@ type rawBody struct {
 }
 
 type rawVersion struct {
-	Number int    `json:"number"`
-	When   string `json:"when"`
-	By     struct {
+	Number    int    `json:"number"`
+	When      string `json:"when"`
+	Message   string `json:"message"`
+	MinorEdit bool   `json:"minorEdit"`
+	By        struct {
 		DisplayName string `json:"displayName"`
 	} `json:"by"`
+}
+
+type rawVersionList struct {
+	Results []rawVersion `json:"results"`
+	Size    int          `json:"size"`
+	Limit   int          `json:"limit"`
+}
+
+// rawContentVersion is one entry of a content's version history with the
+// version's content (and body) expanded.
+type rawContentVersion struct {
+	Number  int        `json:"number"`
+	Content rawContent `json:"content"`
+}
+
+// rawWatch is the response of the user-watch status endpoint.
+type rawWatch struct {
+	Watching bool `json:"watching"`
 }
 
 type rawSpace struct {
@@ -138,6 +158,17 @@ func versionOf(v *rawVersion) *Version {
 		return nil
 	}
 	return &Version{Number: v.Number, When: v.When, By: v.By.DisplayName}
+}
+
+// pageVersionOf normalizes a raw version-history entry into a PageVersion.
+func pageVersionOf(r rawVersion) PageVersion {
+	return PageVersion{
+		Number:    r.Number,
+		When:      r.When,
+		By:        r.By.DisplayName,
+		Message:   r.Message,
+		MinorEdit: r.MinorEdit,
+	}
 }
 
 // mapPage normalizes a v1 content object into a Page.

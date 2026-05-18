@@ -39,6 +39,23 @@ func mockConfluence(t *testing.T) *httptest.Server {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(`{"message":"No content found"}`))
 	})
+	mux.HandleFunc("/rest/api/content/123/version", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"results":[
+			{"number":2,"when":"2025-02-01T00:00:00Z","message":"edit","by":{"displayName":"Bob"}},
+			{"number":1,"when":"2025-01-01T00:00:00Z","by":{"displayName":"Alice"}}],
+			"size":2,"limit":25}`))
+	})
+	mux.HandleFunc("/rest/api/content/123/version/1", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"number":1,"content":{"id":"123","type":"page","title":"Welcome",
+			"body":{"storage":{"value":"<p>v1 body</p>","representation":"storage"}}}}`))
+	})
+	mux.HandleFunc("/rest/api/user/watch/content/123", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			w.Write([]byte(`{"watching":true}`))
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
 	mux.HandleFunc("/rest/api/content/att900", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"id":"att900","type":"attachment","title":"notes.txt",
 			"container":{"id":"123"},"extensions":{"fileSize":5}}`))

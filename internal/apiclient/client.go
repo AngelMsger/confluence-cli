@@ -35,6 +35,12 @@ type Client interface {
 	CopyPage(ctx context.Context, req CopyPageReq) (*Page, error)
 	DescribeWrite(ctx context.Context, op any) (WriteRequestPlan, error)
 
+	ListPageVersions(ctx context.Context, id string, opt ListOpts) (ListResult[PageVersion], error)
+	RestorePage(ctx context.Context, req RestorePageReq) (*Page, error)
+
+	WatchStatus(ctx context.Context, pageID string) (bool, error)
+	SetWatch(ctx context.Context, req WatchReq) error
+
 	Search(ctx context.Context, cql string, opt ListOpts) (ListResult[SearchHit], error)
 
 	ListSpaces(ctx context.Context, opt SpaceListOpts) (ListResult[Space], error)

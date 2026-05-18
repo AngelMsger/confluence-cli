@@ -80,6 +80,15 @@ type Attachment struct {
 	DownloadURL string `json:"download_url,omitempty"`
 }
 
+// PageVersion is one entry in a page's version history.
+type PageVersion struct {
+	Number    int    `json:"number"`
+	When      string `json:"when,omitempty"`
+	By        string `json:"by,omitempty"`
+	Message   string `json:"message,omitempty"`
+	MinorEdit bool   `json:"minor_edit,omitempty"`
+}
+
 // Label is a normalized Confluence content label.
 type Label struct {
 	ID     string `json:"id,omitempty"`
@@ -219,6 +228,21 @@ type UpdateAttachmentReq struct {
 // DeleteAttachmentReq is a request to delete an attachment by its content ID.
 type DeleteAttachmentReq struct {
 	AttachmentID string
+}
+
+// RestorePageReq is a request to restore a page to an earlier version. The
+// restore is non-destructive: it republishes the version's body as a new
+// version, leaving the history intact.
+type RestorePageReq struct {
+	ID      string
+	Version int    // the historical version number to restore
+	Message string // optional version comment for the restore
+}
+
+// WatchReq toggles whether the authenticated user watches a page.
+type WatchReq struct {
+	PageID   string
+	Watching bool // true = watch, false = unwatch
 }
 
 // AddLabelsReq is a request to add one or more labels to a page.

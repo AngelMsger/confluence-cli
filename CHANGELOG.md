@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Page version history: `page history` lists a page's versions, and
+  `page restore --version N` rolls a page back by republishing that version's
+  body as a new version (non-destructive — the history is kept). `restore`
+  supports `--dry-run`.
+- Page watch commands: `page watch` / `page unwatch` subscribe or unsubscribe
+  the authenticated user, and `page watch-status` reports whether you watch a
+  page. `watch` / `unwatch` support `--dry-run`.
 - Attachment write commands: `attachment upload` attaches a file to a page,
   `attachment update` replaces an attachment's content with a new version, and
   `attachment delete` removes one. Uploads use `multipart/form-data`; `--file -`

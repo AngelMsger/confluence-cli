@@ -154,3 +154,95 @@ func TestCmdLabelRemoveDryRun(t *testing.T) {
 		t.Errorf("url = %v", got["url"])
 	}
 }
+
+func TestCmdPageHistory(t *testing.T) {
+	srv := mockConfluence(t)
+	out, err := runCLI(t, srv, "page", "history", "123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []map[string]any
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("output not a JSON array: %v\n%s", err, out)
+	}
+	if len(got) != 2 || got[0]["number"].(float64) != 2 {
+		t.Errorf("versions = %v", got)
+	}
+}
+
+func TestCmdPageRestoreDryRun(t *testing.T) {
+	srv := mockConfluence(t)
+	out, err := runCLI(t, srv, "page", "restore", "123", "--version", "1", "--dry-run")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	json.Unmarshal([]byte(out), &got)
+	if got["dry_run"] != true || got["method"] != "PUT" {
+		t.Errorf("dry-run output = %v", got)
+	}
+}
+
+func TestCmdPageRestore(t *testing.T) {
+	srv := mockConfluence(t)
+	out, err := runCLI(t, srv, "page", "restore", "123", "--version", "1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	json.Unmarshal([]byte(out), &got)
+	if got["id"] != "123" {
+		t.Errorf("restored page = %v", got)
+	}
+}
+
+func TestCmdPageRestoreNoVersion(t *testing.T) {
+	srv := mockConfluence(t)
+	if _, err := runCLI(t, srv, "page", "restore", "123"); err == nil {
+		t.Fatal("expected an error when --version is missing")
+	}
+}
+
+func TestCmdPageWatch(t *testing.T) {
+	srv := mockConfluence(t)
+	for _, tc := range []struct {
+		cmd      string
+		watching bool
+	}{{"watch", true}, {"unwatch", false}} {
+		out, err := runCLI(t, srv, "page", tc.cmd, "123")
+		if err != nil {
+			t.Fatalf("%s: %v", tc.cmd, err)
+		}
+		var got map[string]any
+		json.Unmarshal([]byte(out), &got)
+		if got["page_id"] != "123" || got["watching"] != tc.watching {
+			t.Errorf("%s output = %v", tc.cmd, got)
+		}
+	}
+}
+
+func TestCmdPageWatchStatus(t *testing.T) {
+	srv := mockConfluence(t)
+	out, err := runCLI(t, srv, "page", "watch-status", "123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	json.Unmarshal([]byte(out), &got)
+	if got["watching"] != true {
+		t.Errorf("watch-status output = %v", got)
+	}
+}
+
+func TestCmdPageWatchDryRun(t *testing.T) {
+	srv := mockConfluence(t)
+	out, err := runCLI(t, srv, "page", "watch", "123", "--dry-run")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	json.Unmarshal([]byte(out), &got)
+	if got["dry_run"] != true || got["method"] != "POST" {
+		t.Errorf("dry-run output = %v", got)
+	}
+}
