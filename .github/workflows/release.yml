@@ -35,10 +35,18 @@ jobs:
         working-directory: dist
         run: sha256sum confluence-cli-* > checksums.txt
 
-      - name: create GitHub Release
+      # Idempotent: if the release already exists (e.g. a re-run after the npm
+      # step failed) refresh its assets instead of failing the whole workflow.
+      - name: create or update GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$TAG" dist/* --title "$TAG" --generate-notes
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "release $TAG already exists — re-uploading assets"
+            gh release upload "$TAG" dist/* --clobber
+          else
+            gh release create "$TAG" dist/* --title "$TAG" --generate-notes
+          fi
 
       - uses: actions/setup-node@v4
         with:
@@ -51,9 +59,17 @@ jobs:
       # package's trusted publisher to be configured on npmjs.com first (see
       # docs/releasing.md). The GitHub Release above is already complete if this
       # step fails.
+      #
+      # Idempotent: skip publishing when this version is already on the
+      # registry, so the workflow can be re-run safely.
       - name: publish to npm
         working-directory: build/npm
         run: |
           npm install -g npm@latest # trusted publishing needs npm >= 11.5.1
-          npm version "${TAG#v}" --no-git-tag-version --allow-same-version
-          npm publish --access public
+          VERSION="${TAG#v}"
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+          if npm view "@angelmsger/confluence-cli@$VERSION" version >/dev/null 2>&1; then
+            echo "@angelmsger/confluence-cli@$VERSION already published — skipping"
+          else
+            npm publish --access public
+          fi
