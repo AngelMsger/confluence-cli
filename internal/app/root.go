@@ -41,6 +41,7 @@ func newRootCmd() *cobra.Command {
 		Long: "confluence-cli reads Confluence pages, searches via CQL and manages\n" +
 			"comments. It supports Confluence Cloud and Data Center / Server, and\n" +
 			"emits agent-friendly JSON with structured errors.",
+		Version:       versionString(),
 		SilenceErrors: true,
 		SilenceUsage:  true,
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
@@ -62,6 +63,8 @@ func newRootCmd() *cobra.Command {
 	root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {
 		return cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_FLAG", err.Error())
 	})
+	// `confluence-cli --version` prints the same line as the `version` command.
+	root.SetVersionTemplate("{{.Name}} {{.Version}}\n")
 
 	enumComplete(root, "format", "json", "table", "ndjson")
 	enumComplete(root, "flavor", "cloud", "datacenter", "auto")
@@ -81,14 +84,19 @@ func newRootCmd() *cobra.Command {
 	return root
 }
 
-// newVersionCmd prints build metadata.
+// versionString renders the version, commit and build time as one line.
+func versionString() string {
+	return fmt.Sprintf("%s (commit %s, built %s)",
+		constants.Version, constants.Commit, constants.BuildTime)
+}
+
+// newVersionCmd prints build metadata. It mirrors the `--version` flag.
 func newVersionCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
 		Short: "Print version information",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			fmt.Fprintf(os.Stdout, "%s %s (commit %s, built %s)\n",
-				constants.AppName, constants.Version, constants.Commit, constants.BuildTime)
+			fmt.Fprintf(os.Stdout, "%s %s\n", constants.AppName, versionString())
 			return nil
 		},
 	}

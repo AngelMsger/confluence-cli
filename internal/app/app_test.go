@@ -88,6 +88,25 @@ func TestCmdVersion(t *testing.T) {
 	}
 }
 
+func TestVersionFlag(t *testing.T) {
+	srv := mockConfluence(t)
+	flagOut, err := runCLI(t, srv, "--version")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(flagOut, "confluence-cli") {
+		t.Errorf("--version output = %q", flagOut)
+	}
+	// `--version` and the `version` command must agree.
+	cmdOut, err := runCLI(t, srv, "version")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if flagOut != cmdOut {
+		t.Errorf("--version (%q) and `version` (%q) disagree", flagOut, cmdOut)
+	}
+}
+
 func TestCmdPageGet(t *testing.T) {
 	srv := mockConfluence(t)
 	out, err := runCLI(t, srv, "page", "get", "123")
