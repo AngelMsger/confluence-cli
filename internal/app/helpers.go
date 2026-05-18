@@ -89,22 +89,6 @@ type pageInfo struct {
 	HasMore bool
 }
 
-// listOutput is the envelope every list command emits: a page of items plus
-// the cursor an agent needs to fetch the page after it.
-type listOutput[T any] struct {
-	Items   []T    `json:"items"`
-	Next    string `json:"next,omitempty"`
-	HasMore bool   `json:"has_more"`
-}
-
-// newListOutput wraps a fetched page of items into the list envelope.
-func newListOutput[T any](items []T, info pageInfo) listOutput[T] {
-	if items == nil {
-		items = []T{}
-	}
-	return listOutput[T]{Items: items, Next: info.Next, HasMore: info.HasMore}
-}
-
 // collectPage fetches results for a list command. With all set it walks every
 // page starting at cursor and returns the full set; otherwise it returns the
 // single page at cursor plus the cursor for the page after it.

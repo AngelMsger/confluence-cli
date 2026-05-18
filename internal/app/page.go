@@ -246,7 +246,7 @@ func newPageChildrenCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return s.emit(newListOutput(items, info))
+			return s.emitList(items, info)
 		},
 	}
 	addListFlags(cmd, &limit, &all, &cursor)
@@ -584,7 +584,7 @@ func newPageDescendantsCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return s.emit(newListOutput(items, info))
+			return s.emitList(items, info)
 		},
 	}
 	addListFlags(cmd, &limit, &all, &cursor)

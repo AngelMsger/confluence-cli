@@ -130,27 +130,26 @@ Defaults   { Format string         // json（默认）
 
 ## 5. 命令规格
 
-全局持久 flag：`--base-url --flavor --format(json|table|ndjson) --fields --timeout
---no-color --verbose --config`。任何 `<id|url>` 入参先经 `pkg/urlref` 解析成 ID。
+全局持久 flag：`--base-url`、`--flavor`、`--format`(json|table|ndjson)、`--fields`、
+`--timeout`、`--config`、`--use-context`、`--verbose`。
 
-| 命令 | 关键 flag | 说明 |
-|------|-----------|------|
-| `page get <id\|url>` | `--body-format storage\|view`、`--detail simple\|with-ids\|full`、`--scope full\|outline\|section\|keyword`、`--section`、`--keyword`、`--as text\|markdown` | 取页面并按 scope 渲染正文 |
-| `page children <id\|url>` | `--limit --all --depth` | 直接子页面 |
-| `page descendants <id\|url>` | `--limit --all` | 所有后代页面 |
-| `search <cql>` | `--text --author --contributor --space --label --type --after --before --limit --all` | 给定 `<cql>` 直用；否则由 flag 拼 CQL |
-| `space list` | `--type global\|personal --limit --all` | 列空间 |
-| `space get <key>` | — | 取单个空间 |
-| `comment list <id\|url>` | `--limit --all --as` | 列页面评论 |
-| `comment add <id\|url>` | `--body --body-file --parent --format storage\|wiki` | 发布 / 回复评论（唯一写操作） |
-| `attachment list <id\|url>` | `--limit --all` | 列附件 |
-| `attachment download <id\|url>` | `--output --pageID` | 下载附件，`-` 为 stdout |
-| `config init\|show\|path` | `--explain` | 配置管理 |
-| `auth status\|login\|logout` | — | 凭证管理 |
-| `doctor` | `--no-update-check` | 连通性 / 配置 / flavor 诊断，并检查是否有新版本发布 |
-| `skill install\|uninstall` | `--agent claude-code\|codex`、`--project`、`--dir` | 部署 / 移除内嵌 Skill；无 flag 时探测已安装的 Agent 目录 |
-| `skill path\|show` | `--agent`、`--project`、`--dir` | 打印安装位置 / 状态、打印 SKILL.md |
-| `version` | — | 版本信息 |
+命令树按资源分组：`page`、`search`、`space`、`comment`、`attachment`、`label`、
+`config`、`auth`、`doctor`、`whoami`、`skill`、`version`。共同约定：
+
+- **ID 解析**：接受页面的入参也接受页面 URL，经 `pkg/urlref` 解析；评论入参接受
+  评论 ID 或带 `focusedCommentId` 的评论永久链接（普通页面 URL 会被拒绝）；附件
+  入参只接受附件内容 ID。
+- **写操作**：`page create/update/delete/move/copy/restore`、`page watch/unwatch`、
+  `attachment upload/update/delete`、`label add/remove`、`comment add/update/delete`
+  均为写命令；每个写命令支持 `--dry-run` 预览将发出的请求，删除类命令需 `--yes`。
+- **分页**：list 命令（`search`、`page children/descendants/history`、`comment list`、
+  `attachment list`、`label list`、`space list`）接受 `--limit/--all/--cursor`，
+  输出 `{items, next, has_more}` 信封。
+- **正文格式**：`page create/update`、`comment add/update` 用 `--body-format`
+  （storage|wiki|markdown）指定正文格式，与全局 `--format`（输出格式）互不冲突。
+
+完整的命令、flag 与示例由命令树自动生成，见 [docs/cli/](cli/)（`make docs` 生成、
+CI 校验不漂移）—— 本节不再维护并行的命令清单，以杜绝文档与实现脱节。
 
 ## 6. 输出与错误模型
 
@@ -158,10 +157,15 @@ Defaults   { Format string         // json（默认）
 
 `Formatter` 接口三实现：`json`（默认，面向 Agent，stdout）、`table`（人类可读）、
 `ndjson`（流式大结果集）。`--fields a,b.c` 按点路径投影。list 命令输出分页信封
-`{items, next, has_more}`，`--cursor` 可从上一页的 `next` 续读下一页。所有命令的
-成功输出统一为 stdout 上的 JSON（唯一例外：`version` 命令打印纯文本版本行，与
-`--version` flag 对齐）；交互式向导（`config init`、`auth login`）的提示走 stderr。
-错误只走 stderr。
+`{items, next, has_more}`，`--cursor` 可从上一页的 `next` 续读下一页。
+
+成功输出统一为 stdout 上的 JSON，但有三处刻意的 raw-output 例外：
+
+- `version` 打印纯文本版本行（与 `--version` flag 对齐）。
+- `attachment download --output -` 把附件原始字节写入 stdout（用于管道）。
+- `skill show` 把内嵌的 `SKILL.md` 原样打印。
+
+交互式向导（`config init`、`auth login`）的提示走 stderr；错误只走 stderr。
 
 ### 6.2 错误
 

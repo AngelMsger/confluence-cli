@@ -40,7 +40,7 @@ func newSpaceListCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return s.emit(newListOutput(items, info))
+			return s.emitList(items, info)
 		},
 	}
 	cmd.Flags().StringVar(&spaceType, "type", "", "filter by type: global or personal")

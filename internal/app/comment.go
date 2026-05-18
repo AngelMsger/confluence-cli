@@ -84,7 +84,7 @@ func newCommentListCmd(s *appState) *cobra.Command {
 			for _, c := range items {
 				out = append(out, toCommentOutput(c, as))
 			}
-			return s.emit(newListOutput(out, info))
+			return s.emitList(out, info)
 		},
 	}
 	addListFlags(cmd, &limit, &all, &cursor)

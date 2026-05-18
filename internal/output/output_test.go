@@ -129,22 +129,49 @@ func TestEmitBadFormat(t *testing.T) {
 	}
 }
 
-// listEnv mirrors the list envelope app commands emit.
-type listEnv struct {
-	Items   []sampleRec `json:"items"`
-	Next    string      `json:"next,omitempty"`
-	HasMore bool        `json:"has_more"`
-}
-
-func TestEmitListEnvelopeTable(t *testing.T) {
+func TestEmitListJSON(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
-	env := listEnv{Items: []sampleRec{mk("1", "Hello", "ENG"), mk("2", "World", "DEV")}, Next: "25", HasMore: true}
-	if err := Emit(env, Options{Format: FormatTable, Writer: &buf}); err != nil {
+	items := []sampleRec{mk("1", "Hello", "ENG"), mk("2", "World", "DEV")}
+	if err := EmitList(items, "25", true, Options{Format: FormatJSON, Writer: &buf}); err != nil {
+		t.Fatal(err)
+	}
+	var got struct {
+		Items   []map[string]any `json:"items"`
+		Next    string           `json:"next"`
+		HasMore bool             `json:"has_more"`
+	}
+	if err := json.Unmarshal(buf.Bytes(), &got); err != nil {
+		t.Fatalf("output not a list envelope: %v\n%s", err, buf.String())
+	}
+	if len(got.Items) != 2 || got.Next != "25" || !got.HasMore {
+		t.Errorf("envelope = %+v", got)
+	}
+}
+
+func TestEmitListJSONEmpty(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	if err := EmitList([]sampleRec(nil), "", false, Options{Format: FormatJSON, Writer: &buf}); err != nil {
+		t.Fatal(err)
+	}
+	// An empty list must serialize items as [] (not null) and omit next.
+	if !strings.Contains(buf.String(), `"items": []`) {
+		t.Errorf("empty list should emit []:\n%s", buf.String())
+	}
+	if strings.Contains(buf.String(), `"next"`) {
+		t.Errorf("next must be omitted when empty:\n%s", buf.String())
+	}
+}
+
+func TestEmitListTable(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	items := []sampleRec{mk("1", "Hello", "ENG"), mk("2", "World", "DEV")}
+	if err := EmitList(items, "25", true, Options{Format: FormatTable, Writer: &buf}); err != nil {
 		t.Fatal(err)
 	}
 	out := buf.String()
-	// The envelope must render its items as a table, not as a {items,...} KV table.
 	if !strings.Contains(out, "Hello") || !strings.Contains(out, "World") {
 		t.Errorf("table missing item rows:\n%s", out)
 	}
@@ -156,11 +183,11 @@ func TestEmitListEnvelopeTable(t *testing.T) {
 	}
 }
 
-func TestEmitListEnvelopeNDJSON(t *testing.T) {
+func TestEmitListNDJSON(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
-	env := listEnv{Items: []sampleRec{mk("1", "Hello", "ENG"), mk("2", "World", "DEV")}, HasMore: false}
-	if err := Emit(env, Options{Format: FormatNDJSON, Writer: &buf}); err != nil {
+	items := []sampleRec{mk("1", "Hello", "ENG"), mk("2", "World", "DEV")}
+	if err := EmitList(items, "", false, Options{Format: FormatNDJSON, Writer: &buf}); err != nil {
 		t.Fatal(err)
 	}
 	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
@@ -178,11 +205,11 @@ func TestEmitListEnvelopeNDJSON(t *testing.T) {
 	}
 }
 
-func TestEmitListEnvelopeFields(t *testing.T) {
+func TestEmitListFields(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer
-	env := listEnv{Items: []sampleRec{mk("1", "Hello", "ENG")}, HasMore: true, Next: "25"}
-	err := Emit(env, Options{Format: FormatJSON, Fields: []string{"id"}, Writer: &buf})
+	items := []sampleRec{mk("1", "Hello", "ENG")}
+	err := EmitList(items, "25", true, Options{Format: FormatJSON, Fields: []string{"id"}, Writer: &buf})
 	if err != nil {
 		t.Fatal(err)
 	}

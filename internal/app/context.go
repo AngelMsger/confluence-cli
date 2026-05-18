@@ -95,6 +95,16 @@ func (s *appState) emit(v any) error {
 	})
 }
 
+// emitList writes a paginated list result to stdout as a {items, next,
+// has_more} envelope in the configured format.
+func (s *appState) emitList(items any, info pageInfo) error {
+	return output.EmitList(items, info.Next, info.HasMore, output.Options{
+		Format: s.cfg().Defaults.Format,
+		Fields: s.fieldList(),
+		Writer: os.Stdout,
+	})
+}
+
 // fieldList splits the --fields flag into dot paths.
 func (s *appState) fieldList() []string {
 	if s.gflags.fields == "" {

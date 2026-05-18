@@ -10,10 +10,11 @@
 > Use Confluence as a knowledge base from your terminal — built for coding agents.
 
 `confluence-cli` lets coding agents (Claude Code and others) — and humans — read,
-search and comment on a Confluence instance from the command line. It speaks to
-both **Confluence Cloud** and **Data Center / Server**, returns agent-friendly
-JSON with structured errors, and ships a companion Skill that teaches an agent
-how to use it.
+search and **maintain** a Confluence instance from the command line: fetch and
+edit pages, manage attachments, labels and comments. It speaks to both
+**Confluence Cloud** and **Data Center / Server**, returns agent-friendly JSON
+with structured errors, and ships a companion Skill that teaches an agent how to
+use it. Write commands support `--dry-run`, and destructive ones require `--yes`.
 
 📖 **Documentation site:** <https://angelmsger.github.io/confluence-cli/>
 
@@ -26,8 +27,9 @@ how to use it.
 - **Agent-friendly** — JSON output by default, structured errors with exit
   codes and recovery hints, and partial page reads (`outline` / `section` /
   `keyword`) so an agent spends minimal context.
-- **Read + comment** — fetch pages, browse page trees, CQL search, list and
-  download attachments, read and post comments.
+- **Read & write** — fetch pages and browse trees, CQL search; create, edit,
+  move, delete and restore pages; manage attachments, labels, comments and page
+  watches. Every write supports `--dry-run`; destructive commands need `--yes`.
 - **Flexible configuration** — CLI flags, environment variables, a `.env` file,
   a YAML config file, or an interactive wizard; secrets stored in the OS
   keychain.

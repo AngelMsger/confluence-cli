@@ -37,15 +37,7 @@ func Emit(v any, opt Options) error {
 		return err
 	}
 	if len(opt.Fields) > 0 {
-		// For a list envelope, --fields projects the items, not the
-		// {items,next,has_more} wrapper itself.
-		if items, ok := listEnvelope(generic); ok {
-			env := generic.(map[string]any)
-			env["items"] = project(items, opt.Fields)
-			generic = env
-		} else {
-			generic = project(generic, opt.Fields)
-		}
+		generic = project(generic, opt.Fields)
 	}
 
 	switch opt.Format {
@@ -56,9 +48,59 @@ func Emit(v any, opt Options) error {
 	case FormatJSON, "":
 		return emitJSON(generic, opt.Writer)
 	default:
-		return cerrors.Newf(cerrors.CategoryUsage, "BAD_FORMAT",
-			"unknown output format %q (want json, table or ndjson)", opt.Format)
+		return badFormat(opt.Format)
 	}
+}
+
+// EmitList renders a paginated list result as a {items, next, has_more}
+// envelope. Unlike Emit it is told explicitly that the value is a list, so the
+// envelope shape never has to be guessed from the data. json emits the
+// envelope; table renders the items as a grid with a cursor footer; ndjson
+// streams the items, one per line.
+func EmitList(items any, next string, hasMore bool, opt Options) error {
+	if opt.Writer == nil {
+		return cerrors.New(cerrors.CategoryInternal, "NO_WRITER", "no output writer configured")
+	}
+	generic, err := toGeneric(items)
+	if err != nil {
+		return err
+	}
+	list, _ := generic.([]any)
+	if list == nil {
+		list = []any{}
+	}
+	if len(opt.Fields) > 0 {
+		if projected, ok := project(list, opt.Fields).([]any); ok {
+			list = projected
+		}
+	}
+
+	switch opt.Format {
+	case FormatTable:
+		if err := emitListTable(list, opt); err != nil {
+			return err
+		}
+		if hasMore {
+			_, err := fmt.Fprintf(opt.Writer, "\n(more results — re-run with --cursor %s)\n", next)
+			return err
+		}
+		return nil
+	case FormatNDJSON:
+		return emitNDJSON(list, opt.Writer)
+	case FormatJSON, "":
+		env := map[string]any{"items": list, "has_more": hasMore}
+		if next != "" {
+			env["next"] = next
+		}
+		return emitJSON(env, opt.Writer)
+	default:
+		return badFormat(opt.Format)
+	}
+}
+
+func badFormat(format string) error {
+	return cerrors.Newf(cerrors.CategoryUsage, "BAD_FORMAT",
+		"unknown output format %q (want json, table or ndjson)", format)
 }
 
 // toGeneric converts any value into map[string]any / []any / scalar form.
@@ -83,28 +125,7 @@ func emitJSON(v any, w io.Writer) error {
 	return enc.Encode(v)
 }
 
-// listEnvelope reports whether v is a list envelope ({items,next,has_more})
-// and, if so, returns its items slice.
-func listEnvelope(v any) ([]any, bool) {
-	m, ok := v.(map[string]any)
-	if !ok {
-		return nil, false
-	}
-	if _, ok := m["has_more"]; !ok {
-		return nil, false
-	}
-	items, ok := m["items"].([]any)
-	if !ok {
-		return nil, false
-	}
-	return items, true
-}
-
 func emitNDJSON(v any, w io.Writer) error {
-	// ndjson streams the records themselves; unwrap a list envelope to its items.
-	if items, ok := listEnvelope(v); ok {
-		v = items
-	}
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
 	if list, ok := v.([]any); ok {
