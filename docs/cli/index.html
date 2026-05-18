@@ -1,0 +1,736 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>confluence-cli — CLI reference</title>
+<style>
+  :root {
+    --bg: #0d1117; --bg-soft: #161b22; --card: #1c2333; --border: #2a3350;
+    --text: #e6e9f0; --muted: #9aa4bf; --accent: #4d7cff; --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; }
+  nav {
+    position: sticky; top: 0; z-index: 10; background: rgba(13,17,23,0.85);
+    backdrop-filter: blur(8px); border-bottom: 1px solid var(--border);
+  }
+  nav .row { display: flex; align-items: center; gap: 22px; height: 56px; max-width: 1180px; margin: 0 auto; padding: 0 24px; }
+  nav .brand { font-weight: 700; color: var(--text); }
+  nav .links { margin-left: auto; display: flex; gap: 20px; }
+  nav .links a { color: var(--muted); font-size: 0.92rem; }
+  nav .links a:hover { color: var(--text); text-decoration: none; }
+  .layout {
+    display: grid; grid-template-columns: 240px 1fr; gap: 40px;
+    max-width: 1180px; margin: 0 auto; padding: 32px 24px 96px; align-items: start;
+  }
+  .side { position: sticky; top: 76px; max-height: calc(100vh - 100px); overflow-y: auto; font-size: 0.9rem; }
+  .side-group { margin-bottom: 18px; }
+  .side-title { color: var(--muted); text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.09em; margin-bottom: 6px; }
+  .side a { display: block; color: var(--text); padding: 3px 0; }
+  .side a:hover { color: var(--accent); text-decoration: none; }
+  main { min-width: 0; }
+  main > h1 { font-size: 1.9rem; letter-spacing: -0.01em; }
+  main > .lead { color: var(--muted); margin: 8px 0 8px; }
+  .cmd { border-top: 1px solid var(--border); padding-top: 30px; margin-top: 30px; }
+  .cmd h2 { font-size: 1.25rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .cmd .short { color: var(--muted); margin: 5px 0 14px; }
+  .cmd .long { white-space: pre-wrap; margin: 12px 0; }
+  .cmd h3 { font-size: 0.95rem; color: var(--muted); text-transform: uppercase;
+            letter-spacing: 0.07em; margin: 20px 0 8px; }
+  .group-tag { font-size: 0.72rem; color: var(--muted); border: 1px solid var(--border);
+               border-radius: 999px; padding: 2px 9px; margin-left: 8px; vertical-align: 3px; }
+  pre {
+    background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 16px 18px; overflow-x: auto; font-size: 0.88rem; line-height: 1.7;
+  }
+  pre .c { color: #6f7896; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  td code { color: var(--accent); }
+  footer { border-top: 1px solid var(--border); padding: 28px 24px; color: var(--muted);
+           font-size: 0.9rem; text-align: center; }
+  @media (max-width: 820px) {
+    .layout { grid-template-columns: 1fr; }
+    .side { position: static; max-height: none; }
+  }
+</style>
+</head>
+<body>
+<nav>
+  <div class="row">
+    <a class="brand" href="../">confluence-cli</a>
+    <div class="links">
+      <a href="../">Home</a>
+      <a href="https://github.com/angelmsger/confluence-cli">GitHub</a>
+    </div>
+  </div>
+</nav>
+<div class="layout">
+  <aside class="side">
+    <div class="side-group">
+      <div class="side-title">attachment</div>
+      <a href="#confluence-cli-attachment">confluence-cli attachment</a>
+      <a href="#confluence-cli-attachment-download">confluence-cli attachment download</a>
+      <a href="#confluence-cli-attachment-list">confluence-cli attachment list</a>
+      </div>
+    <div class="side-group">
+      <div class="side-title">auth</div>
+      <a href="#confluence-cli-auth">confluence-cli auth</a>
+      <a href="#confluence-cli-auth-login">confluence-cli auth login</a>
+      <a href="#confluence-cli-auth-logout">confluence-cli auth logout</a>
+      <a href="#confluence-cli-auth-status">confluence-cli auth status</a>
+      </div>
+    <div class="side-group">
+      <div class="side-title">comment</div>
+      <a href="#confluence-cli-comment">confluence-cli comment</a>
+      <a href="#confluence-cli-comment-add">confluence-cli comment add</a>
+      <a href="#confluence-cli-comment-list">confluence-cli comment list</a>
+      </div>
+    <div class="side-group">
+      <div class="side-title">config</div>
+      <a href="#confluence-cli-config">confluence-cli config</a>
+      <a href="#confluence-cli-config-delete-context">confluence-cli config delete-context</a>
+      <a href="#confluence-cli-config-get-contexts">confluence-cli config get-contexts</a>
+      <a href="#confluence-cli-config-init">confluence-cli config init</a>
+      <a href="#confluence-cli-config-path">confluence-cli config path</a>
+      <a href="#confluence-cli-config-show">confluence-cli config show</a>
+      <a href="#confluence-cli-config-use-context">confluence-cli config use-context</a>
+      </div>
+    <div class="side-group">
+      <div class="side-title">doctor</div>
+      <a href="#confluence-cli-doctor">confluence-cli doctor</a>
+      </div>
+    <div class="side-group">
+      <div class="side-title">page</div>
+      <a href="#confluence-cli-page">confluence-cli page</a>
+      <a href="#confluence-cli-page-children">confluence-cli page children</a>
+      <a href="#confluence-cli-page-copy">confluence-cli page copy</a>
+      <a href="#confluence-cli-page-create">confluence-cli page create</a>
+      <a href="#confluence-cli-page-delete">confluence-cli page delete</a>
+      <a href="#confluence-cli-page-descendants">confluence-cli page descendants</a>
+      <a href="#confluence-cli-page-get">confluence-cli page get</a>
+      <a href="#confluence-cli-page-move">confluence-cli page move</a>
+      <a href="#confluence-cli-page-update">confluence-cli page update</a>
+      </div>
+    <div class="side-group">
+      <div class="side-title">search</div>
+      <a href="#confluence-cli-search">confluence-cli search</a>
+      </div>
+    <div class="side-group">
+      <div class="side-title">skill</div>
+      <a href="#confluence-cli-skill">confluence-cli skill</a>
+      <a href="#confluence-cli-skill-install">confluence-cli skill install</a>
+      <a href="#confluence-cli-skill-path">confluence-cli skill path</a>
+      <a href="#confluence-cli-skill-show">confluence-cli skill show</a>
+      <a href="#confluence-cli-skill-uninstall">confluence-cli skill uninstall</a>
+      </div>
+    <div class="side-group">
+      <div class="side-title">space</div>
+      <a href="#confluence-cli-space">confluence-cli space</a>
+      <a href="#confluence-cli-space-get">confluence-cli space get</a>
+      <a href="#confluence-cli-space-list">confluence-cli space list</a>
+      </div>
+    <div class="side-group">
+      <div class="side-title">version</div>
+      <a href="#confluence-cli-version">confluence-cli version</a>
+      </div>
+    
+  </aside>
+  <main>
+    <h1>CLI reference</h1>
+    <p class="lead">confluence-cli reads Confluence pages, searches via CQL, creates and
+edits pages, and manages comments. It supports Confluence Cloud and
+Data Center / Server, and emits agent-friendly JSON with structured errors.</p>
+    <p class="lead">This page is generated from the command tree, so it always matches <code>--help</code>.</p>
+
+    <section class="cmd">
+      <h2>Global flags</h2>
+      <p class="short">Persistent flags accepted by every command.</p>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--base-url</code></td><td></td><td>Confluence site URL (overrides config)</td></tr>
+        <tr><td><code>--config</code></td><td></td><td>config directory (default ~/.confluence)</td></tr>
+        <tr><td><code>--fields</code></td><td></td><td>comma-separated dot-path fields to keep</td></tr>
+        <tr><td><code>--flavor</code></td><td></td><td>backend flavor: cloud, datacenter or auto</td></tr>
+        <tr><td><code>--format, -f</code></td><td></td><td>output format: json, table or ndjson</td></tr>
+        <tr><td><code>--timeout</code></td><td></td><td>request timeout, e.g. 30s</td></tr>
+        <tr><td><code>--use-context</code></td><td></td><td>use a named context for this invocation</td></tr>
+        <tr><td><code>--verbose, -v</code></td><td><code>false</code></td><td>verbose diagnostics on stderr</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    
+    <section class="cmd" id="confluence-cli-attachment">
+      <h2>confluence-cli attachment<span class="group-tag">command group</span></h2>
+      <p class="short">List and download page attachments</p>
+      <pre>confluence-cli attachment</pre>
+      
+      
+      
+    </section>
+    
+    <section class="cmd" id="confluence-cli-attachment-download">
+      <h2>confluence-cli attachment download</h2>
+      <p class="short">Download an attachment&#39;s content</p>
+      <pre>confluence-cli attachment download &lt;attachment-id|url&gt; [flags]</pre>
+      <p class="long">Download an attachment by its content ID. Use --output - to stream to stdout.</p>
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--output, -o</code></td><td></td><td>output path (&#39;-&#39; for stdout)</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre>  confluence-cli attachment download att12345 --output spec.pdf
+  confluence-cli attachment download att12345 --output -</pre>
+    </section>
+    
+    <section class="cmd" id="confluence-cli-attachment-list">
+      <h2>confluence-cli attachment list</h2>
+      <p class="short">List the attachments of a page</p>
+      <pre>confluence-cli attachment list &lt;id|url&gt; [flags]</pre>
+      
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--all</code></td><td><code>false</code></td><td>fetch every page of results</td></tr>
+        <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre>  confluence-cli attachment list 123456</pre>
+    </section>
+    
+    <section class="cmd" id="confluence-cli-auth">
+      <h2>confluence-cli auth<span class="group-tag">command group</span></h2>
+      <p class="short">Inspect and manage stored credentials</p>
+      <pre>confluence-cli auth</pre>
+      
+      
+      
+    </section>
+    
+    <section class="cmd" id="confluence-cli-auth-login">
+      <h2>confluence-cli auth login</h2>
+      <p class="short">Store a credential for the configured server</p>
+      <pre>confluence-cli auth login</pre>
+      <p class="long">Prompt for a secret and store it securely. Run `config init` first if the server URL is not set.</p>
+      
+      <h3>Examples</h3><pre>  confluence-cli auth login
+  confluence-cli --use-context staging auth login</pre>
+    </section>
+    
+    <section class="cmd" id="confluence-cli-auth-logout">
+      <h2>confluence-cli auth logout</h2>
+      <p class="short">Remove the stored credential for the configured server</p>
+      <pre>confluence-cli auth logout</pre>
+      
+      
+      
+    </section>
+    
+    <section class="cmd" id="confluence-cli-auth-status">
+      <h2>confluence-cli auth status</h2>
+      <p class="short">Show whether a usable credential is configured</p>
+      <pre>confluence-cli auth status</pre>
+      
+      
+      
+    </section>
+    
+    <section class="cmd" id="confluence-cli-comment">
+      <h2>confluence-cli comment<span class="group-tag">command group</span></h2>
+      <p class="short">Read and post page comments</p>
+      <pre>confluence-cli comment</pre>
+      
+      
+      
+    </section>
+    
+    <section class="cmd" id="confluence-cli-comment-add">
+      <h2>confluence-cli comment add</h2>
+      <p class="short">Post a comment on a page</p>
+      <pre>confluence-cli comment add &lt;id|url&gt; [flags]</pre>
+      <p class="long">Post a footer comment on a page. Use --parent to reply to an existing
+comment.</p>
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--body</code></td><td></td><td>comment body text</td></tr>
+        <tr><td><code>--body-file</code></td><td></td><td>read body from a file (&#39;-&#39; for stdin)</td></tr>
+        <tr><td><code>--format</code></td><td><code>storage</code></td><td>body format: storage or wiki</td></tr>
+        <tr><td><code>--parent</code></td><td></td><td>parent comment ID, to post a reply</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre>  confluence-cli comment add 123456 --body &#34;Looks good to me.&#34;
+
+<span class="c">  # reply to a comment, reading the body from stdin</span>
+  echo &#34;Agreed.&#34; | confluence-cli comment add 123456 --parent 789 --body-file -</pre>
+    </section>
+    
+    <section class="cmd" id="confluence-cli-comment-list">
+      <h2>confluence-cli comment list</h2>
+      <p class="short">List the footer comments of a page</p>
+      <pre>confluence-cli comment list &lt;id|url&gt; [flags]</pre>
+      
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--all</code></td><td><code>false</code></td><td>fetch every page of results</td></tr>
+        <tr><td><code>--as</code></td><td><code>markdown</code></td><td>render comment bodies as markdown or text</td></tr>
+        <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre>  confluence-cli comment list 123456
+  confluence-cli comment list 123456 --all --as text</pre>
+    </section>
+    
+    <section class="cmd" id="confluence-cli-config">
+      <h2>confluence-cli config<span class="group-tag">command group</span></h2>
+      <p class="short">Manage confluence-cli configuration</p>
+      <pre>confluence-cli config</pre>
+      
+      
+      
+    </section>
+    
+    <section class="cmd" id="confluence-cli-config-delete-context">
+      <h2>confluence-cli config delete-context</h2>
+      <p class="short">Delete a context and its stored credential</p>
+      <pre>confluence-cli config delete-context &lt;name&gt;</pre>
+      
+      
+      <h3>Examples</h3><pre>  confluence-cli config delete-context staging</pre>
+    </section>
+    
+    <section class="cmd" id="confluence-cli-config-get-contexts">
+      <h2>confluence-cli config get-contexts</h2>
+      <p class="short">List the configured contexts</p>
+      <pre>confluence-cli config get-contexts</pre>
+      <p class="long">List every context in the config file. The current context — the one
+used when --use-context is not given — is marked.</p>
+      
+      <h3>Examples</h3><pre>  confluence-cli config get-contexts
+  confluence-cli config get-contexts --format table</pre>
+    </section>
+    
+    <section class="cmd" id="confluence-cli-config-init">
+      <h2>confluence-cli config init</h2>
+      <p class="short">Interactively set up server URL and credentials</p>
+      <pre>confluence-cli config init</pre>
+      <p class="long">Run the interactive setup wizard. It collects a server URL, detects
+the flavor, validates a credential and stores it. The wizard can also
+configure additional named contexts for working with several servers.</p>
+      
+      <h3>Examples</h3><pre>  confluence-cli config init</pre>
+    </section>
+    
+    <section class="cmd" id="confluence-cli-config-path">
+      <h2>confluence-cli config path</h2>
+      <p class="short">Print the config file path</p>
+      <pre>confluence-cli config path</pre>
+      
+      
+      
+    </section>
+    
+    <section class="cmd" id="confluence-cli-config-show">
+      <h2>confluence-cli config show</h2>
+      <p class="short">Show the resolved configuration</p>
+      <pre>confluence-cli config show [flags]</pre>
+      
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--explain</code></td><td><code>false</code></td><td>annotate each value with its source</td></tr>
+        </tbody>
+      </table>
+      
+    </section>
+    
+    <section class="cmd" id="confluence-cli-config-use-context">
+      <h2>confluence-cli config use-context</h2>
+      <p class="short">Switch the current context</p>
+      <pre>confluence-cli config use-context &lt;name&gt;</pre>
+      <p class="long">Set the current context — the server used by default. Override it for
+a single command with the global --use-context flag instead.</p>
+      
+      <h3>Examples</h3><pre>  confluence-cli config use-context staging</pre>
+    </section>
+    
+    <section class="cmd" id="confluence-cli-doctor">
+      <h2>confluence-cli doctor</h2>
+      <p class="short">Diagnose configuration, credentials and connectivity</p>
+      <pre>confluence-cli doctor [flags]</pre>
+      
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--no-update-check</code></td><td><code>false</code></td><td>skip the check for a newer confluence-cli release</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre>  confluence-cli doctor
+  confluence-cli doctor --no-update-check</pre>
+    </section>
+    
+    <section class="cmd" id="confluence-cli-page">
+      <h2>confluence-cli page<span class="group-tag">command group</span></h2>
+      <p class="short">Read and write Confluence pages</p>
+      <pre>confluence-cli page</pre>
+      
+      
+      
+    </section>
+    
+    <section class="cmd" id="confluence-cli-page-children">
+      <h2>confluence-cli page children</h2>
+      <p class="short">List the direct child pages of a page</p>
+      <pre>confluence-cli page children &lt;id|url&gt; [flags]</pre>
+      
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--all</code></td><td><code>false</code></td><td>fetch every page of results</td></tr>
+        <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre>  confluence-cli page children 123456
+  confluence-cli page children 123456 --all --format table</pre>
+    </section>
+    
+    <section class="cmd" id="confluence-cli-page-copy">
+      <h2>confluence-cli page copy</h2>
+      <p class="short">Copy a page&#39;s title and body to a new page</p>
+      <pre>confluence-cli page copy &lt;id|url&gt; --title &lt;TITLE&gt; [flags]</pre>
+      <p class="long">Create a new page from an existing one. The copy is shallow: it
+carries the title and body only, not child pages or attachments.</p>
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>print the request without sending it</td></tr>
+        <tr><td><code>--parent</code></td><td></td><td>parent page for the copy (default: source parent)</td></tr>
+        <tr><td><code>--space</code></td><td></td><td>space key for the copy (default: source space)</td></tr>
+        <tr><td><code>--title</code></td><td></td><td>title for the copied page</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre>  confluence-cli page copy 123456 --title &#34;Copy of the spec&#34;
+  confluence-cli page copy 123456 --title Draft --space SANDBOX</pre>
+    </section>
+    
+    <section class="cmd" id="confluence-cli-page-create">
+      <h2>confluence-cli page create</h2>
+      <p class="short">Create a new page</p>
+      <pre>confluence-cli page create --space &lt;KEY&gt; --title &lt;TITLE&gt; [flags]</pre>
+      <p class="long">Create a page in a space. Use --parent to nest it under an existing
+page. The body may be storage-format XHTML, Confluence wiki markup or
+Markdown (--format markdown, converted on a best-effort basis).</p>
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--body</code></td><td></td><td>body text</td></tr>
+        <tr><td><code>--body-file</code></td><td></td><td>read body from a file (&#39;-&#39; for stdin)</td></tr>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>print the request without sending it</td></tr>
+        <tr><td><code>--format</code></td><td><code>storage</code></td><td>body format: storage, wiki or markdown</td></tr>
+        <tr><td><code>--parent</code></td><td></td><td>parent page ID or URL</td></tr>
+        <tr><td><code>--space</code></td><td></td><td>space key for the new page</td></tr>
+        <tr><td><code>--title</code></td><td></td><td>page title</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre><span class="c">  # create a page from a Markdown file, nested under a parent</span>
+  confluence-cli page create --space ENG --title &#34;Release Notes&#34; \
+    --parent 123456 --format markdown --body-file notes.md
+
+<span class="c">  # preview the request without sending it</span>
+  confluence-cli page create --space ENG --title Draft --body &#34;&lt;p&gt;hi&lt;/p&gt;&#34; --dry-run</pre>
+    </section>
+    
+    <section class="cmd" id="confluence-cli-page-delete">
+      <h2>confluence-cli page delete</h2>
+      <p class="short">Delete a page (move it to the trash)</p>
+      <pre>confluence-cli page delete &lt;id|url&gt; [flags]</pre>
+      <p class="long">Move a page to the trash. With --purge the trashed page is then
+permanently removed. Deletion requires --yes, or an interactive
+confirmation when stdin is a terminal.</p>
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>print the request without sending it</td></tr>
+        <tr><td><code>--purge</code></td><td><code>false</code></td><td>permanently delete (removes the trashed page)</td></tr>
+        <tr><td><code>--yes</code></td><td><code>false</code></td><td>skip the deletion confirmation</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre>  confluence-cli page delete 123456 --yes
+  confluence-cli page delete 123456 --purge --yes</pre>
+    </section>
+    
+    <section class="cmd" id="confluence-cli-page-descendants">
+      <h2>confluence-cli page descendants</h2>
+      <p class="short">List all descendant pages of a page</p>
+      <pre>confluence-cli page descendants &lt;id|url&gt; [flags]</pre>
+      
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--all</code></td><td><code>false</code></td><td>fetch every page of results</td></tr>
+        <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre>  confluence-cli page descendants 123456 --all</pre>
+    </section>
+    
+    <section class="cmd" id="confluence-cli-page-get">
+      <h2>confluence-cli page get</h2>
+      <p class="short">Fetch a page and render its body</p>
+      <pre>confluence-cli page get &lt;id|url&gt; [flags]</pre>
+      <p class="long">Fetch a single page. Use --scope to read only part of the body:
+  outline  list the headings (start here when the structure is unknown)
+  section  one section, identified by --section &lt;id&gt; from the outline
+  keyword  blocks matching --keyword, with their heading for context
+  full     the entire body (default)</p>
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--as</code></td><td><code>markdown</code></td><td>render body as markdown or text</td></tr>
+        <tr><td><code>--body-format</code></td><td><code>storage</code></td><td>source body format: storage or view</td></tr>
+        <tr><td><code>--detail</code></td><td><code>simple</code></td><td>block detail: simple, with-ids or full</td></tr>
+        <tr><td><code>--keyword</code></td><td></td><td>keyword (with --scope keyword)</td></tr>
+        <tr><td><code>--no-body</code></td><td><code>false</code></td><td>fetch metadata only, skip the body</td></tr>
+        <tr><td><code>--scope</code></td><td><code>full</code></td><td>read scope: full, outline, section or keyword</td></tr>
+        <tr><td><code>--section</code></td><td></td><td>section ID (with --scope section)</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre><span class="c">  # render the whole page as Markdown</span>
+  confluence-cli page get 123456
+
+<span class="c">  # list the headings, then read just one section</span>
+  confluence-cli page get 123456 --scope outline
+  confluence-cli page get 123456 --scope section --section sec-2
+
+<span class="c">  # a page URL works in place of an ID</span>
+  confluence-cli page get https://wiki.example.com/pages/viewpage.action?pageId=123456</pre>
+    </section>
+    
+    <section class="cmd" id="confluence-cli-page-move">
+      <h2>confluence-cli page move</h2>
+      <p class="short">Move a page under a new parent and/or space</p>
+      <pre>confluence-cli page move &lt;id|url&gt; [flags]</pre>
+      
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>print the request without sending it</td></tr>
+        <tr><td><code>--target-parent</code></td><td></td><td>new parent page ID or URL</td></tr>
+        <tr><td><code>--target-space</code></td><td></td><td>new space key</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre><span class="c">  # reparent a page</span>
+  confluence-cli page move 123456 --target-parent 999
+
+<span class="c">  # move a page into another space</span>
+  confluence-cli page move 123456 --target-space DOCS</pre>
+    </section>
+    
+    <section class="cmd" id="confluence-cli-page-update">
+      <h2>confluence-cli page update</h2>
+      <p class="short">Update a page&#39;s title and/or body</p>
+      <pre>confluence-cli page update &lt;id|url&gt; [flags]</pre>
+      <p class="long">Update an existing page. Omitted fields are kept as-is. The new
+version is the current version &#43; 1; pass --version to assert the
+version you last read (a mismatch fails with a conflict error).</p>
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--body</code></td><td></td><td>body text</td></tr>
+        <tr><td><code>--body-file</code></td><td></td><td>read body from a file (&#39;-&#39; for stdin)</td></tr>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>print the request without sending it</td></tr>
+        <tr><td><code>--format</code></td><td><code>storage</code></td><td>body format: storage, wiki or markdown</td></tr>
+        <tr><td><code>--message</code></td><td></td><td>version comment for the edit</td></tr>
+        <tr><td><code>--minor</code></td><td><code>false</code></td><td>mark the edit as minor</td></tr>
+        <tr><td><code>--title</code></td><td></td><td>new page title (kept when omitted)</td></tr>
+        <tr><td><code>--version</code></td><td><code>0</code></td><td>expected current version (fetched when omitted)</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre><span class="c">  # retitle a page, keeping its body</span>
+  confluence-cli page update 123456 --title &#34;New Title&#34;
+
+<span class="c">  # replace the body from Markdown, asserting the version last read</span>
+  confluence-cli page update 123456 --format markdown --body-file body.md --version 7</pre>
+    </section>
+    
+    <section class="cmd" id="confluence-cli-search">
+      <h2>confluence-cli search</h2>
+      <p class="short">Search pages with CQL or filter flags</p>
+      <pre>confluence-cli search [cql] [flags]</pre>
+      <p class="long">Search Confluence content. Provide a raw CQL string as the argument,
+or build one from filter flags (--text, --author, --space, ...).</p>
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--after</code></td><td></td><td>modified on/after date, e.g. 2025-01-01</td></tr>
+        <tr><td><code>--all</code></td><td><code>false</code></td><td>fetch every page of results</td></tr>
+        <tr><td><code>--author</code></td><td></td><td>original creator (CQL: creator =)</td></tr>
+        <tr><td><code>--before</code></td><td></td><td>modified on/before date, e.g. 2025-12-31</td></tr>
+        <tr><td><code>--contributor</code></td><td></td><td>any contributor (CQL: contributor =)</td></tr>
+        <tr><td><code>--label</code></td><td></td><td>label (CQL: label =)</td></tr>
+        <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
+        <tr><td><code>--space</code></td><td></td><td>space key (CQL: space =)</td></tr>
+        <tr><td><code>--text</code></td><td></td><td>free-text match (CQL: text ~)</td></tr>
+        <tr><td><code>--type</code></td><td></td><td>content type: page, blogpost, comment, attachment</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre><span class="c">  # filter flags are combined into a CQL query</span>
+  confluence-cli search --text &#34;release process&#34; --space ENG --type page
+
+<span class="c">  # or pass raw CQL directly</span>
+  confluence-cli search &#39;creator = &#34;jdoe&#34; AND created &gt;= &#34;2025-01-01&#34;&#39; --all</pre>
+    </section>
+    
+    <section class="cmd" id="confluence-cli-skill">
+      <h2>confluence-cli skill<span class="group-tag">command group</span></h2>
+      <p class="short">Install the companion Skill for coding agents (Claude Code, Codex)</p>
+      <pre>confluence-cli skill</pre>
+      
+      
+      
+    </section>
+    
+    <section class="cmd" id="confluence-cli-skill-install">
+      <h2>confluence-cli skill install</h2>
+      <p class="short">Deploy the embedded Skill into a coding agent&#39;s skills directory</p>
+      <pre>confluence-cli skill install [flags]</pre>
+      <p class="long">Write the companion `confluence` Skill — bundled inside this binary —
+into a coding agent&#39;s skills directory. With no flags it probes for
+installed agents (Claude Code, Codex) and installs into each one found.
+Re-run it after upgrading the CLI to refresh the Skill to the matching
+version.</p>
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--agent</code></td><td><code>[]</code></td><td>target agents instead of auto-detecting (claude-code, codex)</td></tr>
+        <tr><td><code>--dir</code></td><td></td><td>explicit skills base directory; installs into &lt;dir&gt;/confluence</td></tr>
+        <tr><td><code>--project</code></td><td><code>false</code></td><td>install into the project (./.claude/skills, ./.agents/skills) instead of $HOME</td></tr>
+        </tbody>
+      </table>
+      
+    </section>
+    
+    <section class="cmd" id="confluence-cli-skill-path">
+      <h2>confluence-cli skill path</h2>
+      <p class="short">Print where the Skill would be installed, and whether it is</p>
+      <pre>confluence-cli skill path [flags]</pre>
+      
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--agent</code></td><td><code>[]</code></td><td>limit to specific agents (claude-code, codex)</td></tr>
+        <tr><td><code>--dir</code></td><td></td><td>explicit skills base directory</td></tr>
+        <tr><td><code>--project</code></td><td><code>false</code></td><td>use the project skills directories instead of $HOME</td></tr>
+        </tbody>
+      </table>
+      
+    </section>
+    
+    <section class="cmd" id="confluence-cli-skill-show">
+      <h2>confluence-cli skill show</h2>
+      <p class="short">Print the embedded SKILL.md to stdout</p>
+      <pre>confluence-cli skill show</pre>
+      
+      
+      
+    </section>
+    
+    <section class="cmd" id="confluence-cli-skill-uninstall">
+      <h2>confluence-cli skill uninstall</h2>
+      <p class="short">Remove the companion Skill from a coding agent&#39;s skills directory</p>
+      <pre>confluence-cli skill uninstall [flags]</pre>
+      <p class="long">Delete a previously installed `confluence` Skill. With no flags it
+probes for installed agents (Claude Code, Codex) and removes the Skill
+from each one found.</p>
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--agent</code></td><td><code>[]</code></td><td>target agents instead of auto-detecting (claude-code, codex)</td></tr>
+        <tr><td><code>--dir</code></td><td></td><td>explicit skills base directory; removes &lt;dir&gt;/confluence</td></tr>
+        <tr><td><code>--project</code></td><td><code>false</code></td><td>remove from the project (./.claude/skills, ./.agents/skills) instead of $HOME</td></tr>
+        </tbody>
+      </table>
+      
+    </section>
+    
+    <section class="cmd" id="confluence-cli-space">
+      <h2>confluence-cli space<span class="group-tag">command group</span></h2>
+      <p class="short">List and inspect Confluence spaces</p>
+      <pre>confluence-cli space</pre>
+      
+      
+      
+    </section>
+    
+    <section class="cmd" id="confluence-cli-space-get">
+      <h2>confluence-cli space get</h2>
+      <p class="short">Fetch a single space by key</p>
+      <pre>confluence-cli space get &lt;key&gt;</pre>
+      
+      
+      
+    </section>
+    
+    <section class="cmd" id="confluence-cli-space-list">
+      <h2>confluence-cli space list</h2>
+      <p class="short">List spaces</p>
+      <pre>confluence-cli space list [flags]</pre>
+      
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--all</code></td><td><code>false</code></td><td>fetch every page of results</td></tr>
+        <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
+        <tr><td><code>--type</code></td><td></td><td>filter by type: global or personal</td></tr>
+        </tbody>
+      </table>
+      
+    </section>
+    
+    <section class="cmd" id="confluence-cli-version">
+      <h2>confluence-cli version</h2>
+      <p class="short">Print version information</p>
+      <pre>confluence-cli version</pre>
+      
+      
+      
+    </section>
+    
+  </main>
+</div>
+<footer>confluence-cli — released under the MIT License.</footer>
+</body>
+</html>

@@ -9,10 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- A generated CLI reference under `docs/cli/`, published to GitHub Pages.
-  `cmd/gen-docs` renders every command — flags, defaults and examples — from
-  the cobra command tree, so the docs always match `--help`. `make docs`
-  regenerates it and CI fails if the committed output drifts.
+- A generated CLI reference. `cmd/gen-docs` renders the cobra command tree
+  into a single styled HTML page (`docs/cli/index.html`, served by GitHub
+  Pages with a per-module sidebar and flag/example tables) and a
+  module-grouped Markdown index (`docs/cli/README.md`). Both come from the
+  same command tree, so they always match `--help`; `make docs` regenerates
+  them and CI fails if the committed output drifts.
 - `Example` sections on the common commands, shown in both `--help` and the
   generated reference.
 
