@@ -103,12 +103,30 @@ keychain (with a `0600` file fallback) and never written to the config file.
 |---------|---------|
 | `page get` | fetch a page; render body with `--scope`/`--detail`/`--as` |
 | `page children` / `page descendants` | browse the page tree |
+| `page create` / `update` / `delete` / `move` / `copy` | write pages; `--dry-run` previews, `delete` needs `--yes` |
 | `search` | CQL search, raw or built from `--text`/`--author`/`--space`/... |
 | `space list` / `space get` | inspect spaces |
-| `comment list` / `comment add` | read or post comments (`add` is the only write) |
+| `comment list` / `comment add` | read or post comments |
 | `attachment list` / `attachment download` | inspect and fetch attachments |
 | `skill install` / `skill uninstall` | deploy or remove the embedded companion Skill (Claude Code, Codex) |
+| `config get-contexts` / `use-context` / `delete-context` | manage multiple named servers |
 | `config` / `auth` / `doctor` / `version` | setup and diagnostics |
+
+### Multiple servers (contexts)
+
+A single config file can hold several Confluence servers as named *contexts*.
+Most users need only one and never see the concept — `config init` configures a
+`default` context and the flow is unchanged. To work with more than one server,
+answer "yes" when `config init` asks to add another context, then:
+
+```bash
+confluence-cli config get-contexts          # list contexts, current marked
+confluence-cli config use-context prod      # switch the current context
+confluence-cli --use-context prod page get 123   # override for one command
+```
+
+`CONFLUENCE_CONTEXT` overrides the current context via the environment. Legacy
+single-server config files are read unchanged.
 
 ## Development
 

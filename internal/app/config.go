@@ -12,12 +12,24 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// contextRow is the result shape for `config get-contexts`.
+type contextRow struct {
+	Current    bool   `json:"current"`
+	Name       string `json:"name"`
+	Server     string `json:"server,omitempty"`
+	Flavor     string `json:"flavor,omitempty"`
+	AuthScheme string `json:"auth_scheme,omitempty"`
+}
+
 func newConfigCmd(s *appState) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
 		Short: "Manage confluence-cli configuration",
 	}
-	cmd.AddCommand(newConfigInitCmd(s), newConfigShowCmd(s), newConfigPathCmd(s))
+	cmd.AddCommand(
+		newConfigInitCmd(s), newConfigShowCmd(s), newConfigPathCmd(s),
+		newConfigGetContextsCmd(s), newConfigUseContextCmd(s), newConfigDeleteContextCmd(s),
+	)
 	return cmd
 }
 
@@ -30,17 +42,25 @@ func newConfigInitCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return cerrors.Wrap(err, cerrors.CategoryConfig, "INIT_ABORTED", err.Error())
 			}
-			if err := config.WriteConfigFile(s.cfgDir, result.Config); err != nil {
+			if err := config.WriteFile(s.cfgDir, result.File); err != nil {
 				return cerrors.Wrap(err, cerrors.CategoryConfig, "CONFIG_WRITE",
 					"failed to write the config file")
 			}
-			cred := credentialFrom(result.Config, result.Secrets)
-			backend, err := auth.Save(result.Config.BaseURL, cred, s.store)
-			if err != nil {
-				return err
-			}
 			fmt.Fprintf(os.Stdout, "\nConfiguration saved to %s\n", config.ConfigFilePath(s.cfgDir))
-			fmt.Fprintf(os.Stdout, "Credential stored in the %s.\n", backend)
+			multi := len(result.Creds) > 1
+			for _, cr := range result.Creds {
+				cred := credentialFromContext(cr.Context, cr.Secrets)
+				backend, err := auth.Save(cr.Context.BaseURL, cred, s.store)
+				if err != nil {
+					return err
+				}
+				if multi {
+					fmt.Fprintf(os.Stdout, "  context %q: credential stored in the %s\n",
+						cr.Context.Name, backend)
+				} else {
+					fmt.Fprintf(os.Stdout, "Credential stored in the %s.\n", backend)
+				}
+			}
 			fmt.Fprintln(os.Stdout, "\nNext steps:")
 			for _, step := range config.SuggestedNextSteps() {
 				fmt.Fprintf(os.Stdout, "  %s\n", step)
@@ -72,6 +92,11 @@ func newConfigShowCmd(s *appState) *cobra.Command {
 				view["flavor"] = explained(cfg.Flavor, src, config.FieldFlavor)
 				view["format"] = explained(cfg.Defaults.Format, src, config.FieldFormat)
 			}
+			// Surface the context only when more than one is configured, so
+			// single-context users never see the concept.
+			if len(s.resolved.ContextNames) > 1 {
+				view["context"] = s.resolved.ActiveContext
+			}
 			return s.emit(view)
 		},
 	}
@@ -96,8 +121,18 @@ func newConfigPathCmd(s *appState) *cobra.Command {
 
 // credentialFrom builds a Credential from a config + secrets pair.
 func credentialFrom(cfg config.Config, secrets config.Secrets) auth.Credential {
-	cred := auth.Credential{Scheme: cfg.Auth.Scheme, Username: cfg.Auth.Username}
-	switch cfg.Auth.Scheme {
+	return credentialOf(cfg.Auth, secrets)
+}
+
+// credentialFromContext builds a Credential for a single named context.
+func credentialFromContext(nc config.NamedContext, secrets config.Secrets) auth.Credential {
+	return credentialOf(nc.Auth, secrets)
+}
+
+// credentialOf builds a Credential from auth settings and transient secrets.
+func credentialOf(ac config.AuthConfig, secrets config.Secrets) auth.Credential {
+	cred := auth.Credential{Scheme: ac.Scheme, Username: ac.Username}
+	switch ac.Scheme {
 	case auth.SchemePAT:
 		cred.Secret = secrets.PAT
 	case auth.SchemeBasic:
@@ -108,6 +143,126 @@ func credentialFrom(cfg config.Config, secrets config.Secrets) auth.Credential {
 		}
 	}
 	return cred
+}
+
+// readConfigFile loads the config file for the context subcommands, mapping a
+// missing file to a clear error.
+func readConfigFile(s *appState) (config.File, error) {
+	file, exists, err := config.ReadFile(s.cfgDir)
+	if err != nil {
+		return config.File{}, cerrors.Wrap(err, cerrors.CategoryConfig, "CONFIG_READ",
+			"failed to read the config file")
+	}
+	if !exists || len(file.Contexts) == 0 {
+		return config.File{}, cerrors.New(cerrors.CategoryConfig, "NO_CONFIG",
+			"no configured contexts").
+			WithHint("Run `confluence-cli config init` to create one.")
+	}
+	return file, nil
+}
+
+func newConfigGetContextsCmd(s *appState) *cobra.Command {
+	return &cobra.Command{
+		Use:   "get-contexts",
+		Short: "List the configured contexts",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			file, _, err := config.ReadFile(s.cfgDir)
+			if err != nil {
+				return cerrors.Wrap(err, cerrors.CategoryConfig, "CONFIG_READ",
+					"failed to read the config file")
+			}
+			rows := make([]contextRow, 0, len(file.Contexts))
+			for _, c := range file.Contexts {
+				rows = append(rows, contextRow{
+					Current:    c.Name == file.CurrentContext,
+					Name:       c.Name,
+					Server:     c.BaseURL,
+					Flavor:     c.Flavor,
+					AuthScheme: c.Auth.Scheme,
+				})
+			}
+			return s.emit(rows)
+		},
+	}
+}
+
+func newConfigUseContextCmd(s *appState) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "use-context <name>",
+		Short: "Switch the current context",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			name := args[0]
+			file, err := readConfigFile(s)
+			if err != nil {
+				return err
+			}
+			if _, ok := file.Context(name); !ok {
+				return cerrors.Newf(cerrors.CategoryConfig, "UNKNOWN_CONTEXT",
+					"context %q is not defined", name).
+					WithHint("Run `confluence-cli config get-contexts` to list defined contexts.")
+			}
+			file.CurrentContext = name
+			if err := config.WriteFile(s.cfgDir, file); err != nil {
+				return cerrors.Wrap(err, cerrors.CategoryConfig, "CONFIG_WRITE",
+					"failed to write the config file")
+			}
+			fmt.Fprintf(os.Stdout, "Switched to context %q.\n", name)
+			return nil
+		},
+	}
+	cmd.ValidArgsFunction = completeContextNames(s)
+	return cmd
+}
+
+func newConfigDeleteContextCmd(s *appState) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "delete-context <name>",
+		Short: "Delete a context and its stored credential",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			name := args[0]
+			file, err := readConfigFile(s)
+			if err != nil {
+				return err
+			}
+			target, ok := file.Context(name)
+			if !ok {
+				return cerrors.Newf(cerrors.CategoryConfig, "UNKNOWN_CONTEXT",
+					"context %q is not defined", name).
+					WithHint("Run `confluence-cli config get-contexts` to list defined contexts.")
+			}
+			if len(file.Contexts) == 1 {
+				return cerrors.New(cerrors.CategoryUsage, "LAST_CONTEXT",
+					"cannot delete the only context")
+			}
+			scheme := target.Auth.Scheme
+			if scheme == "" {
+				scheme = auth.SchemePAT
+			}
+			_ = auth.Forget(target.BaseURL, scheme, s.store)
+
+			kept := file.Contexts[:0]
+			for _, c := range file.Contexts {
+				if c.Name != name {
+					kept = append(kept, c)
+				}
+			}
+			file.Contexts = kept
+			if file.CurrentContext == name {
+				file.CurrentContext = file.Contexts[0].Name
+			}
+			if err := config.WriteFile(s.cfgDir, file); err != nil {
+				return cerrors.Wrap(err, cerrors.CategoryConfig, "CONFIG_WRITE",
+					"failed to write the config file")
+			}
+			fmt.Fprintf(os.Stdout, "Deleted context %q.\n", name)
+			return nil
+		},
+	}
+	cmd.ValidArgsFunction = completeContextNames(s)
+	return cmd
 }
 
 // wizardHooks builds the live detection / validation callbacks for `config init`.

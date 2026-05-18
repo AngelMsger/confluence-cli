@@ -14,6 +14,7 @@ const (
 	ExitNetwork    = 8
 	ExitServer     = 9
 	ExitParse      = 10
+	ExitConflict   = 11
 )
 
 // ExitCode returns the process exit code for an error. A nil error yields
@@ -34,6 +35,8 @@ func ExitCode(err error) int {
 		return ExitPermission
 	case CategoryNotFound:
 		return ExitNotFound
+	case CategoryConflict:
+		return ExitConflict
 	case CategoryRateLimit:
 		return ExitRateLimit
 	case CategoryNetwork:
@@ -57,6 +60,8 @@ func FromHTTPStatus(status int) Category {
 		return CategoryPermission
 	case status == 404:
 		return CategoryNotFound
+	case status == 409:
+		return CategoryConflict
 	case status == 429:
 		return CategoryRateLimit
 	case status >= 500:

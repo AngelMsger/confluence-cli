@@ -99,6 +99,19 @@ assert_contains  "space list table"       "ENG"            "${CLI[@]}" space lis
 assert_contains  "space get"              "Engineering"    "${CLI[@]}" space get ENG
 assert_contains  "comment list"           "First comment"  "${CLI[@]}" comment list 123
 assert_contains  "comment add"            "new-comment"    "${CLI[@]}" comment add 123 --body "looks good"
+assert_contains  "page create"            "new-page"       "${CLI[@]}" page create --space ENG --title "Spec" --body "<p>hi</p>"
+assert_contains  "page create dry-run"    '"dry_run": true' \
+                                          "${CLI[@]}" page create --space ENG --title "X" --body "<p>x</p>" --dry-run
+assert_contains  "page create markdown"   "<h1>Title</h1>" \
+                                          "${CLI[@]}" page create --space ENG --title "MD" --format markdown --body "# Title" --dry-run
+assert_contains  "page update"            '"number": 3'    "${CLI[@]}" page update 123 --title "Renamed" --version 2
+assert_exit      "page update conflict -> 11" 11           "${CLI[@]}" page update 409 --title "X"
+assert_exit      "page delete needs --yes -> 2" 2          "${CLI[@]}" page delete 123 </dev/null
+assert_contains  "page delete --yes"      "trashed"        "${CLI[@]}" page delete 123 --yes
+assert_contains  "page move dry-run"      '"dry_run": true' \
+                                          "${CLI[@]}" page move 123 --target-parent 201 --dry-run
+assert_contains  "page move"              '"id"'           "${CLI[@]}" page move 123 --target-parent 201
+assert_contains  "page copy"              "new-page"       "${CLI[@]}" page copy 123 --title "Copy of Welcome"
 assert_contains  "attachment list"        "spec.txt"       "${CLI[@]}" attachment list 123
 assert_contains  "attachment download"    "attachment payload" \
                                           "${CLI[@]}" attachment download att1 --output -
@@ -115,6 +128,33 @@ assert_contains  "skill uninstall (repeat)" "not installed" \
 assert_contains  "skill show"             "name: confluence" "${CLI[@]}" skill show
 assert_exit      "missing page -> 6"      6                "${CLI[@]}" page get 404
 assert_exit      "bad flag -> 2"          2                "${CLI[@]}" page get 123 --bogus
+
+echo "==> multi-context checks"
+TMPCFG2="$(mktemp -d)"
+cat >"$TMPCFG2/config.yaml" <<EOF
+current_context: default
+contexts:
+  - name: default
+    server: $MOCK_URL
+    flavor: datacenter
+    auth: {scheme: pat}
+  - name: alt
+    server: $MOCK_URL
+    flavor: datacenter
+    auth: {scheme: pat}
+defaults:
+  format: json
+EOF
+CLI2=("$BIN" --config "$TMPCFG2")
+assert_contains  "get-contexts lists default" "default"      "${CLI2[@]}" config get-contexts
+assert_contains  "get-contexts lists alt"     "alt"          "${CLI2[@]}" config get-contexts
+assert_ok        "use-context alt"                           "${CLI2[@]}" config use-context alt
+assert_exit      "unknown context -> 3"       3              "${CLI2[@]}" --use-context ghost doctor
+assert_contains  "--use-context selects ctx"  '"healthy": true' \
+                                              "${CLI2[@]}" --use-context default doctor
+assert_contains  "config show exposes context" '"context"'  "${CLI2[@]}" config show
+assert_ok        "delete-context alt"                        "${CLI2[@]}" config delete-context alt
+assert_exit      "delete last context -> 2"   2              "${CLI2[@]}" config delete-context default
 
 if [[ "${CONFLUENCE_E2E_LIVE:-0}" == "1" ]]; then
   echo "==> live read-only checks (real server from .env)"

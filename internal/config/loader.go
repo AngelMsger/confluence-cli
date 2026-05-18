@@ -1,5 +1,12 @@
 package config
 
+import (
+	"os"
+	"strconv"
+
+	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
+)
+
 // FlagValues carries the global CLI flags that override configuration. Empty
 // fields are ignored (not treated as overrides).
 type FlagValues struct {
@@ -27,11 +34,73 @@ type LoadOptions struct {
 	DotenvPath string
 	// Flags carries global flag overrides (highest precedence).
 	Flags FlagValues
+	// Context selects a named context (from the --use-context flag). It wins
+	// over CONFLUENCE_CONTEXT and the file's current_context.
+	Context string
 }
 
 type namedLayer struct {
 	name string
 	data map[string]string
+}
+
+// selectContext picks the active context name for f. Precedence: the flag, the
+// CONFLUENCE_CONTEXT env var, the file's current_context, the sole context,
+// then a context literally named "default". It returns "" (no error) when no
+// context can or need be selected — a missing file, or an ambiguous
+// multi-context file with no current_context; the missing-server error is then
+// raised later, at the point a server is actually needed. An override naming a
+// context that does not exist is an error.
+func selectContext(f File, flagCtx, envCtx string) (string, error) {
+	pick := func(name, src string) (string, error) {
+		if _, ok := f.Context(name); !ok {
+			return "", cerrors.Newf(cerrors.CategoryConfig, "UNKNOWN_CONTEXT",
+				"context %q (from %s) is not defined in the config file", name, src).
+				WithHint("Run `confluence-cli config get-contexts` to list defined contexts.")
+		}
+		return name, nil
+	}
+	switch {
+	case flagCtx != "":
+		return pick(flagCtx, "--use-context")
+	case envCtx != "":
+		return pick(envCtx, "CONFLUENCE_CONTEXT")
+	case f.CurrentContext != "":
+		return pick(f.CurrentContext, "current_context")
+	case len(f.Contexts) == 1:
+		return f.Contexts[0].Name, nil
+	default:
+		if _, ok := f.Context(DefaultContextName); ok {
+			return DefaultContextName, nil
+		}
+		return "", nil
+	}
+}
+
+// buildFileLayer flattens the active context's fields plus the shared runtime
+// defaults into a layer map. An empty ctxName yields just the defaults.
+func buildFileLayer(f File, ctxName string) map[string]string {
+	m := map[string]string{}
+	if ctxName != "" {
+		if c, ok := f.Context(ctxName); ok {
+			put(m, fieldServer, c.BaseURL)
+			put(m, fieldFlavor, c.Flavor)
+			put(m, fieldDetectedFlavor, c.DetectedFlavor)
+			put(m, fieldAuthScheme, c.Auth.Scheme)
+			put(m, fieldAuthUsername, c.Auth.Username)
+		}
+	}
+	put(m, fieldFormat, f.Defaults.Format)
+	if f.Defaults.PageSize > 0 {
+		m[fieldPageSize] = strconv.Itoa(f.Defaults.PageSize)
+	}
+	if f.Defaults.Timeout > 0 {
+		m[fieldTimeout] = f.Defaults.Timeout.String()
+	}
+	if f.Defaults.MaxRetries > 0 {
+		m[fieldMaxRetries] = strconv.Itoa(f.Defaults.MaxRetries)
+	}
+	return m
 }
 
 // Load resolves configuration from all sources and returns the merged result
@@ -45,10 +114,16 @@ func Load(opt LoadOptions) (*Resolved, error) {
 		}
 		dir = d
 	}
-	fileLayer, err := readFileLayer(ConfigFilePath(dir))
+	file, _, err := ReadFile(dir)
 	if err != nil {
 		return nil, err
 	}
+	ctxName, err := selectContext(file, opt.Context, os.Getenv("CONFLUENCE_CONTEXT"))
+	if err != nil {
+		return nil, err
+	}
+	fileLayer := buildFileLayer(file, ctxName)
+
 	dotenvPath := opt.DotenvPath
 	if dotenvPath == "" {
 		dotenvPath = ".env"
@@ -83,7 +158,9 @@ func Load(opt LoadOptions) (*Resolved, error) {
 			Password: merged[fieldPassword],
 			APIToken: merged[fieldAPIToken],
 		},
-		Sources: sources,
+		Sources:       sources,
+		ActiveContext: ctxName,
+		ContextNames:  file.ContextNames(),
 	}, nil
 }
 

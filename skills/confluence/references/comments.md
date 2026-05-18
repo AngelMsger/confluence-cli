@@ -11,11 +11,11 @@ Returns each footer comment with `id`, `page_id`, `parent_id` (set on replies),
 `url`, `version` and a rendered `body`. Paginates like other list commands —
 `--all` for every page, `--limit N` to size requests.
 
-## Posting a comment — the only write operation
+## Posting a comment
 
-`comment add` is the **only** command that modifies Confluence. Every other
-command is read-only. Before calling it, make sure the user actually asked to
-post a comment — do not post speculatively.
+`comment add` writes to Confluence. Before calling it, make sure the user
+actually asked to post a comment — do not post speculatively. For page writes
+(create / update / delete / move / copy) see [writing-pages.md](writing-pages.md).
 
 ```bash
 # inline body

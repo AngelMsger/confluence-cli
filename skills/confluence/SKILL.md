@@ -1,7 +1,7 @@
 ---
 name: confluence
-version: 1.0.0
-description: "Use a Confluence wiki as an external knowledge base. Search, read and summarise Confluence pages, browse spaces and page trees, read and post comments. Use this skill when the user gives a Confluence page URL or ID, mentions a Confluence/wiki page, asks to find or look up something in Confluence, asks to read/summarise/extract a Confluence page, browse a space, list child pages, read page comments, or post a comment. Works with both Confluence Cloud and Confluence Data Center / Server."
+version: 1.2.0
+description: "Use a Confluence wiki as an external knowledge base. Search, read and summarise Confluence pages, browse spaces and page trees, create and edit pages, read and post comments. Use this skill when the user gives a Confluence page URL or ID, mentions a Confluence/wiki page, asks to find or look up something in Confluence, asks to read/summarise/extract a Confluence page, browse a space, list child pages, create/update/delete/move/copy a page, read page comments, or post a comment. Works with both Confluence Cloud and Confluence Data Center / Server."
 metadata:
   requires:
     bins: ["confluence-cli"]
@@ -10,8 +10,9 @@ metadata:
 
 # confluence
 
-`confluence-cli` reads a Confluence instance for you. Output is JSON by default;
-errors are JSON on stderr with a `category`, a `hint` and `next_steps`.
+`confluence-cli` reads and writes a Confluence instance for you. Output is JSON
+by default; errors are JSON on stderr with a `category`, a `hint` and
+`next_steps`.
 
 ## Golden rule — resolve to an ID first
 
@@ -27,6 +28,8 @@ guess an ID — run `confluence-cli search` first, then act on the ID from the h
 - User describes a topic / keywords but no ID → `confluence-cli search`
   (see [searching-cql.md](references/searching-cql.md)), then `page get`.
 - User wants the structure under a page → `page children` / `page descendants`.
+- User wants to **create, edit, delete, move or copy** a page → `page create` /
+  `update` / `delete` / `move` / `copy` (see [writing-pages.md](references/writing-pages.md)).
 - User wants the **comments** on a page → `comment list`; to post one →
   `comment add` (see [comments.md](references/comments.md)).
 - User wants files on a page → `attachment list` / `attachment download`
@@ -41,11 +44,16 @@ guess an ID — run `confluence-cli search` first, then act on the ID from the h
 confluence-cli page get <id|url>          # fetch + render a page body
 confluence-cli page children <id|url>     # direct child pages
 confluence-cli page descendants <id|url>  # all descendant pages
+confluence-cli page create                # create a page (--space --title)
+confluence-cli page update <id|url>       # edit a page's title / body
+confluence-cli page delete <id|url>       # trash a page (needs --yes)
+confluence-cli page move <id|url>         # reparent / move to another space
+confluence-cli page copy <id|url>         # shallow-copy a page
 confluence-cli search [cql]               # CQL search, or use --text/--author/...
 confluence-cli space list                 # list spaces
 confluence-cli space get <key>            # one space
 confluence-cli comment list <id|url>      # page comments
-confluence-cli comment add <id|url>       # post a comment (only write command)
+confluence-cli comment add <id|url>       # post a comment
 confluence-cli attachment list <id|url>   # page attachments
 confluence-cli attachment download <id>   # download an attachment
 confluence-cli config init|show           # configuration
@@ -77,4 +85,5 @@ large outputs use `--format ndjson` (one JSON object per line).
 ## Global flags
 
 `--format json|table|ndjson` · `--fields a,b.c` (project fields) ·
-`--base-url` · `--flavor cloud|datacenter` · `--config <dir>` · `--verbose`
+`--base-url` · `--flavor cloud|datacenter` · `--config <dir>` ·
+`--use-context <name>` (pick a named server) · `--verbose`

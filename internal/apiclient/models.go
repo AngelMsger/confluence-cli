@@ -135,3 +135,62 @@ type DownloadMeta struct {
 	ContentType string `json:"content_type,omitempty"`
 	Bytes       int64  `json:"bytes"`
 }
+
+// PageBody is body content in a single representation for a write request.
+// Format is "storage" (XHTML, default) or "wiki" (wiki markup, converted
+// server-side). Markdown input is lowered to storage by the caller.
+type PageBody struct {
+	Value  string
+	Format string
+}
+
+// CreatePageReq is a request to create a page.
+type CreatePageReq struct {
+	SpaceKey string
+	Title    string
+	ParentID string // optional: place the page under this parent
+	Body     PageBody
+}
+
+// UpdatePageReq is a request to update a page. An empty Title keeps the
+// current title; a nil Body keeps the current body. ExpectVersion 0 makes the
+// client fetch the current version before updating; a non-zero value asserts
+// the version the caller last read.
+type UpdatePageReq struct {
+	ID            string
+	Title         string
+	Body          *PageBody
+	ExpectVersion int
+	Minor         bool
+	Message       string
+}
+
+// DeletePageReq is a request to delete a page. Purge permanently removes the
+// page (it is trashed first when not already trashed).
+type DeletePageReq struct {
+	ID    string
+	Purge bool
+}
+
+// MovePageReq is a request to move a page under a new parent and/or space.
+type MovePageReq struct {
+	ID           string
+	TargetParent string // optional
+	TargetSpace  string // optional
+}
+
+// CopyPageReq is a request to copy a page's title and body into a new page.
+type CopyPageReq struct {
+	SourceID string
+	Title    string
+	SpaceKey string // optional, default = source page's space
+	ParentID string // optional, default = source page's parent
+}
+
+// WriteRequestPlan describes the HTTP request a write operation would send,
+// without sending it. It is used to render --dry-run previews.
+type WriteRequestPlan struct {
+	Method  string `json:"method"`
+	URL     string `json:"url"`
+	Payload any    `json:"payload,omitempty"`
+}

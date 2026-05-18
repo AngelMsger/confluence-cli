@@ -26,6 +26,13 @@ type Client interface {
 	ListChildren(ctx context.Context, id string, opt ListOpts) (ListResult[Page], error)
 	ListDescendants(ctx context.Context, id string, opt ListOpts) (ListResult[Page], error)
 
+	CreatePage(ctx context.Context, req CreatePageReq) (*Page, error)
+	UpdatePage(ctx context.Context, req UpdatePageReq) (*Page, error)
+	DeletePage(ctx context.Context, req DeletePageReq) error
+	MovePage(ctx context.Context, req MovePageReq) (*Page, error)
+	CopyPage(ctx context.Context, req CopyPageReq) (*Page, error)
+	DescribeWrite(ctx context.Context, op any) (WriteRequestPlan, error)
+
 	Search(ctx context.Context, cql string, opt ListOpts) (ListResult[SearchHit], error)
 
 	ListSpaces(ctx context.Context, opt SpaceListOpts) (ListResult[Space], error)
@@ -146,6 +153,15 @@ func (c *apiClient) httpError(resp *http.Response) error {
 	msg := fmt.Sprintf("Confluence returned HTTP %d", resp.StatusCode)
 	if detail := extractAPIMessage(snippet); detail != "" {
 		msg += ": " + detail
+	}
+	if resp.StatusCode == http.StatusConflict {
+		return cerrors.New(cat, "PAGE_VERSION_CONFLICT",
+			msg+" — the page changed since it was last read").
+			WithHTTPStatus(resp.StatusCode).
+			WithHint("Re-fetch the page to get its current version, then retry.").
+			WithNextSteps(
+				"confluence-cli page get <id> --no-body",
+				"Retry the update with --version set to the version just read.")
 	}
 	return cerrors.New(cat, "HTTP_"+http.StatusText(resp.StatusCode), msg).
 		WithHTTPStatus(resp.StatusCode)

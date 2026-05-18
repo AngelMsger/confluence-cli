@@ -38,6 +38,7 @@ indicates whether retrying the same command can succeed.
 | 8 | network | DNS/TLS/timeout; check `--base-url`, run `doctor` |
 | 9 | server | Confluence 5xx; retry later |
 | 10 | parse | a response could not be rendered; retry with `--scope full --format json` |
+| 11 | conflict | a write hit a version conflict (409); re-fetch the page, then retry |
 
 ## Recovery patterns
 
@@ -48,3 +49,5 @@ indicates whether retrying the same command can succeed.
   fixable by retrying — tell the user the account needs access.
 - **rate_limit (7) / server (9) / network (8)** → `retryable: true`; wait and
   retry, and prefer a narrower query over `--all`.
+- **conflict (11)** → `page update` lost a race; the page changed since it was
+  read. Re-run `page get <id> --no-body` for the current version, then retry.

@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-05-18
+
+### Added
+
+- Page write commands: `page create`, `page update`, `page delete`,
+  `page move` and `page copy`. Bodies accept storage-format XHTML, Confluence
+  wiki markup or Markdown (`--format markdown`, converted client-side).
+- Every write command supports `--dry-run`, which prints the HTTP request that
+  would be sent without sending it. `page delete` additionally requires `--yes`
+  (or an interactive confirmation when stdin is a terminal).
+- New `conflict` error category (exit code 11) for version conflicts (HTTP 409)
+  on `page update`.
+- Multiple named contexts (kubectl-style). The config file can hold several
+  Confluence servers; `config use-context` switches the current one,
+  `config get-contexts` lists them, `config delete-context` removes one. The
+  `--use-context` flag and `CONFLUENCE_CONTEXT` env var override per invocation,
+  and `config init` offers to configure additional contexts. Legacy flat config
+  files keep working unchanged — single-context users see no difference.
+
 ## [0.0.4] - 2026-05-18
 
 ### Added
@@ -69,7 +88,8 @@ Initial release.
 - Distribution via npm (`@angelmsger/confluence-cli`), `go install`, prebuilt
   release binaries and `make install`.
 
-[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.0.4...HEAD
+[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/angelmsger/confluence-cli/compare/v0.0.4...v0.1.0
 [0.0.4]: https://github.com/angelmsger/confluence-cli/compare/v0.0.3...v0.0.4
 [0.0.3]: https://github.com/angelmsger/confluence-cli/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/angelmsger/confluence-cli/compare/v0.0.1...v0.0.2

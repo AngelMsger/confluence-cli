@@ -129,38 +129,40 @@ func TestDotenvDoesNotMutateProcessEnv(t *testing.T) {
 	}
 }
 
-func TestWriteConfigFileRoundTrip(t *testing.T) {
+func TestWriteFileRoundTrip(t *testing.T) {
 	dir := t.TempDir()
-	cfg := Config{
-		BaseURL: "https://rt.example.com",
-		Flavor:  FlavorDataCenter,
-		Auth:    AuthConfig{Scheme: SchemeBasic, Username: "alice"},
-		Defaults: Defaults{
-			Format: "table", PageSize: 50,
-			Timeout: 15 * time.Second, MaxRetries: 5,
+	in := File{
+		CurrentContext: "prod",
+		Contexts: []NamedContext{
+			{Name: "default", BaseURL: "https://dc.example.com", Flavor: FlavorDataCenter,
+				Auth: AuthConfig{Scheme: SchemePAT}},
+			{Name: "prod", BaseURL: "https://cloud.example.com", Flavor: FlavorCloud,
+				DetectedFlavor: FlavorCloud, Auth: AuthConfig{Scheme: SchemeBasic, Username: "alice"}},
 		},
+		Defaults: Defaults{Format: "table", PageSize: 50, Timeout: 15 * time.Second, MaxRetries: 5},
 	}
-	if err := WriteConfigFile(dir, cfg); err != nil {
+	if err := WriteFile(dir, in); err != nil {
 		t.Fatal(err)
 	}
-	got, err := Load(LoadOptions{ConfigDir: dir, DotenvPath: filepath.Join(dir, "absent.env")})
-	if err != nil {
-		t.Fatal(err)
+	got, exists, err := ReadFile(dir)
+	if err != nil || !exists {
+		t.Fatalf("ReadFile: exists=%v err=%v", exists, err)
 	}
-	if got.Config.BaseURL != cfg.BaseURL || got.Config.Auth.Username != "alice" {
-		t.Errorf("round trip mismatch: %+v", got.Config)
+	if got.CurrentContext != "prod" || len(got.Contexts) != 2 {
+		t.Fatalf("round trip mismatch: %+v", got)
 	}
-	if got.Config.Defaults.Timeout != 15*time.Second {
-		t.Errorf("Timeout = %v, want 15s", got.Config.Defaults.Timeout)
+	prod, ok := got.Context("prod")
+	if !ok || prod.BaseURL != "https://cloud.example.com" || prod.Auth.Username != "alice" {
+		t.Errorf("prod context = %+v", prod)
 	}
-	if got.Config.Defaults.PageSize != 50 {
-		t.Errorf("PageSize = %d, want 50", got.Config.Defaults.PageSize)
+	if got.Defaults.Timeout != 15*time.Second || got.Defaults.PageSize != 50 {
+		t.Errorf("defaults = %+v", got.Defaults)
 	}
 }
 
-func TestWriteConfigFilePermissions(t *testing.T) {
+func TestWriteFilePermissions(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "nested")
-	if err := WriteConfigFile(dir, Config{BaseURL: "https://x"}); err != nil {
+	if err := WriteFile(dir, File{Contexts: []NamedContext{{Name: "default", BaseURL: "https://x"}}}); err != nil {
 		t.Fatal(err)
 	}
 	info, err := os.Stat(ConfigFilePath(dir))
@@ -170,4 +172,175 @@ func TestWriteConfigFilePermissions(t *testing.T) {
 	if perm := info.Mode().Perm(); perm != 0o600 {
 		t.Errorf("config file perm = %o, want 600", perm)
 	}
+}
+
+func TestReadFileLegacyFlatFormat(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, ConfigFilePath(dir),
+		"server: https://legacy.example.com\nflavor: datacenter\nauth:\n  scheme: pat\n")
+	got, exists, err := ReadFile(dir)
+	if err != nil || !exists {
+		t.Fatalf("ReadFile: exists=%v err=%v", exists, err)
+	}
+	if len(got.Contexts) != 1 || got.Contexts[0].Name != DefaultContextName {
+		t.Fatalf("legacy file should yield one default context: %+v", got.Contexts)
+	}
+	if got.CurrentContext != DefaultContextName {
+		t.Errorf("CurrentContext = %q, want default", got.CurrentContext)
+	}
+	if got.Contexts[0].BaseURL != "https://legacy.example.com" {
+		t.Errorf("BaseURL = %q", got.Contexts[0].BaseURL)
+	}
+}
+
+func TestLoadLegacyFlatUnchanged(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, ConfigFilePath(dir), "server: https://file.example.com\nflavor: datacenter\n")
+	got, err := Load(LoadOptions{ConfigDir: dir, DotenvPath: filepath.Join(dir, "absent.env")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Config.BaseURL != "https://file.example.com" || got.Config.Flavor != FlavorDataCenter {
+		t.Errorf("legacy load mismatch: %+v", got.Config)
+	}
+	if got.Sources[fieldServer] != "file" {
+		t.Errorf("server source = %q, want file", got.Sources[fieldServer])
+	}
+	if got.ActiveContext != DefaultContextName {
+		t.Errorf("ActiveContext = %q, want default", got.ActiveContext)
+	}
+}
+
+func writeMultiContextFile(t *testing.T, dir string) {
+	t.Helper()
+	writeFile(t, ConfigFilePath(dir), `current_context: alpha
+contexts:
+  - name: alpha
+    server: https://alpha.example.com
+    flavor: datacenter
+    auth: {scheme: pat}
+  - name: beta
+    server: https://beta.example.com
+    flavor: cloud
+    auth: {scheme: basic, username: bob}
+defaults:
+  format: json
+`)
+}
+
+func TestLoadMultiContextSelection(t *testing.T) {
+	absent := func(dir string) string { return filepath.Join(dir, "absent.env") }
+
+	t.Run("current_context", func(t *testing.T) {
+		dir := t.TempDir()
+		writeMultiContextFile(t, dir)
+		got, err := Load(LoadOptions{ConfigDir: dir, DotenvPath: absent(dir)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.ActiveContext != "alpha" || got.Config.BaseURL != "https://alpha.example.com" {
+			t.Errorf("active=%q url=%q", got.ActiveContext, got.Config.BaseURL)
+		}
+		if len(got.ContextNames) != 2 {
+			t.Errorf("ContextNames = %v", got.ContextNames)
+		}
+	})
+
+	t.Run("flag overrides current_context", func(t *testing.T) {
+		dir := t.TempDir()
+		writeMultiContextFile(t, dir)
+		got, err := Load(LoadOptions{ConfigDir: dir, DotenvPath: absent(dir), Context: "beta"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.ActiveContext != "beta" || got.Config.BaseURL != "https://beta.example.com" {
+			t.Errorf("active=%q url=%q", got.ActiveContext, got.Config.BaseURL)
+		}
+	})
+
+	t.Run("env overrides current_context", func(t *testing.T) {
+		dir := t.TempDir()
+		writeMultiContextFile(t, dir)
+		t.Setenv("CONFLUENCE_CONTEXT", "beta")
+		got, err := Load(LoadOptions{ConfigDir: dir, DotenvPath: absent(dir)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.ActiveContext != "beta" {
+			t.Errorf("active = %q, want beta", got.ActiveContext)
+		}
+	})
+
+	t.Run("CONFLUENCE_SERVER still overrides selected context", func(t *testing.T) {
+		dir := t.TempDir()
+		writeMultiContextFile(t, dir)
+		t.Setenv("CONFLUENCE_SERVER", "https://override.example.com")
+		got, err := Load(LoadOptions{ConfigDir: dir, DotenvPath: absent(dir)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.Config.BaseURL != "https://override.example.com" {
+			t.Errorf("BaseURL = %q, want env override", got.Config.BaseURL)
+		}
+	})
+
+	t.Run("unknown context errors", func(t *testing.T) {
+		dir := t.TempDir()
+		writeMultiContextFile(t, dir)
+		if _, err := Load(LoadOptions{ConfigDir: dir, DotenvPath: absent(dir), Context: "ghost"}); err == nil {
+			t.Error("expected error for unknown context")
+		}
+	})
+}
+
+func TestSelectContext(t *testing.T) {
+	f := File{
+		CurrentContext: "alpha",
+		Contexts:       []NamedContext{{Name: "alpha"}, {Name: "beta"}},
+	}
+	cases := []struct {
+		name, flag, env, want string
+		wantErr               bool
+	}{
+		{name: "flag wins", flag: "beta", want: "beta"},
+		{name: "env over current", env: "beta", want: "beta"},
+		{name: "current_context", want: "alpha"},
+		{name: "unknown flag errors", flag: "ghost", wantErr: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := selectContext(f, tc.flag, tc.env)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatal("expected error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != tc.want {
+				t.Errorf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+
+	t.Run("sole context", func(t *testing.T) {
+		got, err := selectContext(File{Contexts: []NamedContext{{Name: "only"}}}, "", "")
+		if err != nil || got != "only" {
+			t.Errorf("got %q err %v", got, err)
+		}
+	})
+	t.Run("ambiguous yields empty no error", func(t *testing.T) {
+		got, err := selectContext(File{Contexts: []NamedContext{{Name: "a"}, {Name: "b"}}}, "", "")
+		if err != nil || got != "" {
+			t.Errorf("got %q err %v, want empty/no-error", got, err)
+		}
+	})
+	t.Run("no file yields empty", func(t *testing.T) {
+		got, err := selectContext(File{}, "", "")
+		if err != nil || got != "" {
+			t.Errorf("got %q err %v", got, err)
+		}
+	})
 }
