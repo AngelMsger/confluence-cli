@@ -80,6 +80,13 @@ type Attachment struct {
 	DownloadURL string `json:"download_url,omitempty"`
 }
 
+// Label is a normalized Confluence content label.
+type Label struct {
+	ID     string `json:"id,omitempty"`
+	Name   string `json:"name"`
+	Prefix string `json:"prefix,omitempty"`
+}
+
 // SearchHit is a normalized CQL search result.
 type SearchHit struct {
 	ID           string `json:"id"`
@@ -187,10 +194,57 @@ type CopyPageReq struct {
 	ParentID string // optional, default = source page's parent
 }
 
+// UploadAttachmentReq is a request to attach a new file to a page. When an
+// attachment of the same FileName already exists, Confluence stores the upload
+// as a new version of it.
+type UploadAttachmentReq struct {
+	PageID    string
+	FileName  string
+	Data      []byte
+	Comment   string // optional version comment
+	MinorEdit bool
+}
+
+// UpdateAttachmentReq replaces an existing attachment's content with a new
+// version. PageID is the page the attachment belongs to.
+type UpdateAttachmentReq struct {
+	PageID       string
+	AttachmentID string
+	FileName     string
+	Data         []byte
+	Comment      string // optional version comment
+	MinorEdit    bool
+}
+
+// DeleteAttachmentReq is a request to delete an attachment by its content ID.
+type DeleteAttachmentReq struct {
+	AttachmentID string
+}
+
+// AddLabelsReq is a request to add one or more labels to a page.
+type AddLabelsReq struct {
+	PageID string
+	Names  []string
+}
+
+// RemoveLabelReq is a request to remove a label from a page.
+type RemoveLabelReq struct {
+	PageID string
+	Name   string
+}
+
 // WriteRequestPlan describes the HTTP request a write operation would send,
 // without sending it. It is used to render --dry-run previews.
 type WriteRequestPlan struct {
 	Method  string `json:"method"`
 	URL     string `json:"url"`
 	Payload any    `json:"payload,omitempty"`
+}
+
+// MultipartPlan describes a multipart/form-data upload for a --dry-run preview.
+// It reports the file and form fields rather than the raw bytes.
+type MultipartPlan struct {
+	FileName  string            `json:"file_name"`
+	FileBytes int               `json:"file_bytes"`
+	Fields    map[string]string `json:"fields,omitempty"`
 }

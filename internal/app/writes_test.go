@@ -1,0 +1,156 @@
+package app
+
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+// writeTempFile writes content to a temp file and returns its path.
+func writeTempFile(t *testing.T, name, content string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), name)
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func TestCmdAttachmentUploadDryRun(t *testing.T) {
+	srv := mockConfluence(t)
+	file := writeTempFile(t, "diagram.png", "PNGDATA")
+	out, err := runCLI(t, srv, "attachment", "upload", "123", "--file", file, "--dry-run")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("output not JSON: %v\n%s", err, out)
+	}
+	if got["dry_run"] != true || got["method"] != "POST" {
+		t.Errorf("dry-run output = %v", got)
+	}
+	if !strings.HasSuffix(got["url"].(string), "/rest/api/content/123/child/attachment") {
+		t.Errorf("url = %v", got["url"])
+	}
+	payload, _ := got["payload"].(map[string]any)
+	if payload["file_name"] != "diagram.png" || payload["file_bytes"].(float64) != 7 {
+		t.Errorf("payload = %v", payload)
+	}
+}
+
+func TestCmdAttachmentUpload(t *testing.T) {
+	srv := mockConfluence(t)
+	file := writeTempFile(t, "notes.txt", "hello")
+	out, err := runCLI(t, srv, "attachment", "upload", "123", "--file", file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("output not JSON: %v\n%s", err, out)
+	}
+	if got["id"] != "att900" {
+		t.Errorf("uploaded attachment = %v", got)
+	}
+}
+
+func TestCmdAttachmentUploadNoFile(t *testing.T) {
+	srv := mockConfluence(t)
+	if _, err := runCLI(t, srv, "attachment", "upload", "123"); err == nil {
+		t.Fatal("expected an error when --file is missing")
+	}
+}
+
+func TestCmdAttachmentUpdateDryRun(t *testing.T) {
+	srv := mockConfluence(t)
+	file := writeTempFile(t, "notes-v2.txt", "world")
+	out, err := runCLI(t, srv, "attachment", "update", "att900", "--file", file, "--dry-run")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	json.Unmarshal([]byte(out), &got)
+	if got["dry_run"] != true {
+		t.Errorf("dry-run output = %v", got)
+	}
+	// The update endpoint is page-scoped; the parent page (123) is resolved
+	// from the attachment and the request targets its /data sub-resource.
+	if !strings.HasSuffix(got["url"].(string), "/rest/api/content/123/child/attachment/att900/data") {
+		t.Errorf("url = %v", got["url"])
+	}
+}
+
+func TestCmdAttachmentDeleteDryRun(t *testing.T) {
+	srv := mockConfluence(t)
+	out, err := runCLI(t, srv, "attachment", "delete", "att900", "--dry-run")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	json.Unmarshal([]byte(out), &got)
+	if got["dry_run"] != true || got["method"] != "DELETE" {
+		t.Errorf("dry-run output = %v", got)
+	}
+}
+
+func TestCmdLabelList(t *testing.T) {
+	srv := mockConfluence(t)
+	out, err := runCLI(t, srv, "label", "list", "123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []map[string]any
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("output not a JSON array: %v\n%s", err, out)
+	}
+	if len(got) != 1 || got[0]["name"] != "release-notes" {
+		t.Errorf("labels = %v", got)
+	}
+}
+
+func TestCmdLabelAdd(t *testing.T) {
+	srv := mockConfluence(t)
+	out, err := runCLI(t, srv, "label", "add", "123", "q3", "reviewed")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []map[string]any
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("output not a JSON array: %v\n%s", err, out)
+	}
+	if len(got) != 2 || got[0]["name"] != "q3" {
+		t.Errorf("labels = %v", got)
+	}
+}
+
+func TestCmdLabelAddDryRun(t *testing.T) {
+	srv := mockConfluence(t)
+	out, err := runCLI(t, srv, "label", "add", "123", "q3", "--dry-run")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	json.Unmarshal([]byte(out), &got)
+	if got["dry_run"] != true || got["method"] != "POST" {
+		t.Errorf("dry-run output = %v", got)
+	}
+}
+
+func TestCmdLabelRemoveDryRun(t *testing.T) {
+	srv := mockConfluence(t)
+	out, err := runCLI(t, srv, "label", "remove", "123", "release-notes", "--dry-run")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	json.Unmarshal([]byte(out), &got)
+	if got["dry_run"] != true || got["method"] != "DELETE" {
+		t.Errorf("dry-run output = %v", got)
+	}
+	if !strings.Contains(got["url"].(string), "name=release-notes") {
+		t.Errorf("url = %v", got["url"])
+	}
+}

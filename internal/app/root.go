@@ -81,6 +81,7 @@ func newRootCmd() *cobra.Command {
 		newSpaceCmd(state),
 		newCommentCmd(state),
 		newAttachmentCmd(state),
+		newLabelCmd(state),
 		newConfigCmd(state),
 		newAuthCmd(state),
 		newDoctorCmd(state),

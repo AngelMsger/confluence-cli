@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Attachment write commands: `attachment upload` attaches a file to a page,
+  `attachment update` replaces an attachment's content with a new version, and
+  `attachment delete` removes one. Uploads use `multipart/form-data`; `--file -`
+  reads from stdin. All three support `--dry-run`, and `delete` requires `--yes`.
+- Label commands: `label list`, `label add` (one or more labels at once) and
+  `label remove`. `add` and `remove` support `--dry-run`.
 - A generated CLI reference. `cmd/gen-docs` renders the cobra command tree
   into a single styled HTML page (`docs/cli/index.html`, served by GitHub
   Pages with a per-module sidebar and flag/example tables) and a

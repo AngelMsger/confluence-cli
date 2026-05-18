@@ -25,8 +25,11 @@
     <div class="side-group">
       <div class="side-title">attachment</div>
       <a href="#confluence-cli-attachment">confluence-cli attachment</a>
+      <a href="#confluence-cli-attachment-delete">confluence-cli attachment delete</a>
       <a href="#confluence-cli-attachment-download">confluence-cli attachment download</a>
       <a href="#confluence-cli-attachment-list">confluence-cli attachment list</a>
+      <a href="#confluence-cli-attachment-update">confluence-cli attachment update</a>
+      <a href="#confluence-cli-attachment-upload">confluence-cli attachment upload</a>
       </div>
     <div class="side-group">
       <div class="side-title">auth</div>
@@ -54,6 +57,13 @@
     <div class="side-group">
       <div class="side-title">doctor</div>
       <a href="#confluence-cli-doctor">confluence-cli doctor</a>
+      </div>
+    <div class="side-group">
+      <div class="side-title">label</div>
+      <a href="#confluence-cli-label">confluence-cli label</a>
+      <a href="#confluence-cli-label-add">confluence-cli label add</a>
+      <a href="#confluence-cli-label-list">confluence-cli label list</a>
+      <a href="#confluence-cli-label-remove">confluence-cli label remove</a>
       </div>
     <div class="side-group">
       <div class="side-title">page</div>
@@ -120,11 +130,28 @@ Data Center / Server, and emits agent-friendly JSON with structured errors.</p>
     
     <section class="cmd" id="confluence-cli-attachment">
       <h2>confluence-cli attachment<span class="group-tag">command group</span></h2>
-      <p class="short">List and download page attachments</p>
+      <p class="short">Upload, list, download and delete page attachments</p>
       <pre>confluence-cli attachment</pre>
       
       
       
+    </section>
+    
+    <section class="cmd" id="confluence-cli-attachment-delete">
+      <h2>confluence-cli attachment delete</h2>
+      <p class="short">Delete an attachment</p>
+      <pre>confluence-cli attachment delete &lt;attachment-id|url&gt; [flags]</pre>
+      <p class="long">Delete an attachment by its content ID. Deletion requires --yes, or an
+interactive confirmation when stdin is a terminal.</p>
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>print the request without sending it</td></tr>
+        <tr><td><code>--yes</code></td><td><code>false</code></td><td>skip the deletion confirmation</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre>  confluence-cli attachment delete att12345 --yes</pre>
     </section>
     
     <section class="cmd" id="confluence-cli-attachment-download">
@@ -157,6 +184,51 @@ Data Center / Server, and emits agent-friendly JSON with structured errors.</p>
         </tbody>
       </table>
       <h3>Examples</h3><pre>  confluence-cli attachment list 123456</pre>
+    </section>
+    
+    <section class="cmd" id="confluence-cli-attachment-update">
+      <h2>confluence-cli attachment update</h2>
+      <p class="short">Replace an attachment&#39;s content with a new version</p>
+      <pre>confluence-cli attachment update &lt;attachment-id|url&gt; --file &lt;PATH&gt; [flags]</pre>
+      <p class="long">Upload new content for an existing attachment, creating a new version.
+The attachment keeps its name unless --name is given. Use --file - to
+read from stdin.</p>
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--comment</code></td><td></td><td>version comment for the update</td></tr>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>print the request without sending it</td></tr>
+        <tr><td><code>--file</code></td><td></td><td>path to the new content (&#39;-&#39; for stdin)</td></tr>
+        <tr><td><code>--minor</code></td><td><code>false</code></td><td>mark the update as a minor edit</td></tr>
+        <tr><td><code>--name</code></td><td></td><td>attachment file name (default: current name)</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre>  confluence-cli attachment update att12345 --file diagram-v2.png
+  confluence-cli attachment update att12345 --file report.pdf --comment &#34;fix totals&#34;</pre>
+    </section>
+    
+    <section class="cmd" id="confluence-cli-attachment-upload">
+      <h2>confluence-cli attachment upload</h2>
+      <p class="short">Attach a file to a page</p>
+      <pre>confluence-cli attachment upload &lt;page-id|url&gt; --file &lt;PATH&gt; [flags]</pre>
+      <p class="long">Upload a file as a new attachment on a page. Use --file - to read the
+file from stdin (--name is then required). When an attachment with the
+same name already exists, Confluence stores the upload as a new version.</p>
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--comment</code></td><td></td><td>version comment for the attachment</td></tr>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>print the request without sending it</td></tr>
+        <tr><td><code>--file</code></td><td></td><td>path to the file to upload (&#39;-&#39; for stdin)</td></tr>
+        <tr><td><code>--minor</code></td><td><code>false</code></td><td>mark the upload as a minor edit</td></tr>
+        <tr><td><code>--name</code></td><td></td><td>attachment file name (default: base name of --file)</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre>  confluence-cli attachment upload 123456 --file diagram.png
+  confluence-cli attachment upload 123456 --file report.pdf --comment &#34;Q3 figures&#34;
+  confluence-cli attachment upload 123456 --file - --name notes.txt --dry-run</pre>
     </section>
     
     <section class="cmd" id="confluence-cli-auth">
@@ -333,6 +405,62 @@ a single command with the global --use-context flag instead.</p>
       </table>
       <h3>Examples</h3><pre>  confluence-cli doctor
   confluence-cli doctor --no-update-check</pre>
+    </section>
+    
+    <section class="cmd" id="confluence-cli-label">
+      <h2>confluence-cli label<span class="group-tag">command group</span></h2>
+      <p class="short">List, add and remove page labels</p>
+      <pre>confluence-cli label</pre>
+      
+      
+      
+    </section>
+    
+    <section class="cmd" id="confluence-cli-label-add">
+      <h2>confluence-cli label add</h2>
+      <p class="short">Add one or more labels to a page</p>
+      <pre>confluence-cli label add &lt;page-id|url&gt; &lt;label&gt;... [flags]</pre>
+      
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>print the request without sending it</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre>  confluence-cli label add 123456 release-notes
+  confluence-cli label add 123456 q3 reviewed --dry-run</pre>
+    </section>
+    
+    <section class="cmd" id="confluence-cli-label-list">
+      <h2>confluence-cli label list</h2>
+      <p class="short">List the labels on a page</p>
+      <pre>confluence-cli label list &lt;page-id|url&gt; [flags]</pre>
+      
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--all</code></td><td><code>false</code></td><td>fetch every page of results</td></tr>
+        <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre>  confluence-cli label list 123456</pre>
+    </section>
+    
+    <section class="cmd" id="confluence-cli-label-remove">
+      <h2>confluence-cli label remove</h2>
+      <p class="short">Remove a label from a page</p>
+      <pre>confluence-cli label remove &lt;page-id|url&gt; &lt;label&gt; [flags]</pre>
+      
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>print the request without sending it</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre>  confluence-cli label remove 123456 release-notes</pre>
     </section>
     
     <section class="cmd" id="confluence-cli-page">
