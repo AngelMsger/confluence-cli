@@ -118,8 +118,10 @@ keychain (with a `0600` file fallback) and never written to the config file.
 | `config get-contexts` / `use-context` / `delete-context` | manage multiple named servers |
 | `config` / `auth` / `doctor` / `version` | setup and diagnostics |
 
-List commands return a `{items, next, has_more}` envelope; pass `--cursor` with a
-prior page's `next` to read the following page, or `--all` to fetch every page.
+In the default JSON output, list commands return a `{items, next, has_more}`
+envelope; pass `--cursor` with a prior page's `next` to read the following page,
+or `--all` to fetch every page. `--format ndjson` instead streams the items
+themselves, one JSON object per line.
 
 ### Multiple servers (contexts)
 
