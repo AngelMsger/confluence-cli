@@ -56,16 +56,39 @@ Returns each block containing the term plus its nearest heading for context.
 
 ## Output syntax
 
-`--as markdown` (default) renders headings, lists, code and tables as Markdown.
-`--as text` produces plain text. `--no-body` fetches metadata only.
-`--body-format storage|view` selects the source representation (default
-`storage`).
+`--as` controls the output form:
+
+| `--as` | output |
+|--------|--------|
+| `markdown` (default) | headings, lists, code, tables rendered as Markdown |
+| `text` | plain text |
+| `raw` | the body's **untouched source** — no rendering (requires `--scope full`) |
+
+`--no-body` fetches metadata only. `--body-format storage|view` selects the
+source representation to fetch (default `storage`).
+
+## Rendering loss — macros and images
+
+`markdown` / `text` rendering cannot represent every Confluence construct:
+macros without a native rendering (e.g. `view-file`) are dropped, and images
+become a `[image]` placeholder. When that happens `page get` reports a
+**`render_notes`** array naming what was lost.
+
+**If you see `render_notes`, the rendered `body` is incomplete.** Re-read the
+page with `--as raw` to get the exact storage XHTML — macros and all — e.g. to
+verify an embedded file or to round-trip-edit the page.
+
+```bash
+confluence-cli page get 12345            # render_notes appears if content was dropped
+confluence-cli page get 12345 --as raw   # the full, unrendered storage source
+```
 
 ## Result shape
 
 `page get` returns: `id`, `title`, `space_key`, `status`, `url`, `version`,
-`ancestors`, and — when a body was fetched — `outline`, `body`, `scope_applied`
-and `truncated`. A `truncated: true` means the scope omitted part of the page.
+`ancestors`, and — when a body was fetched — `outline`, `body`, `scope_applied`,
+`truncated` and (when rendering dropped content) `render_notes`. A
+`truncated: true` means the scope omitted part of the page.
 
 ## Browsing the page tree
 

@@ -167,3 +167,34 @@ func TestRenderLink(t *testing.T) {
 		t.Errorf("link not rendered:\n%s", got.Body)
 	}
 }
+
+func TestRenderNotesReportsDroppedMacro(t *testing.T) {
+	t.Parallel()
+	storage := `<p>intro</p>` +
+		`<ac:structured-macro ac:name="view-file"><ac:parameter ac:name="name">` +
+		`<ri:attachment ri:filename="resume.pdf"/></ac:parameter></ac:structured-macro>` +
+		`<p><ac:image><ri:attachment ri:filename="diagram.png"/></ac:image></p>`
+	got, err := Render(storage, Options{Scope: ScopeFull})
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(got.Notes, "\n")
+	if !strings.Contains(joined, "view-file") {
+		t.Errorf("notes should report the dropped view-file macro: %v", got.Notes)
+	}
+	if !strings.Contains(joined, "image") {
+		t.Errorf("notes should report the placeholdered image: %v", got.Notes)
+	}
+}
+
+func TestRenderNotesEmptyForPlainPage(t *testing.T) {
+	t.Parallel()
+	// Headings, paragraphs, lists and code macros all render losslessly.
+	got, err := Render(sample, Options{Scope: ScopeFull})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Notes) != 0 {
+		t.Errorf("a faithfully rendered page should carry no notes: %v", got.Notes)
+	}
+}

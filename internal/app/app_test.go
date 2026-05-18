@@ -35,6 +35,12 @@ func mockConfluence(t *testing.T) *httptest.Server {
 			"body":{"storage":{"value":"<h1>Hi</h1><p>body text</p>","representation":"storage"}},
 			"_links":{"webui":"/display/ENG/Welcome"}}`))
 	})
+	mux.HandleFunc("/rest/api/content/790", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"id":"790","type":"page","status":"current","title":"Macro Page",
+			"space":{"key":"ENG"},"version":{"number":1},
+			"body":{"storage":{"value":"<p>before</p><ac:structured-macro ac:name=\"view-file\"><ac:parameter ac:name=\"name\"><ri:attachment ri:filename=\"resume.pdf\"/></ac:parameter></ac:structured-macro>","representation":"storage"}},
+			"_links":{"webui":"/display/ENG/Macro"}}`))
+	})
 	mux.HandleFunc("/rest/api/content/404", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(`{"message":"No content found"}`))

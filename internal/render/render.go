@@ -64,16 +64,20 @@ type Rendered struct {
 	Body         string         `json:"body"`
 	ScopeApplied string         `json:"scope_applied"`
 	Truncated    bool           `json:"truncated"`
+	// Notes lists content the renderer could not represent (macros without a
+	// native rendering, images shown as placeholders). It is empty when the
+	// markdown/text output is a faithful representation of the source.
+	Notes []string `json:"notes,omitempty"`
 }
 
 // Render parses storage-format XHTML and renders it according to opt.
 func Render(storage string, opt Options) (Rendered, error) {
 	opt = opt.withDefaults()
-	blocks := parse(storage)
+	blocks, notes := parse(storage)
 	assignSections(blocks)
 	outline := buildOutline(blocks)
 
-	result := Rendered{Outline: outline, ScopeApplied: opt.Scope}
+	result := Rendered{Outline: outline, ScopeApplied: opt.Scope, Notes: notes}
 
 	switch opt.Scope {
 	case ScopeFull:

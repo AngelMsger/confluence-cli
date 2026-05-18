@@ -32,23 +32,57 @@ type Block struct {
 	SectionID string
 }
 
-// parse converts storage-format XHTML into a flat slice of Blocks.
-func parse(storage string) []Block {
+// parse converts storage-format XHTML into a flat slice of Blocks. It also
+// returns notes describing content that markdown/text rendering cannot
+// faithfully represent (see lossNotes).
+func parse(storage string) ([]Block, []string) {
 	// Confluence wraps macro code in CDATA, which the HTML parser would drop;
 	// unwrap it so the inner text survives as text nodes.
 	src := strings.NewReplacer("<![CDATA[", "", "]]>", "").Replace(storage)
 
 	root, err := html.Parse(strings.NewReader("<html><body>" + src + "</body></html>"))
 	if err != nil {
-		return []Block{{Kind: KindPara, Text: strings.TrimSpace(stripTags(storage))}}
+		return []Block{{Kind: KindPara, Text: strings.TrimSpace(stripTags(storage))}}, nil
 	}
 	body := findBody(root)
 	if body == nil {
-		return nil
+		return nil, nil
 	}
 	var blocks []Block
 	walkBlocks(body, &blocks)
-	return blocks
+	return blocks, lossNotes(body)
+}
+
+// lossNotes walks the parsed tree and reports content that markdown/text
+// rendering drops or degrades: structured macros without a native rendering,
+// and images (shown only as a placeholder). Each kind is reported once.
+func lossNotes(root *html.Node) []string {
+	seen := map[string]bool{}
+	var notes []string
+	var walk func(*html.Node)
+	walk = func(n *html.Node) {
+		if n.Type == html.ElementNode {
+			switch strings.ToLower(n.Data) {
+			case "ac:structured-macro":
+				name := attrNS(n, "name")
+				// code/noformat macros render losslessly as code blocks.
+				if name != "" && name != "code" && name != "noformat" && !seen["macro:"+name] {
+					seen["macro:"+name] = true
+					notes = append(notes, "unrendered macro: "+name+" (use --as raw to see the source)")
+				}
+			case "ac:image":
+				if !seen["image"] {
+					seen["image"] = true
+					notes = append(notes, "an image is shown only as a placeholder (use --as raw to see the source)")
+				}
+			}
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			walk(c)
+		}
+	}
+	walk(root)
+	return notes
 }
 
 func findBody(n *html.Node) *html.Node {
