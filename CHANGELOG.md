@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Page and comment writes against Confluence Data Center no longer fail with a
+  spurious `parse` / `DECODE` error. A write response expands the `container`
+  object with a numeric `id`, but the client expected a string — so a write
+  that had actually succeeded was reported as a failure and the new page's
+  id/url was lost. Container IDs are now decoded loosely (string or number),
+  matching how space IDs were already handled.
+- Decode failures now surface the underlying parser error and a snippet of the
+  response body instead of an opaque "failed to decode server response", so a
+  response-shape mismatch is diagnosable rather than a dead end.
+
 ## [0.3.0] - 2026-05-19
 
 ### Changed

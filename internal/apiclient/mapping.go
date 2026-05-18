@@ -103,7 +103,9 @@ type rawContent struct {
 		MediaType string `json:"mediaType"`
 	} `json:"extensions"`
 	Container *struct {
-		ID string `json:"id"`
+		// ID is the container's content/space ID. Data Center returns it as a
+		// JSON number, Cloud as a string — so it is decoded loosely.
+		ID any `json:"id"`
 	} `json:"container"`
 	Links rawLinks `json:"_links"`
 }
@@ -201,7 +203,7 @@ func (c *apiClient) mapComment(r rawContent, pageID string) *Comment {
 		URL:     c.absURL(r.Links.WebUI),
 	}
 	if cm.PageID == "" && r.Container != nil {
-		cm.PageID = r.Container.ID
+		cm.PageID = spaceIDString(r.Container.ID)
 	}
 	if len(r.Ancestors) > 0 {
 		cm.ParentID = r.Ancestors[len(r.Ancestors)-1].ID
@@ -227,7 +229,7 @@ func (c *apiClient) mapAttachment(r rawContent, pageID string) *Attachment {
 		a.FileSize = r.Extensions.FileSize
 	}
 	if a.PageID == "" && r.Container != nil {
-		a.PageID = r.Container.ID
+		a.PageID = spaceIDString(r.Container.ID)
 	}
 	return a
 }
