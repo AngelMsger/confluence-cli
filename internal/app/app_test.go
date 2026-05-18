@@ -39,6 +39,21 @@ func mockConfluence(t *testing.T) *httptest.Server {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte(`{"message":"No content found"}`))
 	})
+	mux.HandleFunc("/rest/api/user/current", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"type":"known","username":"tester","userKey":"ab12","displayName":"Test User"}`))
+	})
+	mux.HandleFunc("/rest/api/content/c1", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodDelete:
+			w.WriteHeader(http.StatusNoContent)
+		case http.MethodPut:
+			w.Write([]byte(`{"id":"c1","type":"comment","version":{"number":3},
+				"body":{"storage":{"value":"<p>edited</p>","representation":"storage"}}}`))
+		default:
+			w.Write([]byte(`{"id":"c1","type":"comment","version":{"number":2},
+				"body":{"storage":{"value":"<p>original</p>","representation":"storage"}}}`))
+		}
+	})
 	mux.HandleFunc("/rest/api/content/123/version", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"results":[
 			{"number":2,"when":"2025-02-01T00:00:00Z","message":"edit","by":{"displayName":"Bob"}},

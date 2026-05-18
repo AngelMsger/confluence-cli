@@ -48,6 +48,10 @@ type Client interface {
 
 	ListComments(ctx context.Context, pageID string, opt ListOpts) (ListResult[Comment], error)
 	AddComment(ctx context.Context, req AddCommentReq) (*Comment, error)
+	UpdateComment(ctx context.Context, req UpdateCommentReq) (*Comment, error)
+	DeleteComment(ctx context.Context, req DeleteCommentReq) error
+
+	CurrentUser(ctx context.Context) (*User, error)
 
 	ListAttachments(ctx context.Context, pageID string, opt ListOpts) (ListResult[Attachment], error)
 	GetAttachment(ctx context.Context, id string) (*Attachment, error)

@@ -77,10 +77,17 @@ func runDoctor(s *appState, skipUpdate bool) doctorReport {
 	})
 
 	// 3. Connectivity + flavor (only when prerequisites pass).
+	var (
+		client    apiclient.Client
+		reachable bool
+		doctorCtx context.Context
+	)
 	if cfgOK && credOK {
 		ctx, cancel := cmdContext(s)
 		defer cancel()
-		client, _, err := apiclient.Build(ctx, apiclient.BuildParams{
+		doctorCtx = ctx
+		var err error
+		client, _, err = apiclient.Build(ctx, apiclient.BuildParams{
 			BaseURL:       cfg.BaseURL,
 			Flavor:        cfg.Flavor,
 			AuthDecorator: cred.Decorator(),
@@ -88,12 +95,14 @@ func runDoctor(s *appState, skipUpdate bool) doctorReport {
 			MaxRetries:    cfg.Defaults.MaxRetries,
 		})
 		if err != nil {
+			client = nil
 			checks = append(checks, doctorCheck{Name: "connectivity", OK: false, Detail: detailOf(err)})
 		} else {
 			info, pingErr := client.Ping(ctx)
+			reachable = pingErr == nil
 			checks = append(checks, doctorCheck{
-				Name: "connectivity", OK: pingErr == nil,
-				Detail: pick(pingErr == nil,
+				Name: "connectivity", OK: reachable,
+				Detail: pick(reachable,
 					"reachable, flavor = "+string(info.Flavor), detailOf(pingErr)),
 			})
 		}
@@ -104,12 +113,26 @@ func runDoctor(s *appState, skipUpdate bool) doctorReport {
 		})
 	}
 
+	// Healthy reflects only the checks above; the current-user probe that
+	// follows is informational and never fails the command.
 	healthy := true
 	for _, c := range checks {
 		if !c.OK {
 			healthy = false
 		}
 	}
+
+	// 4. Current user — informational only. A failure here does not affect
+	// the healthy verdict (some locked-down deployments restrict it).
+	if client != nil && reachable {
+		user, userErr := client.CurrentUser(doctorCtx)
+		checks = append(checks, doctorCheck{
+			Name: "current-user", OK: userErr == nil,
+			Detail: pick(userErr == nil,
+				"authenticated as "+userDisplay(user), detailOf(userErr)),
+		})
+	}
+
 	report := doctorReport{Healthy: healthy, Checks: checks}
 
 	// Release-update check: informational only, it never affects Healthy and
@@ -138,6 +161,21 @@ func pick(ok bool, yes, no string) string {
 		return yes
 	}
 	return no
+}
+
+// userDisplay renders a user for the doctor detail line, preferring the
+// display name and falling back to the username or account ID.
+func userDisplay(u *apiclient.User) string {
+	switch {
+	case u == nil:
+		return "unknown user"
+	case u.DisplayName != "":
+		return u.DisplayName
+	case u.Username != "":
+		return u.Username
+	default:
+		return u.AccountID
+	}
 }
 
 func detailOf(err error) string {

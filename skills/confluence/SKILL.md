@@ -1,7 +1,7 @@
 ---
 name: confluence
-version: 1.4.0
-description: "Use a Confluence wiki as an external knowledge base. Search, read and summarise Confluence pages, browse spaces and page trees, create and edit pages, view version history and restore earlier versions, read and post comments, upload and manage file attachments, manage page labels, and watch pages. Use this skill when the user gives a Confluence page URL or ID, mentions a Confluence/wiki page, asks to find or look up something in Confluence, asks to read/summarise/extract a Confluence page, browse a space, list child pages, create/update/delete/move/copy a page, view a page's history or restore an old version, read page comments, post a comment, upload/replace/delete an attachment, add/remove page labels, or watch/unwatch a page. Works with both Confluence Cloud and Confluence Data Center / Server."
+version: 1.5.0
+description: "Use a Confluence wiki as an external knowledge base. Search, read and summarise Confluence pages, browse spaces and page trees, create and edit pages, view version history and restore earlier versions, read post and edit comments, upload and manage file attachments, manage page labels, and watch pages. Use this skill when the user gives a Confluence page URL or ID, mentions a Confluence/wiki page, asks to find or look up something in Confluence, asks to read/summarise/extract a Confluence page, browse a space, list child pages, create/update/delete/move/copy a page, view a page's history or restore an old version, read page comments, post/edit/delete a comment, upload/replace/delete an attachment, add/remove page labels, watch/unwatch a page, or check which Confluence user they are. Works with both Confluence Cloud and Confluence Data Center / Server."
 metadata:
   requires:
     bins: ["confluence-cli"]
@@ -36,7 +36,9 @@ guess an ID — run `confluence-cli search` first, then act on the ID from the h
 - User wants to **watch / unwatch** a page, or check if they watch it →
   `page watch` / `page unwatch` / `page watch-status`.
 - User wants the **comments** on a page → `comment list`; to post one →
-  `comment add` (see [comments.md](references/comments.md)).
+  `comment add`; to edit or delete one → `comment update` / `comment delete`
+  (see [comments.md](references/comments.md)).
+- User asks **who they are** / which Confluence account is in use → `whoami`.
 - User wants files on a page → `attachment list` / `attachment download`; to
   put a file on a page → `attachment upload`; to replace one → `attachment
   update`; to remove one → `attachment delete` (see
@@ -66,6 +68,8 @@ confluence-cli space list                 # list spaces
 confluence-cli space get <key>            # one space
 confluence-cli comment list <id|url>      # page comments
 confluence-cli comment add <id|url>       # post a comment
+confluence-cli comment update <id|url>    # edit a comment's body
+confluence-cli comment delete <id|url>    # delete a comment (needs --yes)
 confluence-cli attachment list <id|url>   # page attachments
 confluence-cli attachment download <id>   # download an attachment
 confluence-cli attachment upload <id|url> # attach a file (--file)
@@ -76,6 +80,7 @@ confluence-cli label add <id|url> <l>...  # add labels to a page
 confluence-cli label remove <id|url> <l>  # remove a label from a page
 confluence-cli config init|show           # configuration
 confluence-cli auth status                # credential check
+confluence-cli whoami                      # the user the credentials act as
 confluence-cli doctor                     # diagnose setup + connectivity
 ```
 

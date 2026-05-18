@@ -40,3 +40,21 @@ Flags:
 
 On success the created comment is returned as JSON. The command writes the
 comment exactly once — it is never retried automatically.
+
+## Editing and deleting a comment
+
+`comment update` / `comment delete` take the **comment** ID (the `id` from
+`comment list`), not the page ID.
+
+```bash
+# replace a comment's body
+confluence-cli comment update <comment-id> --body "Revised: looks good now."
+echo "Revised." | confluence-cli comment update <comment-id> --body-file -
+
+# delete a comment (requires --yes, or an interactive confirmation)
+confluence-cli comment delete <comment-id> --yes
+```
+
+`update` bumps the comment to a new version; pass `--version N` to assert the
+version you last read. Both commands accept `--dry-run` to preview the request.
+Only edit or delete a comment when the user explicitly asked for it.
