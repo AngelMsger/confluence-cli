@@ -86,7 +86,7 @@ func newRootCmd() *cobra.Command {
 		newAuthCmd(state),
 		newDoctorCmd(state),
 		newWhoamiCmd(state),
-		newSkillCmd(),
+		newSkillCmd(state),
 		newVersionCmd(),
 	)
 	return root

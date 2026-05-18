@@ -103,7 +103,7 @@ assert_contains  "page create"            "new-page"       "${CLI[@]}" page crea
 assert_contains  "page create dry-run"    '"dry_run": true' \
                                           "${CLI[@]}" page create --space ENG --title "X" --body "<p>x</p>" --dry-run
 assert_contains  "page create markdown"   "<h1>Title</h1>" \
-                                          "${CLI[@]}" page create --space ENG --title "MD" --format markdown --body "# Title" --dry-run
+                                          "${CLI[@]}" page create --space ENG --title "MD" --body-format markdown --body "# Title" --dry-run
 assert_contains  "page update"            '"number": 3'    "${CLI[@]}" page update 123 --title "Renamed" --version 2
 assert_exit      "page update conflict -> 11" 11           "${CLI[@]}" page update 409 --title "X"
 assert_exit      "page delete needs --yes -> 2" 2          "${CLI[@]}" page delete 123 </dev/null
@@ -117,13 +117,13 @@ assert_contains  "attachment download"    "attachment payload" \
                                           "${CLI[@]}" attachment download att1 --output -
 assert_contains  "fields projection"      '"id"'           "${CLI[@]}" page get 123 --fields id,title
 SKILL_DIR="$(mktemp -d)"
-assert_contains  "skill install"          "confluence Skill" \
+assert_contains  "skill install"          '"installed"' \
                                           "${CLI[@]}" skill install --dir "$SKILL_DIR"
-assert_contains  "skill install --agent codex" "[codex]" \
+assert_contains  "skill install --agent codex" '"codex"' \
                                           env HOME="$(mktemp -d)" "${CLI[@]}" skill install --agent codex
-assert_contains  "skill uninstall"        "removed confluence Skill" \
+assert_contains  "skill uninstall"        '"removed"' \
                                           "${CLI[@]}" skill uninstall --dir "$SKILL_DIR"
-assert_contains  "skill uninstall (repeat)" "not installed" \
+assert_contains  "skill uninstall (repeat)" '"not_installed"' \
                                           "${CLI[@]}" skill uninstall --dir "$SKILL_DIR"
 assert_contains  "skill show"             "name: confluence" "${CLI[@]}" skill show
 assert_exit      "missing page -> 6"      6                "${CLI[@]}" page get 404

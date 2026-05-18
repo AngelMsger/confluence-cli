@@ -85,8 +85,12 @@ func newAuthLoginCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(os.Stdout, "Credential stored in the %s for %s.\n", backend, cfg.BaseURL)
-			return nil
+			return s.emit(map[string]any{
+				"server":             cfg.BaseURL,
+				"scheme":             cred.Scheme,
+				"credential_backend": fmt.Sprint(backend),
+				"status":             "stored",
+			})
 		},
 	}
 }
@@ -108,8 +112,7 @@ func newAuthLogoutCmd(s *appState) *cobra.Command {
 			if err := auth.Forget(cfg.BaseURL, scheme, s.store); err != nil {
 				return err
 			}
-			fmt.Fprintf(os.Stdout, "Credential removed for %s.\n", cfg.BaseURL)
-			return nil
+			return s.emit(map[string]any{"server": cfg.BaseURL, "status": "removed"})
 		},
 	}
 }
@@ -122,7 +125,9 @@ func secretLabel(scheme string) string {
 }
 
 func ask(r *bufio.Reader, label string) string {
-	fmt.Fprintf(os.Stdout, "%s: ", label)
+	// Prompts are human interaction — write them to stderr so stdout stays
+	// clean JSON.
+	fmt.Fprintf(os.Stderr, "%s: ", label)
 	line, _ := r.ReadString('\n')
 	return strings.TrimSpace(line)
 }

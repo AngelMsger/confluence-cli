@@ -36,7 +36,7 @@ Flags:
 | `--body` | comment text given inline |
 | `--body-file` | read the body from a file (`-` = stdin) |
 | `--parent` | parent comment ID — makes this a threaded reply |
-| `--format` | `storage` (XHTML, default) or `wiki` (wiki markup) |
+| `--body-format` | `storage` (XHTML, default) or `wiki` (wiki markup) |
 
 On success the created comment is returned as JSON. The command writes the
 comment exactly once — it is never retried automatically.

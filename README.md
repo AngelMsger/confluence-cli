@@ -10,10 +10,11 @@
 > Use Confluence as a knowledge base from your terminal — built for coding agents.
 
 `confluence-cli` lets coding agents (Claude Code and others) — and humans — read,
-search and comment on a Confluence instance from the command line. It speaks to
-both **Confluence Cloud** and **Data Center / Server**, returns agent-friendly
-JSON with structured errors, and ships a companion Skill that teaches an agent
-how to use it.
+search and **maintain** a Confluence instance from the command line: fetch and
+edit pages, manage attachments, labels and comments. It speaks to both
+**Confluence Cloud** and **Data Center / Server**, returns agent-friendly JSON
+with structured errors, and ships a companion Skill that teaches an agent how to
+use it. Write commands support `--dry-run`, and destructive ones require `--yes`.
 
 📖 **Documentation site:** <https://angelmsger.github.io/confluence-cli/>
 
@@ -26,8 +27,9 @@ how to use it.
 - **Agent-friendly** — JSON output by default, structured errors with exit
   codes and recovery hints, and partial page reads (`outline` / `section` /
   `keyword`) so an agent spends minimal context.
-- **Read + comment** — fetch pages, browse page trees, CQL search, list and
-  download attachments, read and post comments.
+- **Read & write** — fetch pages and browse trees, CQL search; create, edit,
+  move, delete and restore pages; manage attachments, labels, comments and page
+  watches. Every write supports `--dry-run`; destructive commands need `--yes`.
 - **Flexible configuration** — CLI flags, environment variables, a `.env` file,
   a YAML config file, or an interactive wizard; secrets stored in the OS
   keychain.
@@ -104,13 +106,20 @@ keychain (with a `0600` file fallback) and never written to the config file.
 | `page get` | fetch a page; render body with `--scope`/`--detail`/`--as` |
 | `page children` / `page descendants` | browse the page tree |
 | `page create` / `update` / `delete` / `move` / `copy` | write pages; `--dry-run` previews, `delete` needs `--yes` |
+| `page history` / `page restore` | list versions; roll a page back to an earlier one |
+| `page watch` / `unwatch` / `watch-status` | subscribe to or check page notifications |
 | `search` | CQL search, raw or built from `--text`/`--author`/`--space`/... |
 | `space list` / `space get` | inspect spaces |
-| `comment list` / `comment add` | read or post comments |
-| `attachment list` / `attachment download` | inspect and fetch attachments |
+| `comment list` / `add` / `update` / `delete` | read, post, edit and remove comments |
+| `attachment list` / `download` / `upload` / `update` / `delete` | inspect, fetch and manage attachments |
+| `label list` / `add` / `remove` | manage page labels |
+| `whoami` | print the user the credentials authenticate as |
 | `skill install` / `skill uninstall` | deploy or remove the embedded companion Skill (Claude Code, Codex) |
 | `config get-contexts` / `use-context` / `delete-context` | manage multiple named servers |
 | `config` / `auth` / `doctor` / `version` | setup and diagnostics |
+
+List commands return a `{items, next, has_more}` envelope; pass `--cursor` with a
+prior page's `next` to read the following page, or `--all` to fetch every page.
 
 ### Multiple servers (contexts)
 

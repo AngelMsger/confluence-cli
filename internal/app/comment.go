@@ -52,9 +52,10 @@ func toCommentOutput(c apiclient.Comment, as string) commentOutput {
 
 func newCommentListCmd(s *appState) *cobra.Command {
 	var (
-		limit int
-		all   bool
-		as    string
+		limit  int
+		all    bool
+		cursor string
+		as     string
 	)
 	cmd := &cobra.Command{
 		Use:   "list <id|url>",
@@ -63,7 +64,7 @@ func newCommentListCmd(s *appState) *cobra.Command {
 			"  confluence-cli comment list 123456 --all --as text",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id, err := resolveID(args[0])
+			id, err := resolvePageID(args[0])
 			if err != nil {
 				return err
 			}
@@ -73,9 +74,9 @@ func newCommentListCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			items, err := collectList(func(cursor string) (apiclient.ListResult[apiclient.Comment], error) {
+			items, info, err := collectPage(func(cursor string) (apiclient.ListResult[apiclient.Comment], error) {
 				return client.ListComments(ctx, id, apiclient.ListOpts{Limit: limit, Cursor: cursor})
-			}, limit, all)
+			}, cursor, all)
 			if err != nil {
 				return err
 			}
@@ -83,11 +84,10 @@ func newCommentListCmd(s *appState) *cobra.Command {
 			for _, c := range items {
 				out = append(out, toCommentOutput(c, as))
 			}
-			return s.emit(out)
+			return s.emitList(out, info)
 		},
 	}
-	cmd.Flags().IntVar(&limit, "limit", 0, "page size (default from config)")
-	cmd.Flags().BoolVar(&all, "all", false, "fetch every page of results")
+	addListFlags(cmd, &limit, &all, &cursor)
 	cmd.Flags().StringVar(&as, "as", "markdown", "render comment bodies as markdown or text")
 	enumComplete(cmd, "as", "markdown", "text")
 	return cmd
@@ -110,7 +110,7 @@ func newCommentAddCmd(s *appState) *cobra.Command {
 			"  echo \"Agreed.\" | confluence-cli comment add 123456 --parent 789 --body-file -",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id, err := resolveID(args[0])
+			id, err := resolvePageID(args[0])
 			if err != nil {
 				return err
 			}
@@ -136,8 +136,8 @@ func newCommentAddCmd(s *appState) *cobra.Command {
 	cmd.Flags().StringVar(&body, "body", "", "comment body text")
 	cmd.Flags().StringVar(&bodyFile, "body-file", "", "read body from a file ('-' for stdin)")
 	cmd.Flags().StringVar(&parent, "parent", "", "parent comment ID, to post a reply")
-	cmd.Flags().StringVar(&format, "format", "storage", "body format: storage or wiki")
-	enumComplete(cmd, "format", "storage", "wiki")
+	cmd.Flags().StringVar(&format, "body-format", "storage", "body format: storage or wiki")
+	enumComplete(cmd, "body-format", "storage", "wiki")
 	return cmd
 }
 
@@ -158,7 +158,7 @@ func newCommentUpdateCmd(s *appState) *cobra.Command {
 			"  echo \"Revised.\" | confluence-cli comment update 789 --body-file -",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id, err := resolveID(args[0])
+			id, err := resolveCommentID(args[0])
 			if err != nil {
 				return err
 			}
@@ -188,10 +188,10 @@ func newCommentUpdateCmd(s *appState) *cobra.Command {
 	f := cmd.Flags()
 	f.StringVar(&body, "body", "", "new comment body text")
 	f.StringVar(&bodyFile, "body-file", "", "read body from a file ('-' for stdin)")
-	f.StringVar(&format, "format", "storage", "body format: storage or wiki")
+	f.StringVar(&format, "body-format", "storage", "body format: storage or wiki")
 	f.IntVar(&version, "version", 0, "expected current version (fetched when omitted)")
 	f.BoolVar(&dryRun, "dry-run", false, "print the request without sending it")
-	enumComplete(cmd, "format", "storage", "wiki")
+	enumComplete(cmd, "body-format", "storage", "wiki")
 	return cmd
 }
 
@@ -205,7 +205,7 @@ func newCommentDeleteCmd(s *appState) *cobra.Command {
 		Example: "  confluence-cli comment delete 789 --yes",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id, err := resolveID(args[0])
+			id, err := resolveCommentID(args[0])
 			if err != nil {
 				return err
 			}

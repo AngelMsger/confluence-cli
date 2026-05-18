@@ -132,6 +132,21 @@ func runCLI(t *testing.T, srv *httptest.Server, args ...string) (string, error) 
 	return <-outCh, err
 }
 
+// decodeList parses a list command's output envelope ({items,next,has_more})
+// and returns the items.
+func decodeList(t *testing.T, out string) []map[string]any {
+	t.Helper()
+	var env struct {
+		Items   []map[string]any `json:"items"`
+		Next    string           `json:"next"`
+		HasMore bool             `json:"has_more"`
+	}
+	if err := json.Unmarshal([]byte(out), &env); err != nil {
+		t.Fatalf("output not a list envelope: %v\n%s", err, out)
+	}
+	return env.Items
+}
+
 func TestCmdVersion(t *testing.T) {
 	srv := mockConfluence(t)
 	out, err := runCLI(t, srv, "version")
@@ -211,10 +226,7 @@ func TestCmdSearch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var got []map[string]any
-	if err := json.Unmarshal([]byte(out), &got); err != nil {
-		t.Fatalf("output not a JSON array: %v\n%s", err, out)
-	}
+	got := decodeList(t, out)
 	if len(got) != 1 || got[0]["id"] != "123" {
 		t.Errorf("search results = %v", got)
 	}
@@ -376,7 +388,7 @@ func TestCmdSkillInstall(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out, "installed confluence Skill") {
+	if !strings.Contains(out, `"status": "installed"`) {
 		t.Errorf("unexpected output: %q", out)
 	}
 	for _, f := range []string{
@@ -397,8 +409,8 @@ func TestCmdSkillInstallAgent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out, "[codex]") {
-		t.Errorf("output missing [codex] tag: %q", out)
+	if !strings.Contains(out, `"agent": "codex"`) {
+		t.Errorf("output missing codex agent: %q", out)
 	}
 	want := filepath.Join(home, ".codex", "skills", "confluence", "SKILL.md")
 	if _, statErr := os.Stat(want); statErr != nil {
@@ -419,9 +431,9 @@ func TestCmdSkillInstallDetect(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, tag := range []string{"[claude-code]", "[codex]"} {
+	for _, tag := range []string{`"agent": "claude-code"`, `"agent": "codex"`} {
 		if !strings.Contains(out, tag) {
-			t.Errorf("output missing %s tag: %q", tag, out)
+			t.Errorf("output missing %s: %q", tag, out)
 		}
 	}
 	for _, p := range []string{
@@ -456,7 +468,7 @@ func TestCmdSkillUninstall(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out, "removed confluence Skill") {
+	if !strings.Contains(out, `"status": "removed"`) {
 		t.Errorf("unexpected output: %q", out)
 	}
 	if _, statErr := os.Stat(filepath.Join(dir, "confluence")); !os.IsNotExist(statErr) {
@@ -467,8 +479,8 @@ func TestCmdSkillUninstall(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out, "not installed") {
-		t.Errorf("expected 'not installed' on repeat uninstall: %q", out)
+	if !strings.Contains(out, `"status": "not_installed"`) {
+		t.Errorf("expected not_installed on repeat uninstall: %q", out)
 	}
 }
 

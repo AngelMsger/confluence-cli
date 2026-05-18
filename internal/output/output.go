@@ -48,9 +48,59 @@ func Emit(v any, opt Options) error {
 	case FormatJSON, "":
 		return emitJSON(generic, opt.Writer)
 	default:
-		return cerrors.Newf(cerrors.CategoryUsage, "BAD_FORMAT",
-			"unknown output format %q (want json, table or ndjson)", opt.Format)
+		return badFormat(opt.Format)
 	}
+}
+
+// EmitList renders a paginated list result as a {items, next, has_more}
+// envelope. Unlike Emit it is told explicitly that the value is a list, so the
+// envelope shape never has to be guessed from the data. json emits the
+// envelope; table renders the items as a grid with a cursor footer; ndjson
+// streams the items, one per line.
+func EmitList(items any, next string, hasMore bool, opt Options) error {
+	if opt.Writer == nil {
+		return cerrors.New(cerrors.CategoryInternal, "NO_WRITER", "no output writer configured")
+	}
+	generic, err := toGeneric(items)
+	if err != nil {
+		return err
+	}
+	list, _ := generic.([]any)
+	if list == nil {
+		list = []any{}
+	}
+	if len(opt.Fields) > 0 {
+		if projected, ok := project(list, opt.Fields).([]any); ok {
+			list = projected
+		}
+	}
+
+	switch opt.Format {
+	case FormatTable:
+		if err := emitListTable(list, opt); err != nil {
+			return err
+		}
+		if hasMore {
+			_, err := fmt.Fprintf(opt.Writer, "\n(more results — re-run with --cursor %s)\n", next)
+			return err
+		}
+		return nil
+	case FormatNDJSON:
+		return emitNDJSON(list, opt.Writer)
+	case FormatJSON, "":
+		env := map[string]any{"items": list, "has_more": hasMore}
+		if next != "" {
+			env["next"] = next
+		}
+		return emitJSON(env, opt.Writer)
+	default:
+		return badFormat(opt.Format)
+	}
+}
+
+func badFormat(format string) error {
+	return cerrors.Newf(cerrors.CategoryUsage, "BAD_FORMAT",
+		"unknown output format %q (want json, table or ndjson)", format)
 }
 
 // toGeneric converts any value into map[string]any / []any / scalar form.

@@ -15,10 +15,11 @@ explicitly asked for that change — never write speculatively.
 ## Body formats
 
 `create` and `update` take a body via `--body <text>` or `--body-file <path>`
-(`-` reads stdin), interpreted per `--format`:
+(`-` reads stdin), interpreted per `--body-format` (not `--format`, which is the
+global output format):
 
-| `--format` | Meaning |
-|------------|---------|
+| `--body-format` | Meaning |
+|-----------------|---------|
 | `storage` (default) | raw Confluence storage-format XHTML |
 | `wiki` | Confluence wiki markup, converted server-side |
 | `markdown` | Markdown, converted to storage format client-side (best-effort) |
@@ -32,7 +33,7 @@ links, lists, blockquotes, tables, images and rules. Unsupported constructs
 ```bash
 confluence-cli page create --space ENG --title "Release Notes 1.2"
 confluence-cli page create --space ENG --title "Plan" --parent 12345 \
-  --format markdown --body-file ./plan.md
+  --body-format markdown --body-file ./plan.md
 ```
 
 `--space` and `--title` are required. `--parent` (ID or URL) nests the page.
@@ -44,7 +45,7 @@ Returns the new page's `id`, `title`, `url` and `version`.
 # change only the title; the body is kept
 confluence-cli page update 12345 --title "Release Notes 1.3"
 # replace the body from a file
-confluence-cli page update 12345 --format markdown --body-file ./notes.md
+confluence-cli page update 12345 --body-format markdown --body-file ./notes.md
 ```
 
 Pass at least one of `--title` / `--body` / `--body-file`. The new version is

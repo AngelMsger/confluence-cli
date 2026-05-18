@@ -3,17 +3,21 @@
 ## 1. 目标与范围
 
 `confluence-cli` 是一个 Go 编写的命令行工具，让 Coding Agent（Claude Code 等）把
-Confluence 当作外部知识库进行检索与读取。
+Confluence 当作外部知识库进行检索、读取与维护。
 
 - **同时支持** Confluence Cloud 与 Confluence Data Center / Server（self-hosted），
   并兼容多个 REST API 版本。
 - **面向 Agent**：默认输出 JSON，错误结构化，正文支持分级 / 分段读取，错误信息携带
   可执行的下一步建议。
 - **配置多来源**：CLI 参数 / 环境变量 / `.env` / 配置文件，含交互式 `init` 引导。
-- **操作范围**：读 + 评论写。读覆盖取页面、CQL 搜索、列空间、子页 / 后代、附件、评论；
-  写仅实现「发布 / 回复评论」。不实现页面创建 / 编辑。
+- **操作范围**：读与写。读覆盖取页面、CQL 搜索、列空间、子页 / 后代、附件、评论、
+  标签、版本历史。写覆盖页面（创建 / 编辑 / 删除 / 移动 / 复制 / 恢复历史版本）、
+  附件（上传 / 替换 / 删除）、标签（增 / 删）、评论（发布 / 编辑 / 删除）、关注
+  （watch / unwatch）；另有 `whoami` 查询当前凭据对应的用户。每个写命令支持
+  `--dry-run` 预览将要发出的请求。
 
-非目标：页面创建 / 编辑、空间管理、用户管理、OAuth 2.0 三方授权（预留扩展点，本期不做）。
+非目标：空间的创建 / 删除 / 归档、页面权限（restrictions）、内容属性、博客内容类型、
+PDF 导出、OAuth 2.0 三方授权（预留扩展点，本期不做）。
 
 ## 2. API Flavor 差异矩阵
 
@@ -126,34 +130,42 @@ Defaults   { Format string         // json（默认）
 
 ## 5. 命令规格
 
-全局持久 flag：`--base-url --flavor --format(json|table|ndjson) --fields --timeout
---no-color --verbose --config`。任何 `<id|url>` 入参先经 `pkg/urlref` 解析成 ID。
+全局持久 flag：`--base-url`、`--flavor`、`--format`(json|table|ndjson)、`--fields`、
+`--timeout`、`--config`、`--use-context`、`--verbose`。
 
-| 命令 | 关键 flag | 说明 |
-|------|-----------|------|
-| `page get <id\|url>` | `--body-format storage\|view`、`--detail simple\|with-ids\|full`、`--scope full\|outline\|section\|keyword`、`--section`、`--keyword`、`--as text\|markdown` | 取页面并按 scope 渲染正文 |
-| `page children <id\|url>` | `--limit --all --depth` | 直接子页面 |
-| `page descendants <id\|url>` | `--limit --all` | 所有后代页面 |
-| `search <cql>` | `--text --author --contributor --space --label --type --after --before --limit --all` | 给定 `<cql>` 直用；否则由 flag 拼 CQL |
-| `space list` | `--type global\|personal --limit --all` | 列空间 |
-| `space get <key>` | — | 取单个空间 |
-| `comment list <id\|url>` | `--limit --all --as` | 列页面评论 |
-| `comment add <id\|url>` | `--body --body-file --parent --format storage\|wiki` | 发布 / 回复评论（唯一写操作） |
-| `attachment list <id\|url>` | `--limit --all` | 列附件 |
-| `attachment download <id\|url>` | `--output --pageID` | 下载附件，`-` 为 stdout |
-| `config init\|show\|path` | `--explain` | 配置管理 |
-| `auth status\|login\|logout` | — | 凭证管理 |
-| `doctor` | `--no-update-check` | 连通性 / 配置 / flavor 诊断，并检查是否有新版本发布 |
-| `skill install\|uninstall` | `--agent claude-code\|codex`、`--project`、`--dir` | 部署 / 移除内嵌 Skill；无 flag 时探测已安装的 Agent 目录 |
-| `skill path\|show` | `--agent`、`--project`、`--dir` | 打印安装位置 / 状态、打印 SKILL.md |
-| `version` | — | 版本信息 |
+命令树按资源分组：`page`、`search`、`space`、`comment`、`attachment`、`label`、
+`config`、`auth`、`doctor`、`whoami`、`skill`、`version`。共同约定：
+
+- **ID 解析**：接受页面的入参也接受页面 URL，经 `pkg/urlref` 解析；评论入参接受
+  评论 ID 或带 `focusedCommentId` 的评论永久链接（普通页面 URL 会被拒绝）；附件
+  入参只接受附件内容 ID。
+- **写操作**：`page create/update/delete/move/copy/restore`、`page watch/unwatch`、
+  `attachment upload/update/delete`、`label add/remove`、`comment add/update/delete`
+  均为写命令；每个写命令支持 `--dry-run` 预览将发出的请求，删除类命令需 `--yes`。
+- **分页**：list 命令（`search`、`page children/descendants/history`、`comment list`、
+  `attachment list`、`label list`、`space list`）接受 `--limit/--all/--cursor`，
+  输出 `{items, next, has_more}` 信封。
+- **正文格式**：`page create/update`、`comment add/update` 用 `--body-format`
+  （storage|wiki|markdown）指定正文格式，与全局 `--format`（输出格式）互不冲突。
+
+完整的命令、flag 与示例由命令树自动生成，见 [docs/cli/](cli/)（`make docs` 生成、
+CI 校验不漂移）—— 本节不再维护并行的命令清单，以杜绝文档与实现脱节。
 
 ## 6. 输出与错误模型
 
 ### 6.1 输出
 
 `Formatter` 接口三实现：`json`（默认，面向 Agent，stdout）、`table`（人类可读）、
-`ndjson`（流式大结果集，配合迭代器）。`--fields a,b.c` 按点路径投影。stdout 仅放结果。
+`ndjson`（流式大结果集）。`--fields a,b.c` 按点路径投影。list 命令输出分页信封
+`{items, next, has_more}`，`--cursor` 可从上一页的 `next` 续读下一页。
+
+成功输出统一为 stdout 上的 JSON，但有三处刻意的 raw-output 例外：
+
+- `version` 打印纯文本版本行（与 `--version` flag 对齐）。
+- `attachment download --output -` 把附件原始字节写入 stdout（用于管道）。
+- `skill show` 把内嵌的 `SKILL.md` 原样打印。
+
+交互式向导（`config init`、`auth login`）的提示走 stderr；错误只走 stderr。
 
 ### 6.2 错误
 
@@ -165,7 +177,7 @@ Defaults   { Format string         // json（默认）
   "retryable":false,"http_status":401}}
 ```
 
-category：`usage config auth not_found permission rate_limit network server parse internal`。
+category：`usage config auth not_found permission conflict rate_limit network server parse internal`。
 
 ### 6.3 退出码
 
@@ -176,7 +188,10 @@ category：`usage config auth not_found permission rate_limit network server par
 | 2 | usage | 8 | network |
 | 3 | config | 9 | server |
 | 4 | auth | 10 | parse |
-| 5 | permission | | |
+| 5 | permission | 11 | conflict |
+
+`conflict`（HTTP 409，exit 11）用于 `page update` / `comment update` 等写操作的
+版本冲突 —— 重新读取目标内容拿到当前版本号后再重试。
 
 `hints.go` 把 category 映射为 next_steps，引导 Agent 自我纠正。
 

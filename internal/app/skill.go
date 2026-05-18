@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -13,17 +12,26 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// skillResult is the result shape for a skill install / uninstall / path entry.
+type skillResult struct {
+	Agent   string `json:"agent,omitempty"`
+	Path    string `json:"path"`
+	Status  string `json:"status"`
+	Version string `json:"version,omitempty"`
+	Files   int    `json:"files,omitempty"`
+}
+
 // newSkillCmd manages the companion `confluence` Skill, which is embedded in
 // the binary so it always matches the installed CLI version.
-func newSkillCmd() *cobra.Command {
+func newSkillCmd(s *appState) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "skill",
 		Short: "Install the companion Skill for coding agents (Claude Code, Codex)",
 	}
 	cmd.AddCommand(
-		newSkillInstallCmd(),
-		newSkillUninstallCmd(),
-		newSkillPathCmd(),
+		newSkillInstallCmd(s),
+		newSkillUninstallCmd(s),
+		newSkillPathCmd(s),
 		newSkillShowCmd(),
 	)
 	return cmd
@@ -163,15 +171,7 @@ func resolveTargets(agents []string, project bool, dir string) ([]skillDest, err
 	return dests, nil
 }
 
-// label renders the trailing " [agent]" tag, empty for explicit --dir targets.
-func (d skillDest) label() string {
-	if d.agent == "" {
-		return ""
-	}
-	return " [" + d.agent + "]"
-}
-
-func newSkillInstallCmd() *cobra.Command {
+func newSkillInstallCmd(s *appState) *cobra.Command {
 	var (
 		project bool
 		dir     string
@@ -190,15 +190,18 @@ func newSkillInstallCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			results := make([]skillResult, 0, len(dests))
 			for _, d := range dests {
 				n, err := writeSkill(d.path)
 				if err != nil {
 					return err
 				}
-				fmt.Fprintf(os.Stdout, "installed confluence Skill %s -> %s (%d files)%s\n",
-					embeddedSkillVersion(), d.path, n, d.label())
+				results = append(results, skillResult{
+					Agent: d.agent, Path: d.path, Status: "installed",
+					Version: embeddedSkillVersion(), Files: n,
+				})
 			}
-			return nil
+			return s.emit(results)
 		},
 	}
 	cmd.Flags().BoolVar(&project, "project", false,
@@ -210,7 +213,7 @@ func newSkillInstallCmd() *cobra.Command {
 	return cmd
 }
 
-func newSkillUninstallCmd() *cobra.Command {
+func newSkillUninstallCmd(s *appState) *cobra.Command {
 	var (
 		project bool
 		dir     string
@@ -227,18 +230,23 @@ func newSkillUninstallCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			results := make([]skillResult, 0, len(dests))
 			for _, d := range dests {
 				if _, statErr := os.Stat(filepath.Join(d.path, "SKILL.md")); statErr != nil {
-					fmt.Fprintf(os.Stdout, "not installed -> %s%s\n", d.path, d.label())
+					results = append(results, skillResult{
+						Agent: d.agent, Path: d.path, Status: "not_installed",
+					})
 					continue
 				}
 				if err := os.RemoveAll(d.path); err != nil {
 					return cerrors.Wrap(err, cerrors.CategoryConfig, "SKILL_REMOVE",
 						"failed to remove the Skill directory")
 				}
-				fmt.Fprintf(os.Stdout, "removed confluence Skill -> %s%s\n", d.path, d.label())
+				results = append(results, skillResult{
+					Agent: d.agent, Path: d.path, Status: "removed",
+				})
 			}
-			return nil
+			return s.emit(results)
 		},
 	}
 	cmd.Flags().BoolVar(&project, "project", false,
@@ -250,7 +258,7 @@ func newSkillUninstallCmd() *cobra.Command {
 	return cmd
 }
 
-func newSkillPathCmd() *cobra.Command {
+func newSkillPathCmd(s *appState) *cobra.Command {
 	var (
 		project bool
 		dir     string
@@ -278,14 +286,17 @@ func newSkillPathCmd() *cobra.Command {
 				}
 				sort.Slice(dests, func(i, j int) bool { return dests[i].agent < dests[j].agent })
 			}
+			results := make([]skillResult, 0, len(dests))
 			for _, d := range dests {
-				status := "not installed"
+				status := "not_installed"
 				if _, err := os.Stat(filepath.Join(d.path, "SKILL.md")); err == nil {
 					status = "installed"
 				}
-				fmt.Fprintf(os.Stdout, "%s (%s)%s\n", d.path, status, d.label())
+				results = append(results, skillResult{
+					Agent: d.agent, Path: d.path, Status: status,
+				})
 			}
-			return nil
+			return s.emit(results)
 		},
 	}
 	cmd.Flags().BoolVar(&project, "project", false,

@@ -129,6 +129,109 @@ func TestEmitBadFormat(t *testing.T) {
 	}
 }
 
+func TestEmitListJSON(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	items := []sampleRec{mk("1", "Hello", "ENG"), mk("2", "World", "DEV")}
+	if err := EmitList(items, "25", true, Options{Format: FormatJSON, Writer: &buf}); err != nil {
+		t.Fatal(err)
+	}
+	var got struct {
+		Items   []map[string]any `json:"items"`
+		Next    string           `json:"next"`
+		HasMore bool             `json:"has_more"`
+	}
+	if err := json.Unmarshal(buf.Bytes(), &got); err != nil {
+		t.Fatalf("output not a list envelope: %v\n%s", err, buf.String())
+	}
+	if len(got.Items) != 2 || got.Next != "25" || !got.HasMore {
+		t.Errorf("envelope = %+v", got)
+	}
+}
+
+func TestEmitListJSONEmpty(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	if err := EmitList([]sampleRec(nil), "", false, Options{Format: FormatJSON, Writer: &buf}); err != nil {
+		t.Fatal(err)
+	}
+	// An empty list must serialize items as [] (not null) and omit next.
+	if !strings.Contains(buf.String(), `"items": []`) {
+		t.Errorf("empty list should emit []:\n%s", buf.String())
+	}
+	if strings.Contains(buf.String(), `"next"`) {
+		t.Errorf("next must be omitted when empty:\n%s", buf.String())
+	}
+}
+
+func TestEmitListTable(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	items := []sampleRec{mk("1", "Hello", "ENG"), mk("2", "World", "DEV")}
+	if err := EmitList(items, "25", true, Options{Format: FormatTable, Writer: &buf}); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "Hello") || !strings.Contains(out, "World") {
+		t.Errorf("table missing item rows:\n%s", out)
+	}
+	if strings.Contains(out, "has_more") {
+		t.Errorf("envelope keys leaked into the table:\n%s", out)
+	}
+	if !strings.Contains(out, "--cursor 25") {
+		t.Errorf("table should hint the next cursor:\n%s", out)
+	}
+}
+
+func TestEmitListNDJSON(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	items := []sampleRec{mk("1", "Hello", "ENG"), mk("2", "World", "DEV")}
+	if err := EmitList(items, "", false, Options{Format: FormatNDJSON, Writer: &buf}); err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("ndjson should stream one item per line, got %d:\n%s", len(lines), buf.String())
+	}
+	for _, ln := range lines {
+		var rec map[string]any
+		if err := json.Unmarshal([]byte(ln), &rec); err != nil {
+			t.Fatalf("ndjson line not valid JSON: %v", err)
+		}
+		if _, isEnvelope := rec["has_more"]; isEnvelope {
+			t.Errorf("ndjson streamed the envelope, not its items: %s", ln)
+		}
+	}
+}
+
+func TestEmitListFields(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	items := []sampleRec{mk("1", "Hello", "ENG")}
+	err := EmitList(items, "25", true, Options{Format: FormatJSON, Fields: []string{"id"}, Writer: &buf})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got struct {
+		Items   []map[string]any `json:"items"`
+		HasMore bool             `json:"has_more"`
+	}
+	if err := json.Unmarshal(buf.Bytes(), &got); err != nil {
+		t.Fatalf("output not a list envelope: %v\n%s", err, buf.String())
+	}
+	// --fields projects the items; the envelope wrapper is preserved.
+	if len(got.Items) != 1 || got.Items[0]["id"] != "1" {
+		t.Errorf("projected items = %v", got.Items)
+	}
+	if _, leaked := got.Items[0]["title"]; leaked {
+		t.Errorf("title should have been projected away: %v", got.Items[0])
+	}
+	if !got.HasMore {
+		t.Error("envelope has_more was lost")
+	}
+}
+
 func TestEmitError(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer

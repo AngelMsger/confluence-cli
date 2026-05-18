@@ -81,6 +81,22 @@ func TestParseTitleUnslug(t *testing.T) {
 	}
 }
 
+func TestParseFocusedComment(t *testing.T) {
+	t.Parallel()
+	// A comment permalink carries both the page ID and the comment's own ID.
+	got := Parse("https://kms.example.com/pages/viewpage.action?pageId=555&focusedCommentId=999")
+	if got.PageID != "555" {
+		t.Errorf("PageID = %q, want 555", got.PageID)
+	}
+	if got.CommentID != "999" {
+		t.Errorf("CommentID = %q, want 999", got.CommentID)
+	}
+	// A plain page URL carries no comment ID.
+	if plain := Parse("https://kms.example.com/pages/viewpage.action?pageId=555"); plain.CommentID != "" {
+		t.Errorf("CommentID = %q, want empty for a plain page URL", plain.CommentID)
+	}
+}
+
 func TestParseEmpty(t *testing.T) {
 	t.Parallel()
 	if got := Parse("  "); got != (Ref{}) {

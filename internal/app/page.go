@@ -164,7 +164,7 @@ func newPageGetCmd(s *appState) *cobra.Command {
 			"  confluence-cli page get https://wiki.example.com/pages/viewpage.action?pageId=123456",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id, err := resolveID(args[0])
+			id, err := resolvePageID(args[0])
 			if err != nil {
 				return err
 			}
@@ -219,8 +219,9 @@ func newPageGetCmd(s *appState) *cobra.Command {
 
 func newPageChildrenCmd(s *appState) *cobra.Command {
 	var (
-		limit int
-		all   bool
+		limit  int
+		all    bool
+		cursor string
 	)
 	cmd := &cobra.Command{
 		Use:   "children <id|url>",
@@ -229,7 +230,7 @@ func newPageChildrenCmd(s *appState) *cobra.Command {
 			"  confluence-cli page children 123456 --all --format table",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id, err := resolveID(args[0])
+			id, err := resolvePageID(args[0])
 			if err != nil {
 				return err
 			}
@@ -239,27 +240,26 @@ func newPageChildrenCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			items, err := collectList(func(cursor string) (apiclient.ListResult[apiclient.Page], error) {
+			items, info, err := collectPage(func(cursor string) (apiclient.ListResult[apiclient.Page], error) {
 				return client.ListChildren(ctx, id, apiclient.ListOpts{Limit: limit, Cursor: cursor})
-			}, limit, all)
+			}, cursor, all)
 			if err != nil {
 				return err
 			}
-			return s.emit(items)
+			return s.emitList(items, info)
 		},
 	}
-	cmd.Flags().IntVar(&limit, "limit", 0, "page size (default from config)")
-	cmd.Flags().BoolVar(&all, "all", false, "fetch every page of results")
+	addListFlags(cmd, &limit, &all, &cursor)
 	return cmd
 }
 
-// addBodyFlags registers the shared --body/--body-file/--format flags.
+// addBodyFlags registers the shared --body/--body-file/--body-format flags.
 func addBodyFlags(cmd *cobra.Command, body, bodyFile, format *string) {
 	f := cmd.Flags()
 	f.StringVar(body, "body", "", "body text")
 	f.StringVar(bodyFile, "body-file", "", "read body from a file ('-' for stdin)")
-	f.StringVar(format, "format", "storage", "body format: storage, wiki or markdown")
-	enumComplete(cmd, "format", "storage", "wiki", "markdown")
+	f.StringVar(format, "body-format", "storage", "body format: storage, wiki or markdown")
+	enumComplete(cmd, "body-format", "storage", "wiki", "markdown")
 }
 
 func newPageCreateCmd(s *appState) *cobra.Command {
@@ -273,10 +273,10 @@ func newPageCreateCmd(s *appState) *cobra.Command {
 		Short: "Create a new page",
 		Long: "Create a page in a space. Use --parent to nest it under an existing\n" +
 			"page. The body may be storage-format XHTML, Confluence wiki markup or\n" +
-			"Markdown (--format markdown, converted on a best-effort basis).",
+			"Markdown (--body-format markdown, converted on a best-effort basis).",
 		Example: "  # create a page from a Markdown file, nested under a parent\n" +
 			"  confluence-cli page create --space ENG --title \"Release Notes\" \\\n" +
-			"    --parent 123456 --format markdown --body-file notes.md\n\n" +
+			"    --parent 123456 --body-format markdown --body-file notes.md\n\n" +
 			"  # preview the request without sending it\n" +
 			"  confluence-cli page create --space ENG --title Draft --body \"<p>hi</p>\" --dry-run",
 		Args: cobra.NoArgs,
@@ -291,7 +291,7 @@ func newPageCreateCmd(s *appState) *cobra.Command {
 			}
 			parentID := ""
 			if parent != "" {
-				id, err := resolveID(parent)
+				id, err := resolvePageID(parent)
 				if err != nil {
 					return err
 				}
@@ -347,10 +347,10 @@ func newPageUpdateCmd(s *appState) *cobra.Command {
 		Example: "  # retitle a page, keeping its body\n" +
 			"  confluence-cli page update 123456 --title \"New Title\"\n\n" +
 			"  # replace the body from Markdown, asserting the version last read\n" +
-			"  confluence-cli page update 123456 --format markdown --body-file body.md --version 7",
+			"  confluence-cli page update 123456 --body-format markdown --body-file body.md --version 7",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id, err := resolveID(args[0])
+			id, err := resolvePageID(args[0])
 			if err != nil {
 				return err
 			}
@@ -411,7 +411,7 @@ func newPageDeleteCmd(s *appState) *cobra.Command {
 			"  confluence-cli page delete 123456 --purge --yes",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id, err := resolveID(args[0])
+			id, err := resolvePageID(args[0])
 			if err != nil {
 				return err
 			}
@@ -459,7 +459,7 @@ func newPageMoveCmd(s *appState) *cobra.Command {
 			"  confluence-cli page move 123456 --target-space DOCS",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id, err := resolveID(args[0])
+			id, err := resolvePageID(args[0])
 			if err != nil {
 				return err
 			}
@@ -469,7 +469,7 @@ func newPageMoveCmd(s *appState) *cobra.Command {
 			}
 			parentID := ""
 			if targetParent != "" {
-				if parentID, err = resolveID(targetParent); err != nil {
+				if parentID, err = resolvePageID(targetParent); err != nil {
 					return err
 				}
 			}
@@ -514,7 +514,7 @@ func newPageCopyCmd(s *appState) *cobra.Command {
 			"  confluence-cli page copy 123456 --title Draft --space SANDBOX",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id, err := resolveID(args[0])
+			id, err := resolvePageID(args[0])
 			if err != nil {
 				return err
 			}
@@ -524,7 +524,7 @@ func newPageCopyCmd(s *appState) *cobra.Command {
 			}
 			parentID := ""
 			if parent != "" {
-				if parentID, err = resolveID(parent); err != nil {
+				if parentID, err = resolvePageID(parent); err != nil {
 					return err
 				}
 			}
@@ -558,8 +558,9 @@ func newPageCopyCmd(s *appState) *cobra.Command {
 
 func newPageDescendantsCmd(s *appState) *cobra.Command {
 	var (
-		limit int
-		all   bool
+		limit  int
+		all    bool
+		cursor string
 	)
 	cmd := &cobra.Command{
 		Use:     "descendants <id|url>",
@@ -567,7 +568,7 @@ func newPageDescendantsCmd(s *appState) *cobra.Command {
 		Example: "  confluence-cli page descendants 123456 --all",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id, err := resolveID(args[0])
+			id, err := resolvePageID(args[0])
 			if err != nil {
 				return err
 			}
@@ -577,16 +578,15 @@ func newPageDescendantsCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			items, err := collectList(func(cursor string) (apiclient.ListResult[apiclient.Page], error) {
+			items, info, err := collectPage(func(cursor string) (apiclient.ListResult[apiclient.Page], error) {
 				return client.ListDescendants(ctx, id, apiclient.ListOpts{Limit: limit, Cursor: cursor})
-			}, limit, all)
+			}, cursor, all)
 			if err != nil {
 				return err
 			}
-			return s.emit(items)
+			return s.emitList(items, info)
 		},
 	}
-	cmd.Flags().IntVar(&limit, "limit", 0, "page size (default from config)")
-	cmd.Flags().BoolVar(&all, "all", false, "fetch every page of results")
+	addListFlags(cmd, &limit, &all, &cursor)
 	return cmd
 }

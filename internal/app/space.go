@@ -19,6 +19,7 @@ func newSpaceListCmd(s *appState) *cobra.Command {
 		spaceType string
 		limit     int
 		all       bool
+		cursor    string
 	)
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -30,21 +31,20 @@ func newSpaceListCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			items, err := collectList(func(cursor string) (apiclient.ListResult[apiclient.Space], error) {
+			items, info, err := collectPage(func(cursor string) (apiclient.ListResult[apiclient.Space], error) {
 				return client.ListSpaces(ctx, apiclient.SpaceListOpts{
 					ListOpts: apiclient.ListOpts{Limit: limit, Cursor: cursor},
 					Type:     spaceType,
 				})
-			}, limit, all)
+			}, cursor, all)
 			if err != nil {
 				return err
 			}
-			return s.emit(items)
+			return s.emitList(items, info)
 		},
 	}
 	cmd.Flags().StringVar(&spaceType, "type", "", "filter by type: global or personal")
-	cmd.Flags().IntVar(&limit, "limit", 0, "page size (default from config)")
-	cmd.Flags().BoolVar(&all, "all", false, "fetch every page of results")
+	addListFlags(cmd, &limit, &all, &cursor)
 	enumComplete(cmd, "type", "global", "personal")
 	return cmd
 }

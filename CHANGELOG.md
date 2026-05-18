@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** list commands (`search`, `page children`/`descendants`/`history`,
+  `comment list`, `attachment list`, `label list`, `space list`) now emit a
+  `{items, next, has_more}` envelope instead of a bare array. A new `--cursor`
+  flag resumes from a prior page's `next`, so an agent can page deterministically
+  without `--all`.
+- **Breaking:** the body-format flag on `page create`/`update` and
+  `comment add`/`update` was renamed from `--format` to `--body-format`; it no
+  longer shadows the global `--format` (json/table/ndjson) output flag.
+- **Breaking:** `config path`/`use-context`/`delete-context`, `config init`,
+  `auth login`/`logout` and `skill install`/`uninstall`/`path` now emit JSON on
+  stdout like every other command; interactive prompts moved to stderr.
+
+### Fixed
+
+- **Security:** `comment` and `attachment` commands no longer mis-resolve a
+  page URL to a page ID. Passing a plain page URL to `comment delete` /
+  `attachment delete` could previously delete the wrong content; comment
+  commands now read `focusedCommentId` from a comment permalink and reject
+  ambiguous page URLs, and attachment commands require a bare attachment ID.
+
 ## [0.2.0] - 2026-05-18
 
 ### Added

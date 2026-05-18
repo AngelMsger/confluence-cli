@@ -8,8 +8,9 @@ import (
 
 func newPageHistoryCmd(s *appState) *cobra.Command {
 	var (
-		limit int
-		all   bool
+		limit  int
+		all    bool
+		cursor string
 	)
 	cmd := &cobra.Command{
 		Use:   "history <id|url>",
@@ -18,7 +19,7 @@ func newPageHistoryCmd(s *appState) *cobra.Command {
 			"  confluence-cli page history 123456 --all --format table",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id, err := resolveID(args[0])
+			id, err := resolvePageID(args[0])
 			if err != nil {
 				return err
 			}
@@ -28,17 +29,16 @@ func newPageHistoryCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			items, err := collectList(func(cursor string) (apiclient.ListResult[apiclient.PageVersion], error) {
+			items, info, err := collectPage(func(cursor string) (apiclient.ListResult[apiclient.PageVersion], error) {
 				return client.ListPageVersions(ctx, id, apiclient.ListOpts{Limit: limit, Cursor: cursor})
-			}, limit, all)
+			}, cursor, all)
 			if err != nil {
 				return err
 			}
-			return s.emit(items)
+			return s.emitList(items, info)
 		},
 	}
-	cmd.Flags().IntVar(&limit, "limit", 0, "page size (default from config)")
-	cmd.Flags().BoolVar(&all, "all", false, "fetch every page of results")
+	addListFlags(cmd, &limit, &all, &cursor)
 	return cmd
 }
 
@@ -58,7 +58,7 @@ func newPageRestoreCmd(s *appState) *cobra.Command {
 			"  confluence-cli page restore 123456 --version 3 --message \"roll back bad edit\"",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id, err := resolveID(args[0])
+			id, err := resolvePageID(args[0])
 			if err != nil {
 				return err
 			}
