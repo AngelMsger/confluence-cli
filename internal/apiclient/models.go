@@ -96,6 +96,15 @@ type Label struct {
 	Prefix string `json:"prefix,omitempty"`
 }
 
+// User is a normalized Confluence user. Data Center identifies users by
+// Username/UserKey, Cloud by AccountID; whichever the server returns is kept.
+type User struct {
+	AccountID   string `json:"account_id,omitempty"`
+	Username    string `json:"username,omitempty"`
+	DisplayName string `json:"display_name,omitempty"`
+	Type        string `json:"type,omitempty"`
+}
+
 // SearchHit is a normalized CQL search result.
 type SearchHit struct {
 	ID           string `json:"id"`
@@ -228,6 +237,21 @@ type UpdateAttachmentReq struct {
 // DeleteAttachmentReq is a request to delete an attachment by its content ID.
 type DeleteAttachmentReq struct {
 	AttachmentID string
+}
+
+// UpdateCommentReq is a request to edit a footer comment's body. ExpectVersion
+// 0 makes the client fetch the current version first; a non-zero value asserts
+// the version the caller last read.
+type UpdateCommentReq struct {
+	ID            string
+	Body          string
+	Format        string // "storage" (default) or "wiki"
+	ExpectVersion int
+}
+
+// DeleteCommentReq is a request to delete a comment by its content ID.
+type DeleteCommentReq struct {
+	ID string
 }
 
 // RestorePageReq is a request to restore a page to an earlier version. The

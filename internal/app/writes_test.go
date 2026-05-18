@@ -246,3 +246,99 @@ func TestCmdPageWatchDryRun(t *testing.T) {
 		t.Errorf("dry-run output = %v", got)
 	}
 }
+
+func TestCmdCommentUpdate(t *testing.T) {
+	srv := mockConfluence(t)
+	out, err := runCLI(t, srv, "comment", "update", "c1", "--body", "edited")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	json.Unmarshal([]byte(out), &got)
+	if got["id"] != "c1" {
+		t.Errorf("updated comment = %v", got)
+	}
+}
+
+func TestCmdCommentUpdateDryRun(t *testing.T) {
+	srv := mockConfluence(t)
+	out, err := runCLI(t, srv, "comment", "update", "c1", "--body", "edited", "--dry-run")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	json.Unmarshal([]byte(out), &got)
+	if got["dry_run"] != true || got["method"] != "PUT" {
+		t.Errorf("dry-run output = %v", got)
+	}
+}
+
+func TestCmdCommentUpdateNoBody(t *testing.T) {
+	srv := mockConfluence(t)
+	if _, err := runCLI(t, srv, "comment", "update", "c1"); err == nil {
+		t.Fatal("expected an error when no body is given")
+	}
+}
+
+func TestCmdCommentDeleteDryRun(t *testing.T) {
+	srv := mockConfluence(t)
+	out, err := runCLI(t, srv, "comment", "delete", "c1", "--dry-run")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	json.Unmarshal([]byte(out), &got)
+	if got["dry_run"] != true || got["method"] != "DELETE" {
+		t.Errorf("dry-run output = %v", got)
+	}
+}
+
+func TestCmdCommentDelete(t *testing.T) {
+	srv := mockConfluence(t)
+	out, err := runCLI(t, srv, "comment", "delete", "c1", "--yes")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	json.Unmarshal([]byte(out), &got)
+	if got["id"] != "c1" || got["status"] != "deleted" {
+		t.Errorf("delete output = %v", got)
+	}
+}
+
+func TestCmdWhoami(t *testing.T) {
+	srv := mockConfluence(t)
+	out, err := runCLI(t, srv, "whoami")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	json.Unmarshal([]byte(out), &got)
+	if got["display_name"] != "Test User" || got["username"] != "tester" {
+		t.Errorf("whoami output = %v", got)
+	}
+}
+
+func TestCmdDoctorCurrentUser(t *testing.T) {
+	srv := mockConfluence(t)
+	out, err := runCLI(t, srv, "doctor", "--no-update-check")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var report map[string]any
+	json.Unmarshal([]byte(out), &report)
+	checks, _ := report["checks"].([]any)
+	var found map[string]any
+	for _, c := range checks {
+		m, _ := c.(map[string]any)
+		if m["name"] == "current-user" {
+			found = m
+		}
+	}
+	if found == nil {
+		t.Fatalf("doctor report has no current-user check:\n%s", out)
+	}
+	if found["ok"] != true || !strings.Contains(found["detail"].(string), "Test User") {
+		t.Errorf("current-user check = %v", found)
+	}
+}

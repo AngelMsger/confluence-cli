@@ -42,7 +42,9 @@
       <div class="side-title">comment</div>
       <a href="#confluence-cli-comment">confluence-cli comment</a>
       <a href="#confluence-cli-comment-add">confluence-cli comment add</a>
+      <a href="#confluence-cli-comment-delete">confluence-cli comment delete</a>
       <a href="#confluence-cli-comment-list">confluence-cli comment list</a>
+      <a href="#confluence-cli-comment-update">confluence-cli comment update</a>
       </div>
     <div class="side-group">
       <div class="side-title">config</div>
@@ -103,6 +105,10 @@
     <div class="side-group">
       <div class="side-title">version</div>
       <a href="#confluence-cli-version">confluence-cli version</a>
+      </div>
+    <div class="side-group">
+      <div class="side-title">whoami</div>
+      <a href="#confluence-cli-whoami">confluence-cli whoami</a>
       </div>
     
   </aside>
@@ -304,6 +310,23 @@ comment.</p>
   echo &#34;Agreed.&#34; | confluence-cli comment add 123456 --parent 789 --body-file -</pre>
     </section>
     
+    <section class="cmd" id="confluence-cli-comment-delete">
+      <h2>confluence-cli comment delete</h2>
+      <p class="short">Delete a comment</p>
+      <pre>confluence-cli comment delete &lt;comment-id|url&gt; [flags]</pre>
+      <p class="long">Delete a comment by its content ID. Deletion requires --yes, or an
+interactive confirmation when stdin is a terminal.</p>
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>print the request without sending it</td></tr>
+        <tr><td><code>--yes</code></td><td><code>false</code></td><td>skip the deletion confirmation</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre>  confluence-cli comment delete 789 --yes</pre>
+    </section>
+    
     <section class="cmd" id="confluence-cli-comment-list">
       <h2>confluence-cli comment list</h2>
       <p class="short">List the footer comments of a page</p>
@@ -320,6 +343,27 @@ comment.</p>
       </table>
       <h3>Examples</h3><pre>  confluence-cli comment list 123456
   confluence-cli comment list 123456 --all --as text</pre>
+    </section>
+    
+    <section class="cmd" id="confluence-cli-comment-update">
+      <h2>confluence-cli comment update</h2>
+      <p class="short">Edit a comment&#39;s body</p>
+      <pre>confluence-cli comment update &lt;comment-id|url&gt; [flags]</pre>
+      <p class="long">Replace a footer comment&#39;s body. The new version is the current
+version &#43; 1; pass --version to assert the version you last read.</p>
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--body</code></td><td></td><td>new comment body text</td></tr>
+        <tr><td><code>--body-file</code></td><td></td><td>read body from a file (&#39;-&#39; for stdin)</td></tr>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>print the request without sending it</td></tr>
+        <tr><td><code>--format</code></td><td><code>storage</code></td><td>body format: storage or wiki</td></tr>
+        <tr><td><code>--version</code></td><td><code>0</code></td><td>expected current version (fetched when omitted)</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre>  confluence-cli comment update 789 --body &#34;Updated: looks good.&#34;
+  echo &#34;Revised.&#34; | confluence-cli comment update 789 --body-file -</pre>
     </section>
     
     <section class="cmd" id="confluence-cli-config">
@@ -882,6 +926,15 @@ from each one found.</p>
       
       
       
+    </section>
+    
+    <section class="cmd" id="confluence-cli-whoami">
+      <h2>confluence-cli whoami</h2>
+      <p class="short">Print the user the configured credentials authenticate as</p>
+      <pre>confluence-cli whoami</pre>
+      
+      
+      <h3>Examples</h3><pre>  confluence-cli whoami</pre>
     </section>
     
   </main>

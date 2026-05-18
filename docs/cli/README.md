@@ -30,7 +30,9 @@ is published at <https://angelmsger.github.io/confluence-cli/cli/>.
 | --- | --- |
 | [`confluence-cli comment`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-comment) | Read and post page comments |
 | [`confluence-cli comment add`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-comment-add) | Post a comment on a page |
+| [`confluence-cli comment delete`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-comment-delete) | Delete a comment |
 | [`confluence-cli comment list`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-comment-list) | List the footer comments of a page |
+| [`confluence-cli comment update`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-comment-update) | Edit a comment's body |
 
 ## config
 
@@ -107,4 +109,10 @@ is published at <https://angelmsger.github.io/confluence-cli/cli/>.
 | Command | Description |
 | --- | --- |
 | [`confluence-cli version`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-version) | Print version information |
+
+## whoami
+
+| Command | Description |
+| --- | --- |
+| [`confluence-cli whoami`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-whoami) | Print the user the configured credentials authenticate as |
 

@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Comment write commands: `comment update` edits a footer comment's body and
+  `comment delete` removes one. `update` supports `--dry-run`; `delete`
+  supports `--dry-run` and requires `--yes`.
+- `whoami` prints the user the configured credentials authenticate as, and
+  `doctor` now reports that user as an informational `current-user` check.
 - Page version history: `page history` lists a page's versions, and
   `page restore --version N` rolls a page back by republishing that version's
   body as a new version (non-destructive — the history is kept). `restore`

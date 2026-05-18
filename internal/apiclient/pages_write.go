@@ -318,6 +318,10 @@ func (c *apiClient) DescribeWrite(ctx context.Context, op any) (WriteRequestPlan
 		method, path, payload, err = c.buildRestorePage(ctx, v)
 	case WatchReq:
 		method, path, err = c.buildSetWatch(v)
+	case UpdateCommentReq:
+		method, path, payload, err = c.buildUpdateComment(ctx, v)
+	case DeleteCommentReq:
+		method, path, err = c.buildDeleteComment(v)
 	default:
 		return WriteRequestPlan{}, cerrors.New(cerrors.CategoryInternal, "DRYRUN_BAD_OP",
 			"unsupported write operation for dry-run")

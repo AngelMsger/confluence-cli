@@ -26,7 +26,10 @@ func newCommentCmd(s *appState) *cobra.Command {
 		Use:   "comment",
 		Short: "Read and post page comments",
 	}
-	cmd.AddCommand(newCommentListCmd(s), newCommentAddCmd(s))
+	cmd.AddCommand(
+		newCommentListCmd(s), newCommentAddCmd(s),
+		newCommentUpdateCmd(s), newCommentDeleteCmd(s),
+	)
 	return cmd
 }
 
@@ -135,6 +138,99 @@ func newCommentAddCmd(s *appState) *cobra.Command {
 	cmd.Flags().StringVar(&parent, "parent", "", "parent comment ID, to post a reply")
 	cmd.Flags().StringVar(&format, "format", "storage", "body format: storage or wiki")
 	enumComplete(cmd, "format", "storage", "wiki")
+	return cmd
+}
+
+func newCommentUpdateCmd(s *appState) *cobra.Command {
+	var (
+		body     string
+		bodyFile string
+		format   string
+		version  int
+		dryRun   bool
+	)
+	cmd := &cobra.Command{
+		Use:   "update <comment-id|url>",
+		Short: "Edit a comment's body",
+		Long: "Replace a footer comment's body. The new version is the current\n" +
+			"version + 1; pass --version to assert the version you last read.",
+		Example: "  confluence-cli comment update 789 --body \"Updated: looks good.\"\n" +
+			"  echo \"Revised.\" | confluence-cli comment update 789 --body-file -",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			id, err := resolveID(args[0])
+			if err != nil {
+				return err
+			}
+			text, err := readCommentBody(body, bodyFile)
+			if err != nil {
+				return err
+			}
+			ctx, cancel := cmdContext(s)
+			defer cancel()
+			client, err := s.newClient(ctx)
+			if err != nil {
+				return err
+			}
+			req := apiclient.UpdateCommentReq{
+				ID: id, Body: text, Format: format, ExpectVersion: version,
+			}
+			if dryRun {
+				return emitDryRun(s, client, ctx, req)
+			}
+			updated, err := client.UpdateComment(ctx, req)
+			if err != nil {
+				return err
+			}
+			return s.emit(toCommentOutput(*updated, "markdown"))
+		},
+	}
+	f := cmd.Flags()
+	f.StringVar(&body, "body", "", "new comment body text")
+	f.StringVar(&bodyFile, "body-file", "", "read body from a file ('-' for stdin)")
+	f.StringVar(&format, "format", "storage", "body format: storage or wiki")
+	f.IntVar(&version, "version", 0, "expected current version (fetched when omitted)")
+	f.BoolVar(&dryRun, "dry-run", false, "print the request without sending it")
+	enumComplete(cmd, "format", "storage", "wiki")
+	return cmd
+}
+
+func newCommentDeleteCmd(s *appState) *cobra.Command {
+	var yes, dryRun bool
+	cmd := &cobra.Command{
+		Use:   "delete <comment-id|url>",
+		Short: "Delete a comment",
+		Long: "Delete a comment by its content ID. Deletion requires --yes, or an\n" +
+			"interactive confirmation when stdin is a terminal.",
+		Example: "  confluence-cli comment delete 789 --yes",
+		Args:    cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			id, err := resolveID(args[0])
+			if err != nil {
+				return err
+			}
+			ctx, cancel := cmdContext(s)
+			defer cancel()
+			client, err := s.newClient(ctx)
+			if err != nil {
+				return err
+			}
+			req := apiclient.DeleteCommentReq{ID: id}
+			if dryRun {
+				return emitDryRun(s, client, ctx, req)
+			}
+			if err := confirmDelete("comment "+id, yes); err != nil {
+				return err
+			}
+			if err := client.DeleteComment(ctx, req); err != nil {
+				return err
+			}
+			return s.emit(map[string]any{"id": id, "status": "deleted"})
+		},
+	}
+	f := cmd.Flags()
+	f.BoolVar(&yes, "yes", false, "skip the deletion confirmation")
+	f.BoolVar(&dryRun, "dry-run", false, "print the request without sending it")
 	return cmd
 }
 
