@@ -38,9 +38,9 @@ func newRootCmd() *cobra.Command {
 	root := &cobra.Command{
 		Use:   constants.AppName,
 		Short: "Use a Confluence instance as a knowledge base for coding agents",
-		Long: "confluence-cli reads Confluence pages, searches via CQL and manages\n" +
-			"comments. It supports Confluence Cloud and Data Center / Server, and\n" +
-			"emits agent-friendly JSON with structured errors.",
+		Long: "confluence-cli reads Confluence pages, searches via CQL, creates and\n" +
+			"edits pages, and manages comments. It supports Confluence Cloud and\n" +
+			"Data Center / Server, and emits agent-friendly JSON with structured errors.",
 		Version:       versionString(),
 		SilenceErrors: true,
 		SilenceUsage:  true,

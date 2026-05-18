@@ -97,9 +97,9 @@ func newCommentAddCmd(s *appState) *cobra.Command {
 	)
 	cmd := &cobra.Command{
 		Use:   "add <id|url>",
-		Short: "Post a comment on a page (the only write operation)",
+		Short: "Post a comment on a page",
 		Long: "Post a footer comment on a page. Use --parent to reply to an existing\n" +
-			"comment. This is the only command that writes to Confluence.",
+			"comment.",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id, err := resolveID(args[0])

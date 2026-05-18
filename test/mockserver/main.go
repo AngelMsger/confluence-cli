@@ -86,7 +86,36 @@ func routes() http.Handler {
 		})
 	})
 	mux.HandleFunc("POST /rest/api/content", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Type  string `json:"type"`
+			Title string `json:"title"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		if req.Type == "page" {
+			writeJSON(w, page("new-page", req.Title))
+			return
+		}
 		writeJSON(w, comment("new-comment", "<p>posted</p>"))
+	})
+	mux.HandleFunc("PUT /rest/api/content/{id}", func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		if id == "409" {
+			http.Error(w, `{"message":"version conflict"}`, http.StatusConflict)
+			return
+		}
+		var req struct {
+			Title   string `json:"title"`
+			Version struct {
+				Number int `json:"number"`
+			} `json:"version"`
+		}
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		p := page(id, req.Title)
+		p["version"] = map[string]any{"number": req.Version.Number}
+		writeJSON(w, p)
+	})
+	mux.HandleFunc("DELETE /rest/api/content/{id}", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
 	})
 	mux.HandleFunc("GET /download/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")

@@ -99,6 +99,19 @@ assert_contains  "space list table"       "ENG"            "${CLI[@]}" space lis
 assert_contains  "space get"              "Engineering"    "${CLI[@]}" space get ENG
 assert_contains  "comment list"           "First comment"  "${CLI[@]}" comment list 123
 assert_contains  "comment add"            "new-comment"    "${CLI[@]}" comment add 123 --body "looks good"
+assert_contains  "page create"            "new-page"       "${CLI[@]}" page create --space ENG --title "Spec" --body "<p>hi</p>"
+assert_contains  "page create dry-run"    '"dry_run": true' \
+                                          "${CLI[@]}" page create --space ENG --title "X" --body "<p>x</p>" --dry-run
+assert_contains  "page create markdown"   "<h1>Title</h1>" \
+                                          "${CLI[@]}" page create --space ENG --title "MD" --format markdown --body "# Title" --dry-run
+assert_contains  "page update"            '"number": 3'    "${CLI[@]}" page update 123 --title "Renamed" --version 2
+assert_exit      "page update conflict -> 11" 11           "${CLI[@]}" page update 409 --title "X"
+assert_exit      "page delete needs --yes -> 2" 2          "${CLI[@]}" page delete 123 </dev/null
+assert_contains  "page delete --yes"      "trashed"        "${CLI[@]}" page delete 123 --yes
+assert_contains  "page move dry-run"      '"dry_run": true' \
+                                          "${CLI[@]}" page move 123 --target-parent 201 --dry-run
+assert_contains  "page move"              '"id"'           "${CLI[@]}" page move 123 --target-parent 201
+assert_contains  "page copy"              "new-page"       "${CLI[@]}" page copy 123 --title "Copy of Welcome"
 assert_contains  "attachment list"        "spec.txt"       "${CLI[@]}" attachment list 123
 assert_contains  "attachment download"    "attachment payload" \
                                           "${CLI[@]}" attachment download att1 --output -

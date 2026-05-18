@@ -103,9 +103,10 @@ keychain (with a `0600` file fallback) and never written to the config file.
 |---------|---------|
 | `page get` | fetch a page; render body with `--scope`/`--detail`/`--as` |
 | `page children` / `page descendants` | browse the page tree |
+| `page create` / `update` / `delete` / `move` / `copy` | write pages; `--dry-run` previews, `delete` needs `--yes` |
 | `search` | CQL search, raw or built from `--text`/`--author`/`--space`/... |
 | `space list` / `space get` | inspect spaces |
-| `comment list` / `comment add` | read or post comments (`add` is the only write) |
+| `comment list` / `comment add` | read or post comments |
 | `attachment list` / `attachment download` | inspect and fetch attachments |
 | `skill install` / `skill uninstall` | deploy or remove the embedded companion Skill (Claude Code, Codex) |
 | `config` / `auth` / `doctor` / `version` | setup and diagnostics |

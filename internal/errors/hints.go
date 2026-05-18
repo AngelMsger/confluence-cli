@@ -20,6 +20,9 @@ func defaultGuidance(cat Category) (hint string, steps []string) {
 	case CategoryNotFound:
 		return "The requested page, space or attachment does not exist.",
 			[]string{"confluence-cli search --text \"<keywords>\"", "Double-check the ID or URL."}
+	case CategoryConflict:
+		return "The resource changed since it was last read (version conflict).",
+			[]string{"Re-fetch the resource to get its current version, then retry."}
 	case CategoryRateLimit:
 		return "The server is rate limiting requests. Retry after a short wait.",
 			[]string{"Wait and retry; reduce --limit or avoid --all for large queries."}

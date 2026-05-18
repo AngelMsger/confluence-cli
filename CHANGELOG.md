@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Page write commands: `page create`, `page update`, `page delete`,
+  `page move` and `page copy`. Bodies accept storage-format XHTML, Confluence
+  wiki markup or Markdown (`--format markdown`, converted client-side).
+- Every write command supports `--dry-run`, which prints the HTTP request that
+  would be sent without sending it. `page delete` additionally requires `--yes`
+  (or an interactive confirmation when stdin is a terminal).
+- New `conflict` error category (exit code 11) for version conflicts (HTTP 409)
+  on `page update`.
+
 ## [0.0.4] - 2026-05-18
 
 ### Added

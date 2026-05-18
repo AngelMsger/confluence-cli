@@ -1,7 +1,15 @@
 package app
 
 import (
+	"bufio"
+	"context"
+	"fmt"
+	"io"
+	"os"
+	"strings"
+
 	"github.com/angelmsger/confluence-cli/internal/apiclient"
+	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
 	"github.com/angelmsger/confluence-cli/internal/render"
 	"github.com/spf13/cobra"
 )
@@ -21,13 +29,109 @@ type pageOutput struct {
 	Truncated    bool                  `json:"truncated,omitempty"`
 }
 
+// dryRunOutput is the result shape emitted for a --dry-run write.
+type dryRunOutput struct {
+	DryRun  bool   `json:"dry_run"`
+	Method  string `json:"method"`
+	URL     string `json:"url"`
+	Payload any    `json:"payload,omitempty"`
+}
+
 func newPageCmd(s *appState) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "page",
-		Short: "Read Confluence pages",
+		Short: "Read and write Confluence pages",
 	}
-	cmd.AddCommand(newPageGetCmd(s), newPageChildrenCmd(s), newPageDescendantsCmd(s))
+	cmd.AddCommand(
+		newPageGetCmd(s), newPageChildrenCmd(s), newPageDescendantsCmd(s),
+		newPageCreateCmd(s), newPageUpdateCmd(s), newPageDeleteCmd(s),
+		newPageMoveCmd(s), newPageCopyCmd(s),
+	)
 	return cmd
+}
+
+// pageMetaOutput projects a page into the result shape used by write commands
+// (metadata only, no rendered body).
+func pageMetaOutput(p *apiclient.Page) pageOutput {
+	return pageOutput{
+		ID: p.ID, Title: p.Title, SpaceKey: p.SpaceKey,
+		Status: p.Status, URL: p.URL, Version: p.Version,
+		Ancestors: p.Ancestors,
+	}
+}
+
+// emitDryRun resolves a write request into the HTTP request it would send and
+// emits that plan instead of performing the write.
+func emitDryRun(s *appState, client apiclient.Client, ctx context.Context, op any) error {
+	plan, err := client.DescribeWrite(ctx, op)
+	if err != nil {
+		return err
+	}
+	return s.emit(dryRunOutput{
+		DryRun: true, Method: plan.Method, URL: plan.URL, Payload: plan.Payload,
+	})
+}
+
+// resolvePageBody reads the body for a write command from --body or --body-file
+// and converts it to a storage- or wiki-format PageBody. provided is false when
+// neither flag was set, signalling the caller to keep the existing body.
+func resolvePageBody(cmd *cobra.Command, body, bodyFile, format string) (apiclient.PageBody, bool, error) {
+	if !cmd.Flags().Changed("body") && !cmd.Flags().Changed("body-file") {
+		return apiclient.PageBody{}, false, nil
+	}
+	text := body
+	if cmd.Flags().Changed("body-file") {
+		var raw []byte
+		var err error
+		if bodyFile == "-" {
+			raw, err = io.ReadAll(os.Stdin)
+		} else {
+			raw, err = os.ReadFile(bodyFile)
+		}
+		if err != nil {
+			return apiclient.PageBody{}, false, cerrors.Wrap(err, cerrors.CategoryUsage,
+				"PAGE_BODY_READ", "failed to read page body")
+		}
+		text = string(raw)
+	}
+	text = strings.TrimSpace(text)
+	switch format {
+	case "storage", "wiki":
+		return apiclient.PageBody{Value: text, Format: format}, true, nil
+	case "markdown":
+		return apiclient.PageBody{Value: render.MarkdownToStorage(text, os.Stderr), Format: "storage"}, true, nil
+	default:
+		return apiclient.PageBody{}, false, cerrors.Newf(cerrors.CategoryUsage,
+			"PAGE_BAD_FORMAT", "unknown body format %q (use storage, wiki or markdown)", format)
+	}
+}
+
+// stdinIsTTY reports whether stdin is an interactive terminal.
+func stdinIsTTY() bool {
+	fi, err := os.Stdin.Stat()
+	if err != nil {
+		return false
+	}
+	return fi.Mode()&os.ModeCharDevice != 0
+}
+
+// confirmDelete enforces the page-delete safety guard: --yes skips it, a
+// non-TTY without --yes is refused, and a TTY prompts on stderr.
+func confirmDelete(id string, yes bool) error {
+	if yes {
+		return nil
+	}
+	if !stdinIsTTY() {
+		return cerrors.New(cerrors.CategoryUsage, "PAGE_DELETE_NEEDS_YES",
+			"page delete requires --yes when stdin is not a terminal").
+			WithHint("Re-run with --yes to confirm the deletion.")
+	}
+	fmt.Fprintf(os.Stderr, "Delete page %s? This moves it to the trash. [y/N] ", id)
+	line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+	if ans := strings.ToLower(strings.TrimSpace(line)); ans != "y" && ans != "yes" {
+		return cerrors.New(cerrors.CategoryUsage, "PAGE_DELETE_ABORTED", "deletion cancelled")
+	}
+	return nil
 }
 
 func newPageGetCmd(s *appState) *cobra.Command {
@@ -134,6 +238,292 @@ func newPageChildrenCmd(s *appState) *cobra.Command {
 	}
 	cmd.Flags().IntVar(&limit, "limit", 0, "page size (default from config)")
 	cmd.Flags().BoolVar(&all, "all", false, "fetch every page of results")
+	return cmd
+}
+
+// addBodyFlags registers the shared --body/--body-file/--format flags.
+func addBodyFlags(cmd *cobra.Command, body, bodyFile, format *string) {
+	f := cmd.Flags()
+	f.StringVar(body, "body", "", "body text")
+	f.StringVar(bodyFile, "body-file", "", "read body from a file ('-' for stdin)")
+	f.StringVar(format, "format", "storage", "body format: storage, wiki or markdown")
+	enumComplete(cmd, "format", "storage", "wiki", "markdown")
+}
+
+func newPageCreateCmd(s *appState) *cobra.Command {
+	var (
+		space, title, parent   string
+		body, bodyFile, format string
+		dryRun                 bool
+	)
+	cmd := &cobra.Command{
+		Use:   "create --space <KEY> --title <TITLE>",
+		Short: "Create a new page",
+		Long: "Create a page in a space. Use --parent to nest it under an existing\n" +
+			"page. The body may be storage-format XHTML, Confluence wiki markup or\n" +
+			"Markdown (--format markdown, converted on a best-effort basis).",
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if space == "" {
+				return cerrors.New(cerrors.CategoryUsage, "PAGE_NO_SPACE",
+					"--space is required to create a page")
+			}
+			if title == "" {
+				return cerrors.New(cerrors.CategoryUsage, "PAGE_NO_TITLE",
+					"--title is required to create a page")
+			}
+			parentID := ""
+			if parent != "" {
+				id, err := resolveID(parent)
+				if err != nil {
+					return err
+				}
+				parentID = id
+			}
+			pageBody, _, err := resolvePageBody(cmd, body, bodyFile, format)
+			if err != nil {
+				return err
+			}
+			ctx, cancel := cmdContext(s)
+			defer cancel()
+			client, err := s.newClient(ctx)
+			if err != nil {
+				return err
+			}
+			req := apiclient.CreatePageReq{
+				SpaceKey: space, Title: title, ParentID: parentID, Body: pageBody,
+			}
+			if dryRun {
+				return emitDryRun(s, client, ctx, req)
+			}
+			page, err := client.CreatePage(ctx, req)
+			if err != nil {
+				return err
+			}
+			return s.emit(pageMetaOutput(page))
+		},
+	}
+	f := cmd.Flags()
+	f.StringVar(&space, "space", "", "space key for the new page")
+	f.StringVar(&title, "title", "", "page title")
+	f.StringVar(&parent, "parent", "", "parent page ID or URL")
+	f.BoolVar(&dryRun, "dry-run", false, "print the request without sending it")
+	addBodyFlags(cmd, &body, &bodyFile, &format)
+	_ = cmd.RegisterFlagCompletionFunc("space", completeSpaceKeys(s))
+	return cmd
+}
+
+func newPageUpdateCmd(s *appState) *cobra.Command {
+	var (
+		title, body, bodyFile, format string
+		version                       int
+		minor                         bool
+		message                       string
+		dryRun                        bool
+	)
+	cmd := &cobra.Command{
+		Use:   "update <id|url>",
+		Short: "Update a page's title and/or body",
+		Long: "Update an existing page. Omitted fields are kept as-is. The new\n" +
+			"version is the current version + 1; pass --version to assert the\n" +
+			"version you last read (a mismatch fails with a conflict error).",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			id, err := resolveID(args[0])
+			if err != nil {
+				return err
+			}
+			pageBody, bodyProvided, err := resolvePageBody(cmd, body, bodyFile, format)
+			if err != nil {
+				return err
+			}
+			if !cmd.Flags().Changed("title") && !bodyProvided {
+				return cerrors.New(cerrors.CategoryUsage, "PAGE_UPDATE_NOOP",
+					"nothing to update: pass --title and/or --body")
+			}
+			ctx, cancel := cmdContext(s)
+			defer cancel()
+			client, err := s.newClient(ctx)
+			if err != nil {
+				return err
+			}
+			req := apiclient.UpdatePageReq{
+				ID: id, Title: title, ExpectVersion: version,
+				Minor: minor, Message: message,
+			}
+			if bodyProvided {
+				req.Body = &pageBody
+			}
+			if dryRun {
+				return emitDryRun(s, client, ctx, req)
+			}
+			page, err := client.UpdatePage(ctx, req)
+			if err != nil {
+				return err
+			}
+			return s.emit(pageMetaOutput(page))
+		},
+	}
+	f := cmd.Flags()
+	f.StringVar(&title, "title", "", "new page title (kept when omitted)")
+	f.IntVar(&version, "version", 0, "expected current version (fetched when omitted)")
+	f.BoolVar(&minor, "minor", false, "mark the edit as minor")
+	f.StringVar(&message, "message", "", "version comment for the edit")
+	f.BoolVar(&dryRun, "dry-run", false, "print the request without sending it")
+	addBodyFlags(cmd, &body, &bodyFile, &format)
+	return cmd
+}
+
+func newPageDeleteCmd(s *appState) *cobra.Command {
+	var (
+		purge  bool
+		yes    bool
+		dryRun bool
+	)
+	cmd := &cobra.Command{
+		Use:   "delete <id|url>",
+		Short: "Delete a page (move it to the trash)",
+		Long: "Move a page to the trash. With --purge the trashed page is then\n" +
+			"permanently removed. Deletion requires --yes, or an interactive\n" +
+			"confirmation when stdin is a terminal.",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			id, err := resolveID(args[0])
+			if err != nil {
+				return err
+			}
+			ctx, cancel := cmdContext(s)
+			defer cancel()
+			client, err := s.newClient(ctx)
+			if err != nil {
+				return err
+			}
+			req := apiclient.DeletePageReq{ID: id, Purge: purge}
+			if dryRun {
+				return emitDryRun(s, client, ctx, req)
+			}
+			if err := confirmDelete(id, yes); err != nil {
+				return err
+			}
+			if err := client.DeletePage(ctx, req); err != nil {
+				return err
+			}
+			status := "trashed"
+			if purge {
+				status = "purged"
+			}
+			return s.emit(map[string]any{"id": id, "status": status})
+		},
+	}
+	f := cmd.Flags()
+	f.BoolVar(&purge, "purge", false, "permanently delete (removes the trashed page)")
+	f.BoolVar(&yes, "yes", false, "skip the deletion confirmation")
+	f.BoolVar(&dryRun, "dry-run", false, "print the request without sending it")
+	return cmd
+}
+
+func newPageMoveCmd(s *appState) *cobra.Command {
+	var (
+		targetParent, targetSpace string
+		dryRun                    bool
+	)
+	cmd := &cobra.Command{
+		Use:   "move <id|url>",
+		Short: "Move a page under a new parent and/or space",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			id, err := resolveID(args[0])
+			if err != nil {
+				return err
+			}
+			if targetParent == "" && targetSpace == "" {
+				return cerrors.New(cerrors.CategoryUsage, "PAGE_MOVE_NO_TARGET",
+					"specify --target-parent and/or --target-space")
+			}
+			parentID := ""
+			if targetParent != "" {
+				if parentID, err = resolveID(targetParent); err != nil {
+					return err
+				}
+			}
+			ctx, cancel := cmdContext(s)
+			defer cancel()
+			client, err := s.newClient(ctx)
+			if err != nil {
+				return err
+			}
+			req := apiclient.MovePageReq{
+				ID: id, TargetParent: parentID, TargetSpace: targetSpace,
+			}
+			if dryRun {
+				return emitDryRun(s, client, ctx, req)
+			}
+			page, err := client.MovePage(ctx, req)
+			if err != nil {
+				return err
+			}
+			return s.emit(pageMetaOutput(page))
+		},
+	}
+	f := cmd.Flags()
+	f.StringVar(&targetParent, "target-parent", "", "new parent page ID or URL")
+	f.StringVar(&targetSpace, "target-space", "", "new space key")
+	f.BoolVar(&dryRun, "dry-run", false, "print the request without sending it")
+	_ = cmd.RegisterFlagCompletionFunc("target-space", completeSpaceKeys(s))
+	return cmd
+}
+
+func newPageCopyCmd(s *appState) *cobra.Command {
+	var (
+		title, space, parent string
+		dryRun               bool
+	)
+	cmd := &cobra.Command{
+		Use:   "copy <id|url> --title <TITLE>",
+		Short: "Copy a page's title and body to a new page",
+		Long: "Create a new page from an existing one. The copy is shallow: it\n" +
+			"carries the title and body only, not child pages or attachments.",
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			id, err := resolveID(args[0])
+			if err != nil {
+				return err
+			}
+			if title == "" {
+				return cerrors.New(cerrors.CategoryUsage, "PAGE_NO_TITLE",
+					"--title is required for the copied page")
+			}
+			parentID := ""
+			if parent != "" {
+				if parentID, err = resolveID(parent); err != nil {
+					return err
+				}
+			}
+			ctx, cancel := cmdContext(s)
+			defer cancel()
+			client, err := s.newClient(ctx)
+			if err != nil {
+				return err
+			}
+			req := apiclient.CopyPageReq{
+				SourceID: id, Title: title, SpaceKey: space, ParentID: parentID,
+			}
+			if dryRun {
+				return emitDryRun(s, client, ctx, req)
+			}
+			page, err := client.CopyPage(ctx, req)
+			if err != nil {
+				return err
+			}
+			return s.emit(pageMetaOutput(page))
+		},
+	}
+	f := cmd.Flags()
+	f.StringVar(&title, "title", "", "title for the copied page")
+	f.StringVar(&space, "space", "", "space key for the copy (default: source space)")
+	f.StringVar(&parent, "parent", "", "parent page for the copy (default: source parent)")
+	f.BoolVar(&dryRun, "dry-run", false, "print the request without sending it")
+	_ = cmd.RegisterFlagCompletionFunc("space", completeSpaceKeys(s))
 	return cmd
 }
 

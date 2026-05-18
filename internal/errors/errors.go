@@ -20,6 +20,7 @@ const (
 	CategoryAuth       Category = "auth"
 	CategoryPermission Category = "permission"
 	CategoryNotFound   Category = "not_found"
+	CategoryConflict   Category = "conflict"
 	CategoryRateLimit  Category = "rate_limit"
 	CategoryNetwork    Category = "network"
 	CategoryServer     Category = "server"
