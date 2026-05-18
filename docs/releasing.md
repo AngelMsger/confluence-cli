@@ -1,42 +1,51 @@
 # Releasing (maintainer guide)
 
 `confluence-cli` is distributed from **GitHub Releases**. Everything else — the
-npm package, `go install`, the auto-update feature (planned) — points back to
-the release assets, so a release is the single source of truth.
+npm package, `go install`, the `doctor` update check — points back to the
+release assets, so a release is the single source of truth.
 
-## One-time setup
+## Publishing setup
 
-1. The repository must be public at `github.com/angelmsger/confluence-cli`.
-2. The npm account must own the `@angelmsger` scope.
-3. **npm publishing uses trusted publishing (OIDC)** — no long-lived token, no
-   repository secret. The release workflow already grants `id-token: write` and
-   the npm CLI authenticates automatically. Two things must be set up once:
+This is **already configured** — the section is kept so the setup, and the
+non-obvious constraints behind it, are not lost.
 
-   **a. Bootstrap the package.** Trusted publishing can only be configured on a
-   package that already exists, so do the very first publish manually from your
-   machine:
+- The repository is public at `github.com/AngelMsger/confluence-cli`.
+- The npm account owns the `@angelmsger` scope; `@angelmsger/confluence-cli`
+  exists on the registry.
+- **npm publishing uses trusted publishing (OIDC)** — no long-lived token, no
+  repository secret. The release workflow grants `id-token: write` and the npm
+  CLI authenticates automatically. The trusted publisher is configured on
+  npmjs.com → the `@angelmsger/confluence-cli` **package** → Settings → Trusted
+  Publisher → **GitHub Actions**:
 
-   ```bash
-   cd build/npm
-   npm login
-   npm version 0.0.1 --no-git-tag-version
-   npm publish --access public
-   ```
+  | Field | Value |
+  |-------|-------|
+  | Organization or user | `AngelMsger` |
+  | Repository | `confluence-cli` |
+  | Workflow filename | `release.yml` |
+  | Environment | *(leave blank)* |
 
-   **b. Configure the trusted publisher.** On npmjs.com → the
-   `@angelmsger/confluence-cli` package → Settings → Trusted Publisher → choose
-   **GitHub Actions** and enter:
+  If you see *"There are security risks with this option"* while creating a
+  classic automation token — that prompt is steering you here; you do not need
+  a token.
 
-   | Field | Value |
-   |-------|-------|
-   | Organization or user | `angelmsger` |
-   | Repository | `confluence-cli` |
-   | Workflow filename | `release.yml` |
-   | Environment | *(leave blank)* |
+### Constraints that must hold for OIDC publishing
 
-   From then on every `v*` tag publishes automatically with no token. If you see
-   *"There are security risks with this option"* while creating a classic
-   automation token — that prompt is steering you here; you do not need a token.
+These are subtle and each one silently breaks `npm publish`:
+
+1. **No `registry-url` on `actions/setup-node`.** It writes an `.npmrc` with
+   `_authToken=${NODE_AUTH_TOKEN}`; with no token that is an empty string, and
+   npm then takes the token-auth path and skips the OIDC exchange entirely.
+2. **npm ≥ 11.5.1.** Trusted publishing needs it. The workflow gets it from
+   Node 24's bundled npm — *not* from an `npm install -g npm@latest` self-
+   upgrade, which intermittently corrupts the install.
+3. **`repository.url` casing must match the GitHub repo exactly.** Provenance
+   verification compares `build/npm/package.json`'s `repository.url` against the
+   repo reported by the OIDC provenance (`AngelMsger/confluence-cli`); a casing
+   mismatch fails the publish with `E422`.
+4. The trusted publisher must be configured on the **package**, not the
+   account — npm's OIDC token exchange returns `404 package not found` when no
+   per-package trusted publisher exists.
 
 ## Cutting a release
 
@@ -56,11 +65,18 @@ Pushing a `v*` tag triggers `.github/workflows/release.yml`, which:
 2. cross-compiles every platform via `make cross` → `dist/` (the binary version
    is taken from the git tag through `-ldflags`);
 3. writes `dist/checksums.txt` (SHA-256 of every binary);
-4. creates a GitHub Release for the tag with all `dist/` assets attached;
+4. creates the GitHub Release for the tag with all `dist/` assets attached, or
+   re-uploads the assets if the release already exists;
 5. sets the npm package version to the tag (minus the `v`) and runs
-   `npm publish --access public` for `@angelmsger/confluence-cli`.
+   `npm publish --access public` for `@angelmsger/confluence-cli`, skipping the
+   publish when that version is already on the registry.
 
 Use an annotated tag and semantic versioning (`vMAJOR.MINOR.PATCH`).
+
+The workflow is **idempotent**: steps 4 and 5 tolerate a partial previous run,
+so if a release fails halfway you can fix the cause and re-run it — either
+re-run the failed run from the Actions tab, or move the tag to the fixed commit
+(`git tag -f` / delete and re-push) to trigger a fresh run.
 
 ## Continuous integration
 
@@ -78,7 +94,7 @@ Source → **GitHub Actions**. The site is served at
 ## Release artifact contract
 
 The release asset names are **stable** and must not change — the npm installer
-and the planned in-CLI auto-update feature both depend on them:
+and the `doctor` release-update check both depend on them:
 
 ```
 confluence-cli-darwin-amd64    confluence-cli-linux-amd64    confluence-cli-windows-amd64.exe
