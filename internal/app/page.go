@@ -152,6 +152,13 @@ func newPageGetCmd(s *appState) *cobra.Command {
 			"  section  one section, identified by --section <id> from the outline\n" +
 			"  keyword  blocks matching --keyword, with their heading for context\n" +
 			"  full     the entire body (default)",
+		Example: "  # render the whole page as Markdown\n" +
+			"  confluence-cli page get 123456\n\n" +
+			"  # list the headings, then read just one section\n" +
+			"  confluence-cli page get 123456 --scope outline\n" +
+			"  confluence-cli page get 123456 --scope section --section sec-2\n\n" +
+			"  # a page URL works in place of an ID\n" +
+			"  confluence-cli page get https://wiki.example.com/pages/viewpage.action?pageId=123456",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id, err := resolveID(args[0])
@@ -215,7 +222,9 @@ func newPageChildrenCmd(s *appState) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "children <id|url>",
 		Short: "List the direct child pages of a page",
-		Args:  cobra.ExactArgs(1),
+		Example: "  confluence-cli page children 123456\n" +
+			"  confluence-cli page children 123456 --all --format table",
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id, err := resolveID(args[0])
 			if err != nil {
@@ -262,6 +271,11 @@ func newPageCreateCmd(s *appState) *cobra.Command {
 		Long: "Create a page in a space. Use --parent to nest it under an existing\n" +
 			"page. The body may be storage-format XHTML, Confluence wiki markup or\n" +
 			"Markdown (--format markdown, converted on a best-effort basis).",
+		Example: "  # create a page from a Markdown file, nested under a parent\n" +
+			"  confluence-cli page create --space ENG --title \"Release Notes\" \\\n" +
+			"    --parent 123456 --format markdown --body-file notes.md\n\n" +
+			"  # preview the request without sending it\n" +
+			"  confluence-cli page create --space ENG --title Draft --body \"<p>hi</p>\" --dry-run",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if space == "" {
@@ -327,6 +341,10 @@ func newPageUpdateCmd(s *appState) *cobra.Command {
 		Long: "Update an existing page. Omitted fields are kept as-is. The new\n" +
 			"version is the current version + 1; pass --version to assert the\n" +
 			"version you last read (a mismatch fails with a conflict error).",
+		Example: "  # retitle a page, keeping its body\n" +
+			"  confluence-cli page update 123456 --title \"New Title\"\n\n" +
+			"  # replace the body from Markdown, asserting the version last read\n" +
+			"  confluence-cli page update 123456 --format markdown --body-file body.md --version 7",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id, err := resolveID(args[0])
@@ -386,6 +404,8 @@ func newPageDeleteCmd(s *appState) *cobra.Command {
 		Long: "Move a page to the trash. With --purge the trashed page is then\n" +
 			"permanently removed. Deletion requires --yes, or an interactive\n" +
 			"confirmation when stdin is a terminal.",
+		Example: "  confluence-cli page delete 123456 --yes\n" +
+			"  confluence-cli page delete 123456 --purge --yes",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id, err := resolveID(args[0])
@@ -430,7 +450,11 @@ func newPageMoveCmd(s *appState) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "move <id|url>",
 		Short: "Move a page under a new parent and/or space",
-		Args:  cobra.ExactArgs(1),
+		Example: "  # reparent a page\n" +
+			"  confluence-cli page move 123456 --target-parent 999\n\n" +
+			"  # move a page into another space\n" +
+			"  confluence-cli page move 123456 --target-space DOCS",
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id, err := resolveID(args[0])
 			if err != nil {
@@ -483,6 +507,8 @@ func newPageCopyCmd(s *appState) *cobra.Command {
 		Short: "Copy a page's title and body to a new page",
 		Long: "Create a new page from an existing one. The copy is shallow: it\n" +
 			"carries the title and body only, not child pages or attachments.",
+		Example: "  confluence-cli page copy 123456 --title \"Copy of the spec\"\n" +
+			"  confluence-cli page copy 123456 --title Draft --space SANDBOX",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id, err := resolveID(args[0])
@@ -533,9 +559,10 @@ func newPageDescendantsCmd(s *appState) *cobra.Command {
 		all   bool
 	)
 	cmd := &cobra.Command{
-		Use:   "descendants <id|url>",
-		Short: "List all descendant pages of a page",
-		Args:  cobra.ExactArgs(1),
+		Use:     "descendants <id|url>",
+		Short:   "List all descendant pages of a page",
+		Example: "  confluence-cli page descendants 123456 --all",
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id, err := resolveID(args[0])
 			if err != nil {

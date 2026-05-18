@@ -16,6 +16,10 @@ func newSearchCmd(s *appState) *cobra.Command {
 		Short: "Search pages with CQL or filter flags",
 		Long: "Search Confluence content. Provide a raw CQL string as the argument,\n" +
 			"or build one from filter flags (--text, --author, --space, ...).",
+		Example: "  # filter flags are combined into a CQL query\n" +
+			"  confluence-cli search --text \"release process\" --space ENG --type page\n\n" +
+			"  # or pass raw CQL directly\n" +
+			"  confluence-cli search 'creator = \"jdoe\" AND created >= \"2025-01-01\"' --all",
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var cql string

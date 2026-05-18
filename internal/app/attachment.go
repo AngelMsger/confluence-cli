@@ -23,9 +23,10 @@ func newAttachmentListCmd(s *appState) *cobra.Command {
 		all   bool
 	)
 	cmd := &cobra.Command{
-		Use:   "list <id|url>",
-		Short: "List the attachments of a page",
-		Args:  cobra.ExactArgs(1),
+		Use:     "list <id|url>",
+		Short:   "List the attachments of a page",
+		Example: "  confluence-cli attachment list 123456",
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id, err := resolveID(args[0])
 			if err != nil {
@@ -65,7 +66,9 @@ func newAttachmentDownloadCmd(s *appState) *cobra.Command {
 		Use:   "download <attachment-id|url>",
 		Short: "Download an attachment's content",
 		Long:  "Download an attachment by its content ID. Use --output - to stream to stdout.",
-		Args:  cobra.ExactArgs(1),
+		Example: "  confluence-cli attachment download att12345 --output spec.pdf\n" +
+			"  confluence-cli attachment download att12345 --output -",
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			attID, err := resolveID(args[0])
 			if err != nil {

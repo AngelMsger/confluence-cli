@@ -18,7 +18,7 @@ endif
 # Where the companion Skill is copied by `make install-skill`.
 SKILL_DIR ?= $(HOME)/.claude/skills
 
-.PHONY: build test e2e e2e-live lint fmt vet cross install install-skill tidy clean
+.PHONY: build test e2e e2e-live lint fmt vet cross docs install install-skill tidy clean
 
 build:
 	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o bin/$(BINARY) ./cmd/confluence-cli
@@ -45,6 +45,10 @@ tidy:
 
 cross:
 	VERSION=$(VERSION) COMMIT=$(COMMIT) ./scripts/build.sh
+
+# Regenerate the CLI reference under docs/cli/ from the cobra command tree.
+docs:
+	go run ./cmd/gen-docs
 
 install: build
 	mkdir -p $(INSTALL_DIR)

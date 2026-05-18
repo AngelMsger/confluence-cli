@@ -37,6 +37,10 @@ func newConfigInitCmd(s *appState) *cobra.Command {
 	return &cobra.Command{
 		Use:   "init",
 		Short: "Interactively set up server URL and credentials",
+		Long: "Run the interactive setup wizard. It collects a server URL, detects\n" +
+			"the flavor, validates a credential and stores it. The wizard can also\n" +
+			"configure additional named contexts for working with several servers.",
+		Example: "  confluence-cli config init",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			result, err := config.RunWizard(os.Stdin, os.Stdout, wizardHooks(s))
 			if err != nil {
@@ -165,7 +169,11 @@ func newConfigGetContextsCmd(s *appState) *cobra.Command {
 	return &cobra.Command{
 		Use:   "get-contexts",
 		Short: "List the configured contexts",
-		Args:  cobra.NoArgs,
+		Long: "List every context in the config file. The current context — the one\n" +
+			"used when --use-context is not given — is marked.",
+		Example: "  confluence-cli config get-contexts\n" +
+			"  confluence-cli config get-contexts --format table",
+		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			file, _, err := config.ReadFile(s.cfgDir)
 			if err != nil {
@@ -191,7 +199,10 @@ func newConfigUseContextCmd(s *appState) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "use-context <name>",
 		Short: "Switch the current context",
-		Args:  cobra.ExactArgs(1),
+		Long: "Set the current context — the server used by default. Override it for\n" +
+			"a single command with the global --use-context flag instead.",
+		Example: "  confluence-cli config use-context staging",
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
 			file, err := readConfigFile(s)
@@ -218,9 +229,10 @@ func newConfigUseContextCmd(s *appState) *cobra.Command {
 
 func newConfigDeleteContextCmd(s *appState) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "delete-context <name>",
-		Short: "Delete a context and its stored credential",
-		Args:  cobra.ExactArgs(1),
+		Use:     "delete-context <name>",
+		Short:   "Delete a context and its stored credential",
+		Example: "  confluence-cli config delete-context staging",
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name := args[0]
 			file, err := readConfigFile(s)

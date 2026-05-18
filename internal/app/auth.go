@@ -60,6 +60,8 @@ func newAuthLoginCmd(s *appState) *cobra.Command {
 		Use:   "login",
 		Short: "Store a credential for the configured server",
 		Long:  "Prompt for a secret and store it securely. Run `config init` first if the server URL is not set.",
+		Example: "  confluence-cli auth login\n" +
+			"  confluence-cli --use-context staging auth login",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg := s.cfg()
 			if cfg.BaseURL == "" {

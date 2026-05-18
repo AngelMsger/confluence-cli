@@ -56,7 +56,9 @@ func newCommentListCmd(s *appState) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list <id|url>",
 		Short: "List the footer comments of a page",
-		Args:  cobra.ExactArgs(1),
+		Example: "  confluence-cli comment list 123456\n" +
+			"  confluence-cli comment list 123456 --all --as text",
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id, err := resolveID(args[0])
 			if err != nil {
@@ -100,6 +102,9 @@ func newCommentAddCmd(s *appState) *cobra.Command {
 		Short: "Post a comment on a page",
 		Long: "Post a footer comment on a page. Use --parent to reply to an existing\n" +
 			"comment.",
+		Example: "  confluence-cli comment add 123456 --body \"Looks good to me.\"\n\n" +
+			"  # reply to a comment, reading the body from stdin\n" +
+			"  echo \"Agreed.\" | confluence-cli comment add 123456 --parent 789 --body-file -",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id, err := resolveID(args[0])

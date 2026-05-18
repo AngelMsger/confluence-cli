@@ -11,6 +11,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// NewRootCmd builds the full cobra command tree. It exists so tooling — most
+// notably the docs generator (cmd/gen-docs) — can walk the same command tree
+// the CLI runs, keeping generated reference docs in lock-step with --help.
+func NewRootCmd() *cobra.Command { return newRootCmd() }
+
 // Execute builds and runs the root command, returning a process exit code.
 func Execute() int {
 	root := newRootCmd()

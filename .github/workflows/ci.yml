@@ -28,6 +28,15 @@ jobs:
       - name: go vet
         run: go vet ./...
 
+      - name: cli docs up to date
+        run: |
+          go run ./cmd/gen-docs
+          if ! git diff --quiet -- docs/cli; then
+            echo "docs/cli is stale — run 'make docs' and commit the result:"
+            git diff --stat -- docs/cli
+            exit 1
+          fi
+
       - name: unit tests
         run: go test ./...
 

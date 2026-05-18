@@ -135,7 +135,12 @@ make test       # unit + integration tests
 make e2e        # build + run against an in-repo mock Confluence server
 make e2e-live   # additionally run read-only checks against the real server
 make lint       # gofmt + go vet
+make docs       # regenerate the CLI reference under docs/cli/
 ```
+
+The [`docs/cli/`](docs/cli/README.md) reference is generated from the cobra
+command tree by `cmd/gen-docs`, so it always matches `--help`. After changing a
+command or flag, run `make docs` and commit the result — CI fails if it drifts.
 
 See [docs/technical-design.md](docs/technical-design.md) for the architecture
 and `internal/` package layout, [docs/releasing.md](docs/releasing.md) for the

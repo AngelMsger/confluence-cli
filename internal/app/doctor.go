@@ -36,6 +36,8 @@ func newDoctorCmd(s *appState) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "doctor",
 		Short: "Diagnose configuration, credentials and connectivity",
+		Example: "  confluence-cli doctor\n" +
+			"  confluence-cli doctor --no-update-check",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			report := runDoctor(s, skipUpdate)
 			if err := s.emit(report); err != nil {

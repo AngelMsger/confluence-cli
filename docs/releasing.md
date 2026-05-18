@@ -81,9 +81,14 @@ re-run the failed run from the Actions tab, or move the tag to the fixed commit
 ## Continuous integration
 
 `.github/workflows/ci.yml` runs on every push to `main` and every pull request:
-`gofmt` check, `go vet`, `go test ./...`, and the mock-server end-to-end suite
-(`scripts/e2e.sh`). The live e2e checks are not run in CI — they require a real
-server and credentials.
+`gofmt` check, `go vet`, a `docs/cli/` drift check (`go run ./cmd/gen-docs`,
+then fail if the committed reference differs), `go test ./...`, and the
+mock-server end-to-end suite (`scripts/e2e.sh`). The live e2e checks are not run
+in CI — they require a real server and credentials.
+
+The CLI reference under `docs/cli/` is generated from the cobra command tree
+(`cmd/gen-docs`); run `make docs` after any command or flag change and commit
+the result, or CI will fail.
 
 `.github/workflows/pages.yml` publishes `docs/` (the landing page
 `docs/index.html` plus the markdown guides) to GitHub Pages on every push to
