@@ -40,6 +40,11 @@ the release assets, so a release is the single source of truth.
 
 ## Cutting a release
 
+Before tagging, update [`CHANGELOG.md`](../CHANGELOG.md): rename the
+`[Unreleased]` section to the new version with today's date, add a fresh empty
+`[Unreleased]` heading, and update the comparison links at the bottom. Bump the
+`version` field in `build/npm/package.json` to match. Commit both, then tag:
+
 ```bash
 git tag v0.1.0
 git push origin v0.1.0

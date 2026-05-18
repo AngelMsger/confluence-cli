@@ -118,8 +118,8 @@ make lint       # gofmt + go vet
 ```
 
 See [docs/technical-design.md](docs/technical-design.md) for the architecture
-and `internal/` package layout, and [docs/releasing.md](docs/releasing.md) for
-the release process.
+and `internal/` package layout, [docs/releasing.md](docs/releasing.md) for the
+release process, and [CHANGELOG.md](CHANGELOG.md) for the version history.
 
 ## License
 
