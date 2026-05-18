@@ -145,8 +145,9 @@ Defaults   { Format string         // json（默认）
 - **分页**：list 命令（`search`、`page children/descendants/history`、`comment list`、
   `attachment list`、`label list`、`space list`）接受 `--limit/--all/--cursor`，
   输出 `{items, next, has_more}` 信封。
-- **正文格式**：`page create/update`、`comment add/update` 用 `--body-format`
-  （storage|wiki|markdown）指定正文格式，与全局 `--format`（输出格式）互不冲突。
+- **正文格式**：写命令用 `--body-format` 指定正文格式，与全局 `--format`（输出
+  格式）互不冲突。`page create/update` 支持 `storage|wiki|markdown`（markdown
+  在客户端转 storage）；`comment add/update` 支持 `storage|wiki`。
 
 完整的命令、flag 与示例由命令树自动生成，见 [docs/cli/](cli/)（`make docs` 生成、
 CI 校验不漂移）—— 本节不再维护并行的命令清单，以杜绝文档与实现脱节。
@@ -255,5 +256,5 @@ storage XHTML → `golang.org/x/net/html` 解析为节点树（Confluence 宏特
 - **HTTP 层测试**：`httptest.Server` 驱动各 Client 方法，断言路径 / 参数 / 认证头、v2→v1 回退。
 - **契约 / golden 测试**：`testdata/fixtures/{cloud,datacenter}/*.json` 驱动 mapping 与渲染。
 - **端到端**：`scripts/e2e.sh` 构建二进制 + 内置 mock Confluence（覆盖 v1/v2/DC 路由），
-  跑全部命令断言 stdout JSON 与退出码。
+  跑全部命令断言 stdout 输出契约与退出码（多数命令为 JSON，raw-output 例外见 §6.1）。
 - **只读 live 验证**：`make e2e-live` 仅跑 `page get` / `search` / `space list` / `doctor`。
