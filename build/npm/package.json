@@ -13,7 +13,7 @@
   "homepage": "https://angelmsger.github.io/confluence-cli/",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/angelmsger/confluence-cli.git"
+    "url": "git+https://github.com/AngelMsger/confluence-cli.git"
   },
   "license": "MIT",
   "bin": {
