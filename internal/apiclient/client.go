@@ -158,9 +158,26 @@ func (c *apiClient) doJSON(ctx context.Context, method, path string, query url.V
 		_, _ = io.Copy(io.Discard, resp.Body)
 		return nil
 	}
-	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
+	rawResp, _ := io.ReadAll(resp.Body)
+	return decodeJSON(rawResp, out)
+}
+
+// decodeJSON unmarshals a server response body into out. On failure it surfaces
+// the underlying parser error and a snippet of the body, so a shape mismatch is
+// diagnosable rather than an opaque "failed to decode".
+func decodeJSON(body []byte, out any) error {
+	if err := json.Unmarshal(body, out); err != nil {
+		snippet := strings.TrimSpace(string(body))
+		if len(snippet) > 200 {
+			snippet = snippet[:200] + "…"
+		}
 		return cerrors.Wrap(err, cerrors.CategoryParse, "DECODE",
-			"failed to decode server response")
+			fmt.Sprintf("could not decode the server response: %v", err)).
+			WithHint("The server's JSON did not match what confluence-cli expected; "+
+				"this is likely a client bug, not a failed request.").
+			WithNextSteps(
+				"The operation may well have succeeded — verify with a read command.",
+				"Report it with this snippet: "+snippet)
 	}
 	return nil
 }
@@ -227,11 +244,8 @@ func (c *apiClient) doMultipart(ctx context.Context, method, path string, file m
 		_, _ = io.Copy(io.Discard, resp.Body)
 		return nil
 	}
-	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
-		return cerrors.Wrap(err, cerrors.CategoryParse, "DECODE",
-			"failed to decode server response")
-	}
-	return nil
+	rawResp, _ := io.ReadAll(resp.Body)
+	return decodeJSON(rawResp, out)
 }
 
 // httpError turns a non-2xx response into a classified CLIError.

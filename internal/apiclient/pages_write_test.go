@@ -221,6 +221,53 @@ func TestCopyPage(t *testing.T) {
 	}
 }
 
+// TestCreatePageNumericContainerID guards the Data Center write-response quirk:
+// a POST/PUT response expands `container` (and `space`) and returns their IDs
+// as JSON numbers, not strings. The write succeeds server-side, so the client
+// must decode it rather than fail with a DECODE error.
+func TestCreatePageNumericContainerID(t *testing.T) {
+	t.Parallel()
+	c, _ := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"id":"900","type":"page","title":"New Page",
+			"space":{"id":2424834,"key":"ENG"},
+			"container":{"id":2424834,"key":"ENG","type":"global"},
+			"version":{"number":1}}`))
+	}))
+
+	page, err := c.CreatePage(context.Background(), CreatePageReq{
+		SpaceKey: "ENG", Title: "New Page",
+		Body: PageBody{Value: "<p>hi</p>", Format: "storage"},
+	})
+	if err != nil {
+		t.Fatalf("a numeric container.id must decode, got error: %v", err)
+	}
+	if page.ID != "900" || page.SpaceKey != "ENG" {
+		t.Errorf("page = %+v", page)
+	}
+}
+
+// TestDecodeErrorCarriesDetail proves a decode failure surfaces the underlying
+// parser error instead of an opaque "failed to decode".
+func TestDecodeErrorCarriesDetail(t *testing.T) {
+	t.Parallel()
+	c, _ := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"id":12345}`)) // top-level id as a number — a shape mismatch
+	}))
+	_, err := c.GetPage(context.Background(), "x", GetPageOpts{})
+	if err == nil {
+		t.Fatal("expected a decode error")
+	}
+	ce := cerrors.AsCLIError(err)
+	if ce.Code != "DECODE" {
+		t.Errorf("code = %s, want DECODE", ce.Code)
+	}
+	if !strings.Contains(ce.Message, "cannot unmarshal") {
+		t.Errorf("message should carry the parser detail, got: %q", ce.Message)
+	}
+}
+
 func TestDescribeWriteSendsNoWrite(t *testing.T) {
 	t.Parallel()
 	c, srv := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
