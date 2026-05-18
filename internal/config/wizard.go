@@ -18,45 +18,92 @@ type WizardHooks struct {
 	Validate func(cfg Config, secrets Secrets) error
 }
 
-// WizardResult is the outcome of a completed init wizard.
-type WizardResult struct {
-	Config  Config
+// ContextResult is one configured context together with its transient secrets.
+type ContextResult struct {
+	Context NamedContext
 	Secrets Secrets
 }
 
-// RunWizard drives the interactive `config init` flow over in/out.
+// WizardResult is the outcome of a completed init wizard: a config File plus
+// the per-context secrets to persist into the keychain.
+type WizardResult struct {
+	File  File
+	Creds []ContextResult
+}
+
+// RunWizard drives the interactive `config init` flow over in/out. It always
+// configures one context (named "default"); a single-context user sees no
+// mention of contexts beyond a final "Add another context?" prompt.
 func RunWizard(in io.Reader, out io.Writer, hooks WizardHooks) (*WizardResult, error) {
 	r := bufio.NewReader(in)
-	cfg := configFromMap(defaultLayer())
 
 	fmt.Fprintln(out, "confluence-cli setup")
 	fmt.Fprintln(out, "--------------------")
 
-	cfg.BaseURL = prompt(r, out, "Confluence base URL", cfg.BaseURL, true)
+	result := &WizardResult{
+		File: File{
+			CurrentContext: DefaultContextName,
+			Defaults:       configFromMap(defaultLayer()).Defaults,
+		},
+	}
+	used := map[string]bool{}
+	name := DefaultContextName
+	for {
+		cr, err := runContextWizard(r, out, hooks, name)
+		if err != nil {
+			return nil, err
+		}
+		result.File.Contexts = append(result.File.Contexts, cr.Context)
+		result.Creds = append(result.Creds, cr)
+		used[name] = true
 
-	cfg.Flavor = promptChoice(r, out, "Backend flavor",
+		if !promptYesNo(r, out, "Add another context?", false) {
+			break
+		}
+		for {
+			name = prompt(r, out, "Context name", "", true)
+			if used[name] {
+				fmt.Fprintf(out, "  context %q is already configured; choose another name\n", name)
+				continue
+			}
+			break
+		}
+	}
+	return result, nil
+}
+
+// runContextWizard collects the settings for a single named context.
+func runContextWizard(r *bufio.Reader, out io.Writer, hooks WizardHooks, name string) (ContextResult, error) {
+	if name != DefaultContextName {
+		fmt.Fprintf(out, "\nContext %q\n", name)
+	}
+	nc := NamedContext{Name: name}
+
+	nc.BaseURL = prompt(r, out, "Confluence base URL", "", true)
+
+	nc.Flavor = promptChoice(r, out, "Backend flavor",
 		[]string{FlavorAuto, FlavorCloud, FlavorDataCenter}, FlavorAuto)
-	if cfg.Flavor == FlavorAuto && hooks.DetectFlavor != nil {
-		if detected, err := hooks.DetectFlavor(cfg.BaseURL); err == nil {
-			cfg.DetectedFlavor = detected
+	if nc.Flavor == FlavorAuto && hooks.DetectFlavor != nil {
+		if detected, err := hooks.DetectFlavor(nc.BaseURL); err == nil {
+			nc.DetectedFlavor = detected
 			fmt.Fprintf(out, "  detected flavor: %s\n", detected)
 		} else {
 			fmt.Fprintf(out, "  flavor detection failed (%v); continuing with auto\n", err)
 		}
 	}
 
-	cfg.Auth.Scheme = promptChoice(r, out, "Auth scheme",
+	nc.Auth.Scheme = promptChoice(r, out, "Auth scheme",
 		[]string{SchemePAT, SchemeBasic}, SchemePAT)
 
 	var secrets Secrets
-	switch cfg.Auth.Scheme {
+	switch nc.Auth.Scheme {
 	case SchemePAT:
 		secrets.PAT = prompt(r, out, "Personal Access Token", "", true)
 	case SchemeBasic:
-		cfg.Auth.Username = prompt(r, out, "Username or email", cfg.Auth.Username, true)
+		nc.Auth.Username = prompt(r, out, "Username or email", "", true)
 		secret := prompt(r, out, "Password or API token", "", true)
 		// Cloud basic auth uses an API token; Data Center uses a password.
-		if cfg.Flavor == FlavorCloud || cfg.DetectedFlavor == FlavorCloud {
+		if nc.Flavor == FlavorCloud || nc.DetectedFlavor == FlavorCloud {
 			secrets.APIToken = secret
 		} else {
 			secrets.Password = secret
@@ -65,17 +112,17 @@ func RunWizard(in io.Reader, out io.Writer, hooks WizardHooks) (*WizardResult, e
 
 	if hooks.Validate != nil {
 		fmt.Fprintln(out, "Validating credentials...")
-		if err := hooks.Validate(cfg, secrets); err != nil {
+		if err := hooks.Validate(contextConfig(nc), secrets); err != nil {
 			fmt.Fprintf(out, "  validation failed: %v\n", err)
 			if !promptYesNo(r, out, "Save configuration anyway?", false) {
-				return nil, fmt.Errorf("aborted: credential validation failed")
+				return ContextResult{}, fmt.Errorf("aborted: credential validation failed")
 			}
 		} else {
 			fmt.Fprintln(out, "  credentials OK")
 		}
 	}
 
-	return &WizardResult{Config: cfg, Secrets: secrets}, nil
+	return ContextResult{Context: nc, Secrets: secrets}, nil
 }
 
 func prompt(r *bufio.Reader, out io.Writer, label, def string, required bool) string {

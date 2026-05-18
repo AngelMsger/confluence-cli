@@ -1,6 +1,6 @@
 ---
 name: confluence
-version: 1.1.0
+version: 1.2.0
 description: "Use a Confluence wiki as an external knowledge base. Search, read and summarise Confluence pages, browse spaces and page trees, create and edit pages, read and post comments. Use this skill when the user gives a Confluence page URL or ID, mentions a Confluence/wiki page, asks to find or look up something in Confluence, asks to read/summarise/extract a Confluence page, browse a space, list child pages, create/update/delete/move/copy a page, read page comments, or post a comment. Works with both Confluence Cloud and Confluence Data Center / Server."
 metadata:
   requires:
@@ -85,4 +85,5 @@ large outputs use `--format ndjson` (one JSON object per line).
 ## Global flags
 
 `--format json|table|ndjson` · `--fields a,b.c` (project fields) ·
-`--base-url` · `--flavor cloud|datacenter` · `--config <dir>` · `--verbose`
+`--base-url` · `--flavor cloud|datacenter` · `--config <dir>` ·
+`--use-context <name>` (pick a named server) · `--verbose`

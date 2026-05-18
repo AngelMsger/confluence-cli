@@ -58,6 +58,7 @@ func newRootCmd() *cobra.Command {
 	pf.StringVar(&state.gflags.fields, "fields", "", "comma-separated dot-path fields to keep")
 	pf.StringVar(&state.gflags.timeout, "timeout", "", "request timeout, e.g. 30s")
 	pf.StringVar(&state.gflags.configPath, "config", "", "config directory (default ~/.confluence)")
+	pf.StringVar(&state.gflags.useContext, "use-context", "", "use a named context for this invocation")
 	pf.BoolVarP(&state.gflags.verbose, "verbose", "v", false, "verbose diagnostics on stderr")
 
 	root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {

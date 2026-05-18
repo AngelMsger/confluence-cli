@@ -38,6 +38,7 @@ Key environment variables:
 | `CONFLUENCE_PERSONAL_ACCESS_TOKEN` | Data Center PAT (Bearer auth) |
 | `CONFLUENCE_USERNAME` + `CONFLUENCE_PASSWORD` | Basic auth (Data Center) |
 | `CONFLUENCE_USERNAME` + `CONFLUENCE_API_TOKEN` | Basic auth (Cloud) |
+| `CONFLUENCE_CONTEXT` | Select a named context (multi-server setups) |
 
 ## Interactive setup
 
@@ -49,6 +50,21 @@ The wizard asks for the server URL, detects the flavor, collects a credential,
 validates it live, and stores the secret in the OS keychain (falling back to a
 `0600` file). Non-secret settings go to `~/.confluence/config.yaml`; secrets are
 never written there.
+
+## Multiple servers (contexts)
+
+Most setups use a single server and need none of this. To work with several
+Confluence servers, `config init` can save them as named *contexts*:
+
+```bash
+confluence-cli config get-contexts        # list contexts; the current is marked
+confluence-cli config use-context prod    # switch the persistent current context
+confluence-cli --use-context prod doctor  # override the context for one command
+```
+
+The active context is chosen by, in order: the `--use-context` flag, the
+`CONFLUENCE_CONTEXT` env var, the file's `current_context`. Legacy single-server
+config files keep working without change.
 
 ## Flavors
 

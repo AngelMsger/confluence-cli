@@ -27,6 +27,20 @@ const (
 	SchemeBasic = "basic"
 )
 
+// DefaultContextName is the name given to an unnamed context, and to the
+// single context synthesized from a legacy flat config file.
+const DefaultContextName = "default"
+
+// NamedContext is one named Confluence server profile inside the config file.
+// Runtime defaults are shared across contexts and live in File.Defaults.
+type NamedContext struct {
+	Name           string
+	BaseURL        string
+	Flavor         string
+	DetectedFlavor string
+	Auth           AuthConfig
+}
+
 // Config holds the resolved, non-secret configuration.
 type Config struct {
 	BaseURL        string     `yaml:"server"`
@@ -66,6 +80,11 @@ type Resolved struct {
 	// Sources maps a field key (see the field* constants) to the layer name
 	// that supplied its final value: "flag", "env", "dotenv", "file", "default".
 	Sources map[string]string
+	// ActiveContext is the name of the context whose fields were applied.
+	// Empty when no config file (or no contexts) exists — pure-env usage.
+	ActiveContext string
+	// ContextNames lists every context defined in the file, in file order.
+	ContextNames []string
 }
 
 // Field keys used for layer maps and provenance tracking.
@@ -114,6 +133,18 @@ func configFromMap(m map[string]string) Config {
 			MaxRetries: atoiOr(m[fieldMaxRetries], constants.DefaultMaxRetries),
 		},
 	}
+	return c
+}
+
+// contextConfig builds a Config from a NamedContext plus the built-in runtime
+// defaults. It is used to feed the wizard's detect/validate hooks, which
+// operate on a whole Config.
+func contextConfig(nc NamedContext) Config {
+	c := configFromMap(defaultLayer())
+	c.BaseURL = nc.BaseURL
+	c.Flavor = nc.Flavor
+	c.DetectedFlavor = nc.DetectedFlavor
+	c.Auth = nc.Auth
 	return c
 }
 

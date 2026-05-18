@@ -129,6 +129,33 @@ assert_contains  "skill show"             "name: confluence" "${CLI[@]}" skill s
 assert_exit      "missing page -> 6"      6                "${CLI[@]}" page get 404
 assert_exit      "bad flag -> 2"          2                "${CLI[@]}" page get 123 --bogus
 
+echo "==> multi-context checks"
+TMPCFG2="$(mktemp -d)"
+cat >"$TMPCFG2/config.yaml" <<EOF
+current_context: default
+contexts:
+  - name: default
+    server: $MOCK_URL
+    flavor: datacenter
+    auth: {scheme: pat}
+  - name: alt
+    server: $MOCK_URL
+    flavor: datacenter
+    auth: {scheme: pat}
+defaults:
+  format: json
+EOF
+CLI2=("$BIN" --config "$TMPCFG2")
+assert_contains  "get-contexts lists default" "default"      "${CLI2[@]}" config get-contexts
+assert_contains  "get-contexts lists alt"     "alt"          "${CLI2[@]}" config get-contexts
+assert_ok        "use-context alt"                           "${CLI2[@]}" config use-context alt
+assert_exit      "unknown context -> 3"       3              "${CLI2[@]}" --use-context ghost doctor
+assert_contains  "--use-context selects ctx"  '"healthy": true' \
+                                              "${CLI2[@]}" --use-context default doctor
+assert_contains  "config show exposes context" '"context"'  "${CLI2[@]}" config show
+assert_ok        "delete-context alt"                        "${CLI2[@]}" config delete-context alt
+assert_exit      "delete last context -> 2"   2              "${CLI2[@]}" config delete-context default
+
 if [[ "${CONFLUENCE_E2E_LIVE:-0}" == "1" ]]; then
   echo "==> live read-only checks (real server from .env)"
   unset CONFLUENCE_SERVER CONFLUENCE_FLAVOR CONFLUENCE_PERSONAL_ACCESS_TOKEN

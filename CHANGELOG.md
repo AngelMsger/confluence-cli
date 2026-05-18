@@ -17,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (or an interactive confirmation when stdin is a terminal).
 - New `conflict` error category (exit code 11) for version conflicts (HTTP 409)
   on `page update`.
+- Multiple named contexts (kubectl-style). The config file can hold several
+  Confluence servers; `config use-context` switches the current one,
+  `config get-contexts` lists them, `config delete-context` removes one. The
+  `--use-context` flag and `CONFLUENCE_CONTEXT` env var override per invocation,
+  and `config init` offers to configure additional contexts. Legacy flat config
+  files keep working unchanged — single-context users see no difference.
 
 ## [0.0.4] - 2026-05-18
 

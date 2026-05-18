@@ -21,6 +21,7 @@ type globalFlags struct {
 	fields     string
 	timeout    string
 	configPath string
+	useContext string
 	verbose    bool
 }
 
@@ -46,6 +47,7 @@ func (s *appState) load() error {
 	}
 	resolved, err := config.Load(config.LoadOptions{
 		ConfigDir: cfgDir,
+		Context:   s.gflags.useContext,
 		Flags: config.FlagValues{
 			BaseURL: s.gflags.baseURL,
 			Flavor:  s.gflags.flavor,
