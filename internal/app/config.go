@@ -306,8 +306,16 @@ func newConfigDeleteContextCmd(s *appState) *cobra.Command {
 // committed, the worst-case failure mode is an orphan secret left in the
 // keychain (harmless storage) rather than a missing one (broken auth).
 func persistInitResult(s *appState, result *config.WizardResult, existing config.File) (configInitOutput, error) {
-	// 1. Pre-validate every credential locally.
+	// 1. Pre-validate every credential locally. We also defensively reject a
+	//    nameless context: an empty Name has no meaning in the config file
+	//    schema, and a UI bug that produced one would otherwise silently
+	//    persist as a phantom entry that no command could address.
 	for _, cr := range result.Creds {
+		if cr.Context.Name == "" {
+			return configInitOutput{}, cerrors.New(cerrors.CategoryConfig, "CTX_NAME_EMPTY",
+				"refusing to persist a context with an empty name").
+				WithHint("Re-run `confluence-cli config init` and provide a name when prompted.")
+		}
 		cred := credentialFromContext(cr.Context, cr.Secrets)
 		if cerr := cred.Validate(); cerr != nil {
 			return configInitOutput{}, cerrors.Wrap(cerr, cerrors.CategoryConfig, "CRED_INVALID",

@@ -31,6 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `config init --pretty` no longer appends an empty-named context when the
+  config file holds exactly one context but omits `current_context` (e.g. a
+  hand-edited or migrated file). The huh wizard now mirrors the plain
+  wizard's fallback to the sole context's name; `config init` additionally
+  refuses to persist any context with an empty name as a defensive depth.
 - Confluence Cloud flavor auto-detection on `*.atlassian.net` tenants no
   longer fails when the tenant's REST endpoints 302-redirect anonymous
   requests to the Atlassian SSO login page (the redirected HTML response

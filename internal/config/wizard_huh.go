@@ -58,6 +58,15 @@ func RunWizardHuh(hooks WizardHooks, inputs WizardInputs) (*WizardResult, error)
 	if hasExisting {
 		action = "edit"
 		editTarget = inputs.Existing.CurrentContext
+		if editTarget == "" {
+			// A hand-edited or legacy-format config can omit current_context.
+			// selectContext (loader.go) treats this as valid and falls back to
+			// the sole context; mirror that here so the wizard never tries to
+			// edit a nameless target. Falling back to Contexts[0] is also a
+			// safe pre-selection in the multi-context case — the "Edit which
+			// context?" group still lets the user change it before submit.
+			editTarget = inputs.Existing.Contexts[0].Name
+		}
 	}
 
 	if hasExisting {

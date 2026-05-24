@@ -159,6 +159,49 @@ func TestPersistInitResultCleansUpOrphanAfterSuccess(t *testing.T) {
 	}
 }
 
+// TestPersistInitResultRejectsEmptyContextName guards against a UI bug that
+// produces a context with an empty Name (e.g. an edit flow that failed to
+// resolve the target context). The defensive check must reject it before any
+// disk or keychain write.
+func TestPersistInitResultRejectsEmptyContextName(t *testing.T) {
+	t.Parallel()
+	cfgDir := t.TempDir()
+	s := &appState{cfgDir: cfgDir, store: auth.NewStore(cfgDir)}
+	result := &config.WizardResult{
+		File: config.File{
+			CurrentContext: "",
+			Contexts: []config.NamedContext{{
+				Name: "", BaseURL: "https://acme.atlassian.net/wiki",
+				Flavor: config.FlavorCloud,
+				Auth:   config.AuthConfig{Scheme: config.SchemeBasic, Username: "u@acme.com"},
+			}},
+		},
+		Creds: []config.ContextResult{{
+			Context: config.NamedContext{
+				Name: "", BaseURL: "https://acme.atlassian.net/wiki",
+				Flavor: config.FlavorCloud,
+				Auth:   config.AuthConfig{Scheme: config.SchemeBasic, Username: "u@acme.com"},
+			},
+			Secrets: config.Secrets{APIToken: "tok"},
+		}},
+	}
+
+	_, err := persistInitResult(s, result, config.File{})
+	if err == nil {
+		t.Fatal("expected empty context name to be rejected")
+	}
+	ce := cerrors.AsCLIError(err)
+	if ce.Code != "CTX_NAME_EMPTY" {
+		t.Errorf("error code = %q, want CTX_NAME_EMPTY", ce.Code)
+	}
+
+	// Config file must not exist — the pipeline aborted before WriteFile.
+	configPath := filepath.Join(cfgDir, constants.ConfigFileName)
+	if _, statErr := os.Stat(configPath); !os.IsNotExist(statErr) {
+		t.Errorf("config file should not have been written; stat err = %v", statErr)
+	}
+}
+
 // TestPersistInitResultEmptySecretLeavesConfigUntouched proves the post-wizard
 // pipeline rejects a context whose secret is empty BEFORE the config file is
 // written, so a UI bug that lets an empty secret through cannot leave a
