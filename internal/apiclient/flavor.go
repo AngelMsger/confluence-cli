@@ -3,6 +3,7 @@ package apiclient
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"strings"
 
 	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
@@ -19,10 +20,29 @@ func NormalizeBaseURL(raw string) string {
 	return s
 }
 
-// Detect probes baseURL to determine the Confluence flavor. It tries the Cloud
-// v2 API first, then the Data Center REST API.
+// Detect probes baseURL to determine the Confluence flavor. The order of
+// attempts is chosen to be fast and resilient:
+//
+//  1. Hostname shortcut. `*.atlassian.net` is the only host suffix Atlassian
+//     uses for Cloud tenants, so we can answer Cloud with zero network calls.
+//     Custom-domain tenants are rare for Confluence and still covered by the
+//     network probes below.
+//  2. `<base>/_edge/tenant_info` — Atlassian Cloud's tenant sentinel. Returns
+//     `{cloudId, baseUrl}` 200 JSON without authentication, and unlike the
+//     authenticated REST endpoints does not 302-redirect anonymous traffic to
+//     the SSO login page (which previously caused probes to come back as
+//     `200 text/html` and be rejected).
+//  3. `<base>/wiki/api/v2/spaces?limit=1` — Cloud Confluence v2 API. Kept as
+//     a fallback for non-standard tenant URLs.
+//  4. `<base>/rest/api/space?limit=1` — Data Center / Server.
 func Detect(ctx context.Context, http *transport.Client, baseURL string) (Flavor, error) {
+	if isAtlassianCloudHost(baseURL) {
+		return FlavorCloud, nil
+	}
 	base := NormalizeBaseURL(baseURL)
+	if probeOK(ctx, http, base+"/_edge/tenant_info") {
+		return FlavorCloud, nil
+	}
 	if probeOK(ctx, http, base+"/wiki/api/v2/spaces?limit=1") {
 		return FlavorCloud, nil
 	}
@@ -33,6 +53,29 @@ func Detect(ctx context.Context, http *transport.Client, baseURL string) (Flavor
 		"could not determine the Confluence flavor; neither the Cloud nor the Data Center API responded").
 		WithNextSteps("Set the flavor explicitly with --flavor cloud|datacenter.",
 			"confluence-cli doctor")
+}
+
+// isAtlassianCloudHost reports whether rawURL points at an `*.atlassian.net`
+// tenant — the host suffix Atlassian reserves for Cloud instances. Inputs
+// without a scheme are tolerated so a user typing `acme.atlassian.net/wiki`
+// in the wizard is still recognized.
+func isAtlassianCloudHost(rawURL string) bool {
+	parsed, err := url.Parse(rawURL)
+	host := ""
+	if err == nil && parsed.Host != "" {
+		host = parsed.Hostname()
+	} else {
+		// Likely missing a scheme; pull the host portion out manually so the
+		// fast path still fires for `acme.atlassian.net` and friends.
+		s := strings.TrimSpace(rawURL)
+		s = strings.TrimPrefix(s, "//")
+		if i := strings.IndexAny(s, "/?#"); i >= 0 {
+			s = s[:i]
+		}
+		host = s
+	}
+	host = strings.ToLower(strings.TrimSpace(host))
+	return strings.HasSuffix(host, ".atlassian.net")
 }
 
 // probeOK reports whether endpoint is a live REST API of the expected shape.

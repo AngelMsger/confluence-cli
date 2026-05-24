@@ -29,6 +29,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   secret prompt when editing an existing context whose auth scheme has
   not changed.
 
+### Fixed
+
+- Confluence Cloud flavor auto-detection on `*.atlassian.net` tenants no
+  longer fails when the tenant's REST endpoints 302-redirect anonymous
+  requests to the Atlassian SSO login page (the redirected HTML response
+  used to be rejected by the JSON-only probe). Detection now short-circuits
+  to Cloud on any `*.atlassian.net` host and additionally probes the
+  unauthenticated `_edge/tenant_info` sentinel before falling back to the
+  REST endpoints.
+
 ### Changed
 
 - `--pretty` is refused with a structured `PRETTY_NEEDS_TTY` error when

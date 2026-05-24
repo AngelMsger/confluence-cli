@@ -298,6 +298,94 @@ func TestDetect(t *testing.T) {
 	}
 }
 
+// TestDetectAtlassianNetShortcut: any `*.atlassian.net` host is Cloud without
+// a network call, even when the URL is incomplete or has typos in the path —
+// the host suffix is the discriminator Atlassian reserves for tenants.
+func TestDetectAtlassianNetShortcut(t *testing.T) {
+	t.Parallel()
+	cases := []string{
+		"https://angelmsger.atlassian.net/wiki",
+		"https://angelmsger.atlassian.net/wiki/",
+		"https://angelmsger.atlassian.net",
+		"angelmsger.atlassian.net/wiki",
+		"HTTPS://ANGELMSGER.ATLASSIAN.NET/WiKi",
+	}
+	for _, in := range cases {
+		in := in
+		t.Run(in, func(t *testing.T) {
+			t.Parallel()
+			// Use an unreachable transport to prove no network call is made.
+			f, err := Detect(context.Background(),
+				transport.New(transport.Options{}), in)
+			if err != nil {
+				t.Fatalf("Detect(%q): %v", in, err)
+			}
+			if f != FlavorCloud {
+				t.Errorf("flavor = %s, want cloud", f)
+			}
+		})
+	}
+}
+
+// TestDetectCloudViaTenantInfo covers a custom-domain Cloud tenant — the
+// host suffix doesn't match, but `_edge/tenant_info` does. This is also the
+// path that fixes the original bug: a tenant whose `/wiki/api/v2/...`
+// returns a 302 to login (which the probe rejects as HTML) is still picked
+// up by the tenant_info sentinel.
+func TestDetectCloudViaTenantInfo(t *testing.T) {
+	t.Parallel()
+	cloud := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/_edge/tenant_info":
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{"cloudId":"abc","baseUrl":"https://wiki.example.com"}`))
+		case "/wiki/api/v2/spaces":
+			// Simulate the real-world 302-to-SSO that defeated the old probe.
+			http.Redirect(w, r, "https://id.atlassian.com/login", http.StatusFound)
+		case "/rest/api/space":
+			w.WriteHeader(http.StatusNotFound)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer cloud.Close()
+
+	f, err := Detect(context.Background(),
+		transport.New(transport.Options{}), cloud.URL+"/wiki")
+	if err != nil {
+		t.Fatalf("Detect: %v", err)
+	}
+	if f != FlavorCloud {
+		t.Errorf("flavor = %s, want cloud", f)
+	}
+}
+
+func TestIsAtlassianCloudHost(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		in   string
+		want bool
+	}{
+		{"https://acme.atlassian.net", true},
+		{"https://acme.atlassian.net/wiki", true},
+		{"https://Acme.Atlassian.Net/wiki", true},
+		{"acme.atlassian.net/wiki", true},
+		{"https://wiki.example.com", false},
+		{"https://kms.fineres.com/", false},
+		{"https://attacker.atlassian.net.evil.example.com/", false},
+		{"", false},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.in, func(t *testing.T) {
+			t.Parallel()
+			if got := isAtlassianCloudHost(tc.in); got != tc.want {
+				t.Errorf("isAtlassianCloudHost(%q) = %v, want %v", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
 func readAll(r *http.Request) []byte {
 	b, _ := io.ReadAll(r.Body)
 	return b
