@@ -42,14 +42,24 @@ Key environment variables:
 
 ## Interactive setup
 
+For a human running the CLI in a terminal, point them at the TUI:
+
 ```bash
-confluence-cli config init
+confluence-cli config init --pretty
 ```
 
-The wizard asks for the server URL, detects the flavor, collects a credential,
-validates it live, and stores the secret in the OS keychain (falling back to a
-`0600` file). Non-secret settings go to `~/.confluence/config.yaml`; secrets are
-never written there.
+The plain `config init` form (no flag) is line-by-line — use it from
+scripts, dotfiles bootstrap, and non-TTY environments where the TUI
+cannot render. Both forms ask for the server URL, detect the flavor,
+collect a credential, validate it live, and store the secret in the OS
+keychain (falling back to a `0600` file). Non-secret settings go to
+`~/.confluence/config.yaml`; secrets are never written there.
+
+> **Cloud auth note.** On Atlassian Cloud (`*.atlassian.net`) the auth
+> scheme must be `basic` with the user's Atlassian email + an API token
+> from id.atlassian.com — the wizard defaults to this when it sees a
+> Cloud tenant. `pat` (Bearer) is Data Center 7.9+ only; Cloud REST
+> endpoints reject Bearer with 403 even when the token itself is valid.
 
 ## Multiple servers (contexts)
 

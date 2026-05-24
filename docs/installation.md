@@ -61,9 +61,23 @@ into `./dist/`).
 ### First-time configuration
 
 ```bash
-confluence-cli config init     # interactive: server URL, flavor, credentials
-confluence-cli doctor          # verify configuration and connectivity
+confluence-cli config init --pretty   # interactive TUI: server URL, flavor, credentials
+confluence-cli doctor                 # verify configuration and connectivity
 ```
+
+The `--pretty` flag opts into a `huh`-based TUI with arrow-key selection,
+masked password input, and Shift-Tab back-navigation. Without it,
+`config init` runs as a plain line-by-line wizard — keep that form for
+scripted setup, dotfiles bootstrap, and non-TTY environments where a TUI
+cannot render.
+
+When the server URL is on `*.atlassian.net` (Cloud), the wizard now
+defaults the auth scheme to **basic** and asks for your Atlassian email
+plus an API token from
+[id.atlassian.com](https://id.atlassian.com/manage-profile/security/api-tokens).
+Cloud's REST API only accepts those tokens via HTTP Basic — `pat`
+(Bearer) is Data Center only and 403s on Cloud, so the wizard saves you
+from picking the wrong scheme.
 
 ---
 

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Documentation now steers human users toward
+  `config init --pretty` (the TUI wizard) as the recommended
+  first-time setup, with the plain line-by-line `config init` called
+  out as the form to use from scripts and non-TTY environments.
+  README, the installation guide, the landing page, the npm
+  package README, and the companion Skill's getting-started guide
+  all reflect this. The companion guide also gained a short note
+  explaining that Cloud must use `basic` auth (email + API token) —
+  Cloud has no Bearer-style PAT.
+
 ### Fixed
 
 - `config init` no longer defaults the auth scheme to `pat` for Cloud

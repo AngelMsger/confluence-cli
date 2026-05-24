@@ -6,8 +6,8 @@ external knowledge base.
 
 ```bash
 npm install -g @angelmsger/confluence-cli
-confluence-cli config init        # set up server URL + credentials
-confluence-cli skill install      # deploy the companion agent Skill
+confluence-cli config init --pretty   # interactive TUI: server URL + credentials
+confluence-cli skill install          # deploy the companion agent Skill
 ```
 
 Installing this package downloads the prebuilt binary for your platform from the

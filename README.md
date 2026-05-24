@@ -82,8 +82,8 @@ including the `npx skills` workflow, are in
 ## Quick start
 
 ```bash
-confluence-cli config init     # interactive setup
-confluence-cli doctor          # verify configuration and connectivity
+confluence-cli config init --pretty   # interactive TUI setup (recommended for humans)
+confluence-cli doctor                 # verify configuration and connectivity
 
 confluence-cli search --text "release process"
 confluence-cli page get <id|url> --scope outline
@@ -128,7 +128,7 @@ themselves, one JSON object per line.
 A single config file can hold several Confluence servers as named *contexts*.
 Most users need only one and never see the concept — `config init` configures a
 `default` context and the flow is unchanged. To work with more than one server,
-answer "yes" when `config init` asks to add another context, then:
+re-run `config init --pretty` and pick **Add a new context**, then:
 
 ```bash
 confluence-cli config get-contexts          # list contexts, current marked
