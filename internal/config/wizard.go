@@ -105,6 +105,19 @@ type contextPicks struct {
 	KeepSecret     bool   // user opted to retain the previously stored secret
 }
 
+// defaultSchemeForFlavor picks the auth scheme we should suggest based on the
+// backend flavor. Cloud's id.atlassian.com API tokens only authenticate with
+// HTTP Basic (email + token); Bearer/PAT against Cloud returns 403. PAT
+// (Bearer) is Data Center 7.9+. When the flavor is unknown we default to PAT
+// — that is the historical default and matches Data Center, where users are
+// most likely to have come from before this wizard learned to suggest basic.
+func defaultSchemeForFlavor(flavor, detected string) string {
+	if flavor == FlavorCloud || detected == FlavorCloud {
+		return SchemeBasic
+	}
+	return SchemePAT
+}
+
 // assembleContextResult turns raw picks (plus any kept secret loaded from the
 // store) into a ContextResult. PAT routes the secret into Secrets.PAT; basic
 // routes into Secrets.APIToken on Cloud and Secrets.Password on Data Center.
@@ -331,7 +344,7 @@ func runContextWizard(d PromptDriver, hooks WizardHooks, inputs WizardInputs, na
 		}
 	}
 
-	schemeDef := SchemePAT
+	schemeDef := defaultSchemeForFlavor(picks.Flavor, picks.DetectedFlavor)
 	if prefill != nil && prefill.Auth.Scheme != "" {
 		schemeDef = prefill.Auth.Scheme
 	}

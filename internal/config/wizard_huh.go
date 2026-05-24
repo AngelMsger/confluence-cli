@@ -8,7 +8,7 @@ import (
 	"github.com/charmbracelet/huh"
 )
 
-// RunWizardHuh is the `--pretty` entry point. It runs the wizard in two
+// RunWizardHuh is the `--pretty` entry point. It runs the wizard in three
 // `huh.Form` phases so the field bindings can be re-seeded between them
 // based on the user's intent:
 //
@@ -17,14 +17,14 @@ import (
 //     which context to edit, or — for add — the new context name.
 //  2. Between phases: seed BaseURL / Flavor / Scheme / Username from the
 //     chosen edit target, or leave them empty for add / replace.
-//  3. Phase 2: collect server URL, flavor, auth scheme, and credentials.
-//     Shift-Tab within this form lets the user revisit any field; the
-//     two-phase split exists so re-seeding stays correct when the user
-//     picks a non-current context to edit.
+//  3. Phase 2a: collect server URL and explicit flavor choice.
+//  4. Between 2a and 2b: run DetectFlavor so the auth-scheme default can
+//     follow the (chosen or detected) flavor — Cloud needs basic + email,
+//     PAT/Bearer always 403s there.
+//  5. Phase 2b: collect auth scheme and credentials.
 //
-// Async hooks (DetectFlavor, Validate) run AFTER the second form submits
-// because huh.Field.Validate is synchronous and would freeze the TUI on a
-// slow network call.
+// Validate runs after phase 2b because huh.Field.Validate is synchronous
+// and would freeze the TUI on a slow network call.
 //
 // Multi-context-per-run is intentionally unsupported in this mode (the
 // plain path keeps it); a user who wants a second context re-runs the
@@ -94,7 +94,7 @@ func RunWizardHuh(hooks WizardHooks, inputs WizardInputs) (*WizardResult, error)
 	var (
 		baseURL  string
 		flavor   = FlavorAuto
-		scheme   = SchemePAT
+		scheme   = ""
 		username string
 		secret   string
 	)
@@ -144,7 +144,29 @@ func RunWizardHuh(hooks WizardHooks, inputs WizardInputs) (*WizardResult, error)
 		keepHint = "Leave empty and press Enter to keep the current value."
 	}
 
-	if err := runPhase2(&baseURL, &flavor, &scheme, &username, &secret, secretValidator, keepHint); err != nil {
+	if err := runPhase2a(&baseURL, &flavor); err != nil {
+		return nil, err
+	}
+
+	// Run flavor detection between sub-forms so the auth-scheme question
+	// can default to basic for Cloud (where PAT/Bearer always 403s) without
+	// requiring the user to fix it up after seeing validation fail.
+	detected := ""
+	if flavor == FlavorAuto && hooks.DetectFlavor != nil {
+		fmt.Fprintln(os.Stderr, "Detecting flavor…")
+		if d, err := hooks.DetectFlavor(baseURL); err == nil {
+			detected = d
+			fmt.Fprintf(os.Stderr, "  detected: %s\n", d)
+		} else {
+			fmt.Fprintf(os.Stderr, "  detection failed (%v); continuing with auto\n", err)
+		}
+	}
+
+	if scheme == "" {
+		scheme = defaultSchemeForFlavor(flavor, detected)
+	}
+
+	if err := runPhase2b(&scheme, &username, &secret, secretValidator, keepHint); err != nil {
 		return nil, err
 	}
 
@@ -153,19 +175,9 @@ func RunWizardHuh(hooks WizardHooks, inputs WizardInputs) (*WizardResult, error)
 	keepSecret := secret == "" && hasKeptSecret && prefill != nil && prefill.Auth.Scheme == scheme
 
 	picks := contextPicks{
-		Name: name, BaseURL: baseURL, Flavor: flavor,
+		Name: name, BaseURL: baseURL, Flavor: flavor, DetectedFlavor: detected,
 		Scheme: scheme, Username: username,
 		Secret: secret, KeepSecret: keepSecret,
-	}
-
-	if picks.Flavor == FlavorAuto && hooks.DetectFlavor != nil {
-		fmt.Fprintln(os.Stderr, "Detecting flavor…")
-		if d, err := hooks.DetectFlavor(picks.BaseURL); err == nil {
-			picks.DetectedFlavor = d
-			fmt.Fprintf(os.Stderr, "  detected: %s\n", d)
-		} else {
-			fmt.Fprintf(os.Stderr, "  detection failed (%v); continuing with auto\n", err)
-		}
 	}
 
 	cr := assembleContextResult(picks, kept)
@@ -266,12 +278,45 @@ func runPhase1(action, editTarget, newName *string, contexts []NamedContext, pre
 	return nil
 }
 
-func runPhase2(baseURL, flavor, scheme, username, secret *string, secretValidator func(string) error, keepHint string) error {
+// runPhase2a collects the base URL and the explicitly-chosen flavor. It is
+// split from the scheme/secret prompts so the caller can run flavor detection
+// in between and seed a sensible scheme default (basic for Cloud).
+func runPhase2a(baseURL, flavor *string) error {
 	flavorOpts := []huh.Option[string]{
 		huh.NewOption("auto-detect", FlavorAuto),
 		huh.NewOption("Cloud", FlavorCloud),
 		huh.NewOption("Data Center / Server", FlavorDataCenter),
 	}
+
+	form := huh.NewForm(huh.NewGroup(
+		huh.NewInput().
+			Title("Confluence base URL").
+			Placeholder(exampleBaseURL).
+			Value(baseURL).
+			Validate(func(s string) error {
+				if s == "" {
+					return errors.New("required")
+				}
+				return nil
+			}),
+		huh.NewSelect[string]().
+			Title("Backend flavor").
+			Options(flavorOpts...).
+			Value(flavor),
+	)).WithInput(os.Stdin).WithOutput(os.Stderr)
+	if err := form.Run(); err != nil {
+		if errors.Is(err, huh.ErrUserAborted) {
+			return fmt.Errorf("wizard cancelled")
+		}
+		return err
+	}
+	return nil
+}
+
+// runPhase2b collects the auth scheme, username (basic only), and the secret.
+// The caller seeds *scheme with the flavor-aware default so the select shows
+// the right option highlighted.
+func runPhase2b(scheme, username, secret *string, secretValidator func(string) error, keepHint string) error {
 	schemeOpts := []huh.Option[string]{
 		huh.NewOption("PAT — Personal Access Token (Data Center)", SchemePAT),
 		huh.NewOption("basic — username + Cloud API token / DC password", SchemeBasic),
@@ -279,20 +324,6 @@ func runPhase2(baseURL, flavor, scheme, username, secret *string, secretValidato
 
 	groups := []*huh.Group{
 		huh.NewGroup(
-			huh.NewInput().
-				Title("Confluence base URL").
-				Placeholder(exampleBaseURL).
-				Value(baseURL).
-				Validate(func(s string) error {
-					if s == "" {
-						return errors.New("required")
-					}
-					return nil
-				}),
-			huh.NewSelect[string]().
-				Title("Backend flavor").
-				Options(flavorOpts...).
-				Value(flavor),
 			huh.NewSelect[string]().
 				Title("Auth scheme").
 				Options(schemeOpts...).

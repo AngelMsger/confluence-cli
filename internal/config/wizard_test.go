@@ -248,3 +248,101 @@ func TestRunWizardAddPreservesOthers(t *testing.T) {
 		t.Errorf("current_context should stay 'prod', got %q", result.File.CurrentContext)
 	}
 }
+
+func TestDefaultSchemeForFlavor(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		flavor, detected, want string
+	}{
+		{FlavorCloud, "", SchemeBasic},
+		{FlavorAuto, FlavorCloud, SchemeBasic},
+		{FlavorDataCenter, "", SchemePAT},
+		{FlavorAuto, FlavorDataCenter, SchemePAT},
+		{FlavorAuto, "", SchemePAT},
+		{"", "", SchemePAT},
+	}
+	for _, tc := range cases {
+		if got := defaultSchemeForFlavor(tc.flavor, tc.detected); got != tc.want {
+			t.Errorf("defaultSchemeForFlavor(%q, %q) = %q, want %q",
+				tc.flavor, tc.detected, got, tc.want)
+		}
+	}
+}
+
+// When flavor detection resolves to Cloud, pressing Enter on the auth scheme
+// prompt must default to basic — Cloud's id.atlassian.com API tokens 403 with
+// Bearer/PAT, so the historical SchemePAT default trapped users (see the bug
+// where a valid token kept "Validating credentials… 403 FORBIDDEN").
+func TestRunWizardAutoDetectedCloudDefaultsToBasic(t *testing.T) {
+	t.Parallel()
+	d, out := newPlainTest(strings.Join([]string{
+		"https://acme.atlassian.net/wiki", // base URL
+		"",                                // flavor — accept default (auto)
+		"",                                // scheme — accept default (should be basic post-detection)
+		"alice@acme.com",                  // username (only asked when basic)
+		"sekret",                          // API token
+		"n",                               // add another?
+	}, "\n") + "\n")
+
+	hooks := WizardHooks{
+		DetectFlavor: func(string) (string, error) { return FlavorCloud, nil },
+	}
+	result, err := RunWizard(d, hooks, WizardInputs{})
+	if err != nil {
+		t.Fatalf("RunWizard: %v", err)
+	}
+	got := result.Creds[0]
+	if got.Context.Auth.Scheme != SchemeBasic {
+		t.Errorf("auth.scheme = %q, want basic\n%s", got.Context.Auth.Scheme, out.String())
+	}
+	if got.Secrets.APIToken != "sekret" {
+		t.Errorf("secret = %+v", got.Secrets)
+	}
+}
+
+// Explicit Cloud flavor (no detection hook) should also default scheme to
+// basic on a fresh wizard run.
+func TestRunWizardExplicitCloudDefaultsToBasic(t *testing.T) {
+	t.Parallel()
+	d, out := newPlainTest(strings.Join([]string{
+		"https://acme.atlassian.net/wiki", // base URL
+		"cloud",                           // flavor
+		"",                                // scheme — accept default
+		"alice@acme.com",                  // username
+		"sekret",                          // token
+		"n",
+	}, "\n") + "\n")
+
+	result, err := RunWizard(d, WizardHooks{}, WizardInputs{})
+	if err != nil {
+		t.Fatalf("RunWizard: %v", err)
+	}
+	if got := result.Creds[0].Context.Auth.Scheme; got != SchemeBasic {
+		t.Errorf("auth.scheme = %q, want basic\n%s", got, out.String())
+	}
+}
+
+// Data Center flavor keeps the historical PAT default — most DC users come
+// from 7.9+ environments and expect Bearer auth.
+func TestRunWizardDataCenterDefaultsToPAT(t *testing.T) {
+	t.Parallel()
+	d, out := newPlainTest(strings.Join([]string{
+		"https://wiki.acme.corp", // base URL
+		"datacenter",             // flavor
+		"",                       // scheme — accept default (PAT)
+		"pat-tok",                // PAT
+		"n",
+	}, "\n") + "\n")
+
+	result, err := RunWizard(d, WizardHooks{}, WizardInputs{})
+	if err != nil {
+		t.Fatalf("RunWizard: %v", err)
+	}
+	got := result.Creds[0]
+	if got.Context.Auth.Scheme != SchemePAT {
+		t.Errorf("auth.scheme = %q, want pat\n%s", got.Context.Auth.Scheme, out.String())
+	}
+	if got.Secrets.PAT != "pat-tok" {
+		t.Errorf("secret = %+v", got.Secrets)
+	}
+}

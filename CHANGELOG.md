@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `config init` no longer defaults the auth scheme to `pat` for Cloud
+  tenants. The wizard now defaults to `basic` whenever the explicitly
+  chosen or detected flavor is Cloud — Atlassian Cloud's
+  id.atlassian.com API tokens authenticate via HTTP Basic
+  (`email:token`); using them as a Bearer/PAT token returns 403
+  FORBIDDEN even when the token is valid. Data Center continues to
+  default to `pat`. In `--pretty` mode the wizard now runs flavor
+  detection between the URL/flavor question and the auth question so
+  the same default applies on `auto`-detected Cloud tenants.
+
 ## [0.5.0] - 2026-05-24
 
 ### Added
