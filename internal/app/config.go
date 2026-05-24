@@ -54,30 +54,36 @@ func newConfigInitCmd(s *appState) *cobra.Command {
 			"configure additional named contexts for working with several servers.",
 		Example: "  confluence-cli config init",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			// The wizard's prompts are human interaction — keep them on stderr
-			// so stdout carries only the final JSON result.
-			result, err := config.RunWizard(os.Stdin, os.Stderr, wizardHooks(s))
+			// Load any existing config so the wizard can offer to edit it and
+			// prefill prompts with the stored values.
+			existing, _, err := config.ReadFile(s.cfgDir)
 			if err != nil {
-				return cerrors.Wrap(err, cerrors.CategoryConfig, "INIT_ABORTED", err.Error())
+				return cerrors.Wrap(err, cerrors.CategoryConfig, "CONFIG_READ",
+					"failed to read the config file")
 			}
-			if err := config.WriteFile(s.cfgDir, result.File); err != nil {
-				return cerrors.Wrap(err, cerrors.CategoryConfig, "CONFIG_WRITE",
-					"failed to write the config file")
+			inputs := config.WizardInputs{
+				Existing:   &existing,
+				LoadSecret: loadExistingSecret(s.store),
 			}
-			out := configInitOutput{
-				ConfigFile: config.ConfigFilePath(s.cfgDir),
-				NextSteps:  config.SuggestedNextSteps(),
-			}
-			for _, cr := range result.Creds {
-				cred := credentialFromContext(cr.Context, cr.Secrets)
-				backend, err := auth.Save(cr.Context.BaseURL, cred, s.store)
-				if err != nil {
+			// runWizard chooses the right path. --pretty hands the user the
+			// huh TUI (with Shift-Tab back-nav); the Agent default keeps the
+			// historical line-by-line prompt. Prompts go to stderr either
+			// way so stdout still carries only the final JSON result.
+			result, err := runWizard(s, wizardHooks(s), inputs)
+			if err != nil {
+				// runWizard already returns a structured CLIError for the
+				// PRETTY_NEEDS_TTY gate; preserve it. Only wrap raw errors
+				// from the wizard body itself (cancellation, validation
+				// abort, etc.) as INIT_ABORTED.
+				if _, ok := err.(*cerrors.CLIError); ok {
 					return err
 				}
-				out.Contexts = append(out.Contexts, initContextResult{
-					Name:              cr.Context.Name,
-					CredentialBackend: fmt.Sprint(backend),
-				})
+				return cerrors.Wrap(err, cerrors.CategoryConfig, "INIT_ABORTED", err.Error())
+			}
+
+			out, err := persistInitResult(s, result, existing)
+			if err != nil {
+				return err
 			}
 			return s.emit(out)
 		},
@@ -282,6 +288,122 @@ func newConfigDeleteContextCmd(s *appState) *cobra.Command {
 	}
 	cmd.ValidArgsFunction = completeContextNames(s)
 	return cmd
+}
+
+// persistInitResult is the post-wizard persistence pipeline. The ordering is
+// chosen so a failure in any single step never leaves the user's previously
+// working config unusable:
+//
+//  1. Validate every credential locally — cheap fail-fast.
+//  2. Save every new credential into the keychain.
+//  3. Write the new config.yaml.
+//  4. Best-effort delete orphaned old credentials whose account key changed.
+//
+// The cleanup deliberately runs LAST. If we Forgot the old credential before
+// Save or WriteFile failed, the on-disk config would still reference the old
+// key but the keychain entry under that key would be gone — the user's
+// working setup would break. By cleaning up only after the new state is fully
+// committed, the worst-case failure mode is an orphan secret left in the
+// keychain (harmless storage) rather than a missing one (broken auth).
+func persistInitResult(s *appState, result *config.WizardResult, existing config.File) (configInitOutput, error) {
+	// 1. Pre-validate every credential locally.
+	for _, cr := range result.Creds {
+		cred := credentialFromContext(cr.Context, cr.Secrets)
+		if cerr := cred.Validate(); cerr != nil {
+			return configInitOutput{}, cerrors.Wrap(cerr, cerrors.CategoryConfig, "CRED_INVALID",
+				fmt.Sprintf("context %q has no usable credential", cr.Context.Name))
+		}
+	}
+
+	// 2. Save every new credential. orphans collects any old account-key
+	//    identities that need cleanup once the rest of persistence succeeds.
+	type orphan struct {
+		baseURL string
+		scheme  string
+	}
+	var orphans []orphan
+	out := configInitOutput{
+		ConfigFile: config.ConfigFilePath(s.cfgDir),
+		NextSteps:  config.SuggestedNextSteps(),
+	}
+	for _, cr := range result.Creds {
+		if prev, ok := existing.Context(cr.Context.Name); ok {
+			if prev.BaseURL != cr.Context.BaseURL || prev.Auth.Scheme != cr.Context.Auth.Scheme {
+				orphans = append(orphans, orphan{baseURL: prev.BaseURL, scheme: prev.Auth.Scheme})
+			}
+		}
+		cred := credentialFromContext(cr.Context, cr.Secrets)
+		backend, err := auth.Save(cr.Context.BaseURL, cred, s.store)
+		if err != nil {
+			return configInitOutput{}, err
+		}
+		out.Contexts = append(out.Contexts, initContextResult{
+			Name:              cr.Context.Name,
+			CredentialBackend: fmt.Sprint(backend),
+		})
+	}
+
+	// 3. Persist the config file. Until this commits, the existing config +
+	//    its old credentials remain untouched and usable.
+	if err := config.WriteFile(s.cfgDir, result.File); err != nil {
+		return configInitOutput{}, cerrors.Wrap(err, cerrors.CategoryConfig, "CONFIG_WRITE",
+			"failed to write the config file")
+	}
+
+	// 4. Best-effort cleanup of orphaned old credentials. Errors are ignored
+	//    on purpose — an orphan secret in the keychain is harmless, while a
+	//    user-visible error here would suggest the new config didn't take.
+	for _, o := range orphans {
+		_ = auth.Forget(o.baseURL, o.scheme, s.store)
+	}
+
+	return out, nil
+}
+
+// runWizard dispatches to the right wizard implementation based on the
+// --pretty flag. The huh-driven TUI is opt-in and requires an interactive
+// stdin so users don't silently get a UX they didn't ask for; otherwise the
+// historical plain prompt path runs and the same WizardResult shape comes
+// back from either side.
+func runWizard(s *appState, hooks config.WizardHooks, inputs config.WizardInputs) (*config.WizardResult, error) {
+	if s.gflags.pretty {
+		if !stdinIsTTY() {
+			return nil, cerrors.New(cerrors.CategoryUsage, "PRETTY_NEEDS_TTY",
+				"--pretty requires an interactive terminal for `config init`").
+				WithHint("Drop --pretty or run from a terminal.")
+		}
+		return config.RunWizardHuh(hooks, inputs)
+	}
+	return config.RunWizard(
+		config.NewPlainDriver(os.Stdin, os.Stderr),
+		hooks, inputs)
+}
+
+// loadExistingSecret returns a WizardInputs.LoadSecret hook that reads the
+// secret currently stored for nc and maps it into the right Secrets field
+// based on the scheme and (Cloud vs Data Center) flavor.
+func loadExistingSecret(store *auth.Store) func(config.NamedContext) (config.Secrets, bool) {
+	return func(nc config.NamedContext) (config.Secrets, bool) {
+		if store == nil || nc.BaseURL == "" || nc.Auth.Scheme == "" {
+			return config.Secrets{}, false
+		}
+		secret, err := store.Load(auth.AccountKey(nc.BaseURL, nc.Auth.Scheme))
+		if err != nil || secret == "" {
+			return config.Secrets{}, false
+		}
+		var out config.Secrets
+		switch nc.Auth.Scheme {
+		case config.SchemePAT:
+			out.PAT = secret
+		case config.SchemeBasic:
+			if nc.Flavor == config.FlavorCloud || nc.DetectedFlavor == config.FlavorCloud {
+				out.APIToken = secret
+			} else {
+				out.Password = secret
+			}
+		}
+		return out, true
+	}
 }
 
 // wizardHooks builds the live detection / validation callbacks for `config init`.

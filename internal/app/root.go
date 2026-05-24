@@ -52,6 +52,7 @@ func newRootCmd() *cobra.Command {
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 			// config / auth subcommands manage configuration themselves and
 			// must run even when nothing is configured yet.
+			output.SetErrorPretty(state.gflags.pretty)
 			return state.load()
 		},
 	}
@@ -65,6 +66,8 @@ func newRootCmd() *cobra.Command {
 	pf.StringVar(&state.gflags.configPath, "config", "", "config directory (default ~/.confluence)")
 	pf.StringVar(&state.gflags.useContext, "use-context", "", "use a named context for this invocation")
 	pf.BoolVarP(&state.gflags.verbose, "verbose", "v", false, "verbose diagnostics on stderr")
+	pf.BoolVar(&state.gflags.pretty, "pretty", false,
+		"human-friendly mode: interactive TUI in `config init`, colorized JSON elsewhere")
 
 	root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {
 		return cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_FLAG", err.Error())

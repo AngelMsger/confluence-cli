@@ -9,6 +9,7 @@ import (
 	"io"
 
 	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
+	"github.com/neilotoole/jsoncolor"
 )
 
 // Format identifies an output format.
@@ -24,6 +25,10 @@ type Options struct {
 	// Fields, when non-empty, projects each record to these dot-path keys.
 	Fields []string
 	Writer io.Writer
+	// Pretty enables ANSI-colored JSON when Writer is a TTY. It has no effect
+	// on table output and is silently downgraded to plain JSON when Writer is
+	// not a terminal (so e.g. `--pretty | jq` continues to work).
+	Pretty bool
 }
 
 // Emit renders v to the configured writer in the configured format.
@@ -44,9 +49,9 @@ func Emit(v any, opt Options) error {
 	case FormatTable:
 		return emitTable(generic, opt)
 	case FormatNDJSON:
-		return emitNDJSON(generic, opt.Writer)
+		return emitNDJSON(generic, opt.Writer, opt.Pretty)
 	case FormatJSON, "":
-		return emitJSON(generic, opt.Writer)
+		return emitJSON(generic, opt.Writer, opt.Pretty)
 	default:
 		return badFormat(opt.Format)
 	}
@@ -86,13 +91,13 @@ func EmitList(items any, next string, hasMore bool, opt Options) error {
 		}
 		return nil
 	case FormatNDJSON:
-		return emitNDJSON(list, opt.Writer)
+		return emitNDJSON(list, opt.Writer, opt.Pretty)
 	case FormatJSON, "":
 		env := map[string]any{"items": list, "has_more": hasMore}
 		if next != "" {
 			env["next"] = next
 		}
-		return emitJSON(env, opt.Writer)
+		return emitJSON(env, opt.Writer, opt.Pretty)
 	default:
 		return badFormat(opt.Format)
 	}
@@ -118,30 +123,64 @@ func toGeneric(v any) (any, error) {
 	return out, nil
 }
 
-func emitJSON(v any, w io.Writer) error {
+func emitJSON(v any, w io.Writer, pretty bool) error {
+	if pretty && jsoncolor.IsColorTerminal(w) {
+		enc := jsoncolor.NewEncoder(w)
+		enc.SetIndent("", "  ")
+		enc.SetEscapeHTML(false)
+		enc.SetColors(jsoncolor.DefaultColors())
+		return enc.Encode(v)
+	}
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	enc.SetEscapeHTML(false)
 	return enc.Encode(v)
 }
 
-func emitNDJSON(v any, w io.Writer) error {
-	enc := json.NewEncoder(w)
-	enc.SetEscapeHTML(false)
+func emitNDJSON(v any, w io.Writer, pretty bool) error {
+	encode := func(item any) error {
+		if pretty && jsoncolor.IsColorTerminal(w) {
+			enc := jsoncolor.NewEncoder(w)
+			enc.SetEscapeHTML(false)
+			enc.SetColors(jsoncolor.DefaultColors())
+			return enc.Encode(item)
+		}
+		enc := json.NewEncoder(w)
+		enc.SetEscapeHTML(false)
+		return enc.Encode(item)
+	}
 	if list, ok := v.([]any); ok {
 		for _, item := range list {
-			if err := enc.Encode(item); err != nil {
+			if err := encode(item); err != nil {
 				return err
 			}
 		}
 		return nil
 	}
-	return enc.Encode(v)
+	return encode(v)
 }
 
-// EmitError writes a structured error as JSON to w (typically stderr).
+// EmitError writes a structured error as JSON to w (typically stderr). When
+// the process was invoked with --pretty AND w is a TTY, the error JSON is
+// also colorized; otherwise it falls back to plain JSON so log scrapers and
+// non-TTY consumers see byte-identical output.
 func EmitError(err error, w io.Writer) {
+	emitErrorWith(err, w, prettyEnabled())
+}
+
+// emitErrorWith is the testable form of EmitError; production code uses
+// EmitError which reads the package-level pretty switch.
+func emitErrorWith(err error, w io.Writer, pretty bool) {
 	ce := cerrors.AsCLIError(err)
+	if pretty && jsoncolor.IsColorTerminal(w) {
+		enc := jsoncolor.NewEncoder(w)
+		enc.SetIndent("", "  ")
+		enc.SetEscapeHTML(false)
+		enc.SetColors(jsoncolor.DefaultColors())
+		if encErr := enc.Encode(ce.Payload()); encErr == nil {
+			return
+		}
+	}
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	enc.SetEscapeHTML(false)
@@ -149,3 +188,16 @@ func EmitError(err error, w io.Writer) {
 		fmt.Fprintf(w, "%s\n", ce.Error())
 	}
 }
+
+// errorPretty is a process-global hint that --pretty was passed. EmitError is
+// the only path that needs it (it's called from cobra's outermost handler
+// where we no longer have an *appState in scope). Other emit paths receive
+// Pretty via Options.
+var errorPretty = false
+
+// SetErrorPretty toggles the process-global pretty flag for EmitError. It is
+// called by the root command after parsing --pretty so error output styling
+// matches success output styling.
+func SetErrorPretty(v bool) { errorPretty = v }
+
+func prettyEnabled() bool { return errorPretty }

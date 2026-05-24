@@ -112,13 +112,7 @@ func resolvePageBody(cmd *cobra.Command, body, bodyFile, format string) (apiclie
 }
 
 // stdinIsTTY reports whether stdin is an interactive terminal.
-func stdinIsTTY() bool {
-	fi, err := os.Stdin.Stat()
-	if err != nil {
-		return false
-	}
-	return fi.Mode()&os.ModeCharDevice != 0
-}
+func stdinIsTTY() bool { return isTerminal(os.Stdin) }
 
 // confirmDelete enforces the delete safety guard: --yes skips it, a non-TTY
 // without --yes is refused, and a TTY prompts on stderr. prompt describes the

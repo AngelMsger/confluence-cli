@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- New global `--pretty` flag opts a human user into a richer UX without
+  changing the default Agent-friendly behaviour. When set:
+  - `config init` runs a `charmbracelet/huh`-based interactive TUI with
+    arrow-key selection, password masking, placeholder examples, and
+    Shift-Tab back-navigation across the whole form. The wizard first asks
+    whether to edit an existing context, add a new one, or replace the
+    configuration, and pre-fills fields with the chosen context's stored
+    values so pressing Enter keeps them. The historical line-by-line
+    prompt remains the default and is used for non-TTY scripted setup.
+  - JSON, NDJSON, and error output written to a terminal is ANSI-colored
+    via `neilotoole/jsoncolor`. When stdout is a pipe (`… | jq`,
+    redirection, CI) the output silently falls back to plain JSON so
+    consumers see byte-identical bytes.
+- `config init` now detects an existing config and offers to edit a
+  specific context, add another, or replace the file outright (previously
+  it would only initialize a fresh `default` context).
+- `config init` now offers "press Enter to keep the current value" on the
+  secret prompt when editing an existing context whose auth scheme has
+  not changed.
+
+### Changed
+
+- `--pretty` is refused with a structured `PRETTY_NEEDS_TTY` error when
+  stdin is not an interactive terminal, so the user does not silently
+  fall through to a UX they did not ask for.
+- `config init` now persists in a safer order: every credential is
+  saved into the keychain (or file fallback) first, then `config.yaml`
+  is written, and only after both succeed are orphaned old credentials
+  (from a context whose base URL or auth scheme changed) cleaned up.
+  Previously a credential-store or write failure could leave a
+  half-written config pointing at a nonexistent credential, or delete
+  the credential still referenced by an unchanged config. The worst
+  case now is an orphan secret in the keychain — harmless storage,
+  never a broken auth.
+
 ## [0.4.0] - 2026-05-19
 
 ### Added

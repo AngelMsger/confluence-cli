@@ -232,6 +232,55 @@ func TestEmitListFields(t *testing.T) {
 	}
 }
 
+// TestEmitJSONPrettyOnNonTTY proves that Pretty has no effect on a non-TTY
+// writer: the bytes must be identical to the plain path. This is the contract
+// that keeps `confluence-cli --pretty page get … | jq` working.
+func TestEmitJSONPrettyOnNonTTY(t *testing.T) {
+	t.Parallel()
+	rec := mk("1", "Hello <world> & \"friends\"", "ENG")
+	var plain, pretty bytes.Buffer
+	if err := Emit(rec, Options{Format: FormatJSON, Writer: &plain}); err != nil {
+		t.Fatal(err)
+	}
+	if err := Emit(rec, Options{Format: FormatJSON, Writer: &pretty, Pretty: true}); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(plain.Bytes(), pretty.Bytes()) {
+		t.Errorf("non-TTY output diverged:\n  plain:  %q\n  pretty: %q", plain.String(), pretty.String())
+	}
+	if bytes.ContainsRune(pretty.Bytes(), 0x1b) {
+		t.Errorf("non-TTY pretty output must not contain ANSI escapes: %q", pretty.String())
+	}
+}
+
+func TestEmitNDJSONPrettyOnNonTTY(t *testing.T) {
+	t.Parallel()
+	recs := []sampleRec{mk("1", "A", "ENG"), mk("2", "B", "OPS")}
+	var plain, pretty bytes.Buffer
+	if err := Emit(recs, Options{Format: FormatNDJSON, Writer: &plain}); err != nil {
+		t.Fatal(err)
+	}
+	if err := Emit(recs, Options{Format: FormatNDJSON, Writer: &pretty, Pretty: true}); err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(plain.Bytes(), pretty.Bytes()) {
+		t.Errorf("ndjson non-TTY output diverged:\n  plain:  %q\n  pretty: %q", plain.String(), pretty.String())
+	}
+}
+
+func TestEmitErrorPrettyOnNonTTY(t *testing.T) {
+	t.Parallel()
+	var plain, pretty bytes.Buffer
+	emitErrorWith(cerrors.New(cerrors.CategoryAuth, "AUTH_X", "bad token"), &plain, false)
+	emitErrorWith(cerrors.New(cerrors.CategoryAuth, "AUTH_X", "bad token"), &pretty, true)
+	if !bytes.Equal(plain.Bytes(), pretty.Bytes()) {
+		t.Errorf("error output diverged on non-TTY:\n  plain:  %q\n  pretty: %q", plain.String(), pretty.String())
+	}
+	if bytes.ContainsRune(pretty.Bytes(), 0x1b) {
+		t.Errorf("non-TTY pretty error must not contain ANSI escapes: %q", pretty.String())
+	}
+}
+
 func TestEmitError(t *testing.T) {
 	t.Parallel()
 	var buf bytes.Buffer

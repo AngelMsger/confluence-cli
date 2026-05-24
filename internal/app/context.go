@@ -23,6 +23,10 @@ type globalFlags struct {
 	configPath string
 	useContext string
 	verbose    bool
+	// pretty opts a human user into TUI prompts (in `config init`) and
+	// ANSI-colored JSON (in every command that emits JSON). Off by default
+	// so Agent / scripted / pipe usage stays byte-identical.
+	pretty bool
 }
 
 // appState is the shared runtime context, built once in the root command's
@@ -92,6 +96,7 @@ func (s *appState) emit(v any) error {
 		Format: s.cfg().Defaults.Format,
 		Fields: s.fieldList(),
 		Writer: os.Stdout,
+		Pretty: s.gflags.pretty,
 	})
 }
 
@@ -102,6 +107,7 @@ func (s *appState) emitList(items any, info pageInfo) error {
 		Format: s.cfg().Defaults.Format,
 		Fields: s.fieldList(),
 		Writer: os.Stdout,
+		Pretty: s.gflags.pretty,
 	})
 }
 
