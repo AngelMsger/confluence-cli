@@ -3,8 +3,11 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
+
+	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
 )
 
 func writeFile(t *testing.T, path, content string) {
@@ -341,6 +344,42 @@ func TestSelectContext(t *testing.T) {
 		got, err := selectContext(File{}, "", "")
 		if err != nil || got != "" {
 			t.Errorf("got %q err %v", got, err)
+		}
+	})
+
+	// UNKNOWN_CONTEXT must surface a structured CLIError (not a generic load
+	// failure) — the surrounding app layer is supposed to pass it through
+	// untouched so the caller sees the code/hint.
+	t.Run("unknown returns UNKNOWN_CONTEXT cli error", func(t *testing.T) {
+		_, err := selectContext(f, "ghost", "")
+		ce, ok := err.(*cerrors.CLIError)
+		if !ok || ce.Code != "UNKNOWN_CONTEXT" {
+			t.Fatalf("got %T %v, want *CLIError UNKNOWN_CONTEXT", err, err)
+		}
+		if ce.Hint == "" {
+			t.Error("hint should be set")
+		}
+	})
+
+	// Case-insensitive matches should be called out — "Did you mean X?" is far
+	// more actionable than a context list when the user just got the case wrong.
+	t.Run("hint suggests case-different match", func(t *testing.T) {
+		ff := File{Contexts: []NamedContext{{Name: "Cloud"}, {Name: "default"}}}
+		_, err := selectContext(ff, "cloud", "")
+		ce := err.(*cerrors.CLIError)
+		if !strings.Contains(ce.Hint, `Did you mean "Cloud"`) {
+			t.Errorf("hint = %q, want did-you-mean suggestion", ce.Hint)
+		}
+	})
+
+	// Without a CI match, the hint should list available names so the user
+	// does not have to run a second command to recover.
+	t.Run("hint lists available contexts", func(t *testing.T) {
+		ff := File{Contexts: []NamedContext{{Name: "alpha"}, {Name: "beta"}}}
+		_, err := selectContext(ff, "gamma", "")
+		ce := err.(*cerrors.CLIError)
+		if !strings.Contains(ce.Hint, "alpha") || !strings.Contains(ce.Hint, "beta") {
+			t.Errorf("hint = %q, want both context names listed", ce.Hint)
 		}
 	})
 }

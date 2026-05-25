@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/angelmsger/confluence-cli/internal/auth"
 	"github.com/angelmsger/confluence-cli/internal/config"
+	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
 )
 
 // writeContextFile writes a two-context config file into dir.
@@ -94,6 +96,88 @@ func TestCmdUseContextUnknown(t *testing.T) {
 	writeContextFile(t, dir, "https://alpha.example.com", "https://beta.example.com")
 	if _, err := runCLIFile(t, dir, "config", "use-context", "ghost"); err == nil {
 		t.Error("expected error switching to an unknown context")
+	}
+}
+
+// --use-context with an unknown name must surface the underlying
+// UNKNOWN_CONTEXT error (with its available-contexts hint) instead of being
+// swallowed by the appState.load() wrapper that turned every error into a
+// generic CONFIG_LOAD "failed to load configuration".
+func TestCmdUseContextUnknownPreservesStructuredError(t *testing.T) {
+	dir := t.TempDir()
+	writeContextFile(t, dir, "https://alpha.example.com", "https://beta.example.com")
+	_, err := runCLIFile(t, dir, "--use-context", "ghost", "config", "show")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	var ce *cerrors.CLIError
+	if !errors.As(err, &ce) {
+		t.Fatalf("err = %T %v, want *CLIError", err, err)
+	}
+	if ce.Code != "UNKNOWN_CONTEXT" {
+		t.Errorf("code = %q, want UNKNOWN_CONTEXT (raw err: %v)", ce.Code, err)
+	}
+	if !strings.Contains(ce.Hint, "alpha") || !strings.Contains(ce.Hint, "beta") {
+		t.Errorf("hint should list available contexts, got %q", ce.Hint)
+	}
+}
+
+// Case-only mismatch should produce a "Did you mean X?" hint.
+func TestCmdUseContextCaseMismatchHintsAtCorrectName(t *testing.T) {
+	dir := t.TempDir()
+	// Use a case-mixed name so we can confirm the hint quotes it back.
+	content := `current_context: alpha
+contexts:
+  - name: Cloud
+    server: https://acme.atlassian.net/wiki
+    flavor: cloud
+    auth: {scheme: basic, username: u@acme.com}
+  - name: alpha
+    server: https://alpha.example.com
+    flavor: datacenter
+    auth: {scheme: pat}
+`
+	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := runCLIFile(t, dir, "--use-context", "cloud", "config", "show")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	var ce *cerrors.CLIError
+	if !errors.As(err, &ce) {
+		t.Fatalf("err = %T %v, want *CLIError", err, err)
+	}
+	if !strings.Contains(ce.Hint, `Did you mean "Cloud"`) {
+		t.Errorf("hint = %q, want did-you-mean suggestion for 'Cloud'", ce.Hint)
+	}
+}
+
+// `config show --explain` must annotate auth.scheme and auth.user with their
+// source — without that, env-var inference (e.g. CONFLUENCE_PERSONAL_ACCESS_TOKEN
+// silently forcing scheme=pat over a Cloud context's basic) is invisible to
+// the user trying to diagnose why their credentials are wrong.
+func TestCmdConfigShowExplainAnnotatesAuthFields(t *testing.T) {
+	dir := t.TempDir()
+	content := `current_context: only
+contexts:
+  - name: only
+    server: https://acme.atlassian.net/wiki
+    flavor: cloud
+    auth: {scheme: basic, username: u@acme.com}
+`
+	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out, err := runCLIFile(t, dir, "config", "show", "--explain")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, `"auth.scheme": "basic (from `) {
+		t.Errorf("explain should annotate auth.scheme with its source: %s", out)
+	}
+	if !strings.Contains(out, `"auth.user": "u@acme.com (from `) {
+		t.Errorf("explain should annotate auth.user with its source: %s", out)
 	}
 }
 

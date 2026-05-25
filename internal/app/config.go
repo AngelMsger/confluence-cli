@@ -110,6 +110,8 @@ func newConfigShowCmd(s *appState) *cobra.Command {
 				src := s.resolved.Sources
 				view["server"] = explained(cfg.BaseURL, src, config.FieldServer)
 				view["flavor"] = explained(cfg.Flavor, src, config.FieldFlavor)
+				view["auth.scheme"] = explained(cfg.Auth.Scheme, src, config.FieldAuthScheme)
+				view["auth.user"] = explained(cfg.Auth.Username, src, config.FieldAuthUser)
 				view["format"] = explained(cfg.Defaults.Format, src, config.FieldFormat)
 			}
 			// Surface the context only when more than one is configured, so

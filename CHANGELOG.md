@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `config show --explain` now annotates `auth.scheme` and `auth.user`
+  with their source (e.g. `pat (from env)`, `basic (from file)`).
+  Previously these fields were emitted without provenance, so
+  env-variable inference — most often `CONFLUENCE_PERSONAL_ACCESS_TOKEN`
+  silently forcing `auth.scheme` to `pat` over a Cloud context's
+  `basic` — was invisible to anyone diagnosing a failed auth.
+
+### Fixed
+
+- `--use-context <name>` with an unknown name no longer surfaces as a
+  generic `CONFIG_LOAD "failed to load configuration"`. The underlying
+  `UNKNOWN_CONTEXT` error from the loader was being blanket-wrapped by
+  `appState.load()`, which stripped its code and hint. The wrapper now
+  passes structured `*CLIError` values through untouched, so callers
+  see the real reason and the recovery hint.
+- The `UNKNOWN_CONTEXT` hint is now actionable. A case-only mismatch
+  produces `Did you mean "Cloud"? Context names are case-sensitive.`;
+  otherwise the hint lists every available context inline
+  (`Available contexts: alpha, beta.`), so users do not have to run a
+  second command to recover from a typo or an unset
+  `current_context`. Context names remain case-sensitive on purpose —
+  a case-insensitive lookup could silently route a typo to the wrong
+  server.
+
 ## [0.5.1] - 2026-05-25
 
 ### Changed

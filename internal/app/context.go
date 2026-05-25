@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"os"
 	"strings"
 	"time"
@@ -60,6 +61,15 @@ func (s *appState) load() error {
 		},
 	})
 	if err != nil {
+		// Pass structured CLI errors (e.g. UNKNOWN_CONTEXT) through untouched —
+		// blanket-wrapping them buries the real reason in a generic CONFIG_LOAD
+		// "failed to load configuration" message that strips the original hint
+		// (e.g. "Available contexts: …"). Only opaque errors from file/dotenv
+		// reads need the wrapper.
+		var ce *cerrors.CLIError
+		if errors.As(err, &ce) {
+			return ce
+		}
 		return cerrors.Wrap(err, cerrors.CategoryConfig, "CONFIG_LOAD",
 			"failed to load configuration")
 	}
