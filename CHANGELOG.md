@@ -7,32 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-
-- `config show --explain` now annotates `auth.scheme` and `auth.user`
-  with their source (e.g. `pat (from env)`, `basic (from file)`).
-  Previously these fields were emitted without provenance, so
-  env-variable inference — most often `CONFLUENCE_PERSONAL_ACCESS_TOKEN`
-  silently forcing `auth.scheme` to `pat` over a Cloud context's
-  `basic` — was invisible to anyone diagnosing a failed auth.
-
-### Fixed
-
-- `--use-context <name>` with an unknown name no longer surfaces as a
-  generic `CONFIG_LOAD "failed to load configuration"`. The underlying
-  `UNKNOWN_CONTEXT` error from the loader was being blanket-wrapped by
-  `appState.load()`, which stripped its code and hint. The wrapper now
-  passes structured `*CLIError` values through untouched, so callers
-  see the real reason and the recovery hint.
-- The `UNKNOWN_CONTEXT` hint is now actionable. A case-only mismatch
-  produces `Did you mean "Cloud"? Context names are case-sensitive.`;
-  otherwise the hint lists every available context inline
-  (`Available contexts: alpha, beta.`), so users do not have to run a
-  second command to recover from a typo or an unset
-  `current_context`. Context names remain case-sensitive on purpose —
-  a case-insensitive lookup could silently route a typo to the wrong
-  server.
-
 ## [0.5.1] - 2026-05-25
 
 ### Changed
@@ -46,6 +20,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   all reflect this. The companion guide also gained a short note
   explaining that Cloud must use `basic` auth (email + API token) —
   Cloud has no Bearer-style PAT.
+- `config show --explain` now annotates `auth.scheme` and `auth.user`
+  with their source (e.g. `pat (from env)`, `basic (from file)`).
+  Previously these fields were emitted without provenance, so
+  env-variable inference — most often `CONFLUENCE_PERSONAL_ACCESS_TOKEN`
+  silently forcing `auth.scheme` to `pat` over a Cloud context's
+  `basic` — was invisible to anyone diagnosing a failed auth.
+- Context-name lookup is now case-insensitive everywhere
+  (`--use-context`, `CONFLUENCE_CONTEXT`, `current_context`,
+  `config use-context`, `config delete-context`). The canonical
+  (as-stored) name is what gets persisted and surfaced, so a CI lookup
+  against a legacy mixed-case file never leaves `current_context`
+  pointing at a spelling that is not in the contexts list. The wizard
+  additionally lowercases new context names at write time, so
+  freshly-saved configs are uniformly lowercase. Mixed-case names in
+  legacy files keep working until they are re-saved.
+- Email-shaped usernames (anything containing `@`) are lowercased at
+  write time. Atlassian Cloud authenticates by email + API token and
+  treats the address case-insensitively, so a typo like `Alice@…` no
+  longer maps to a different keychain identity than `alice@…`.
+  Non-email usernames (Data Center LDAP / AD identifiers, which may
+  be case-sensitive server-side) are only trimmed.
 
 ### Fixed
 
@@ -58,6 +53,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   default to `pat`. In `--pretty` mode the wizard now runs flavor
   detection between the URL/flavor question and the auth question so
   the same default applies on `auto`-detected Cloud tenants.
+- `--use-context <name>` with an unknown name no longer surfaces as a
+  generic `CONFIG_LOAD "failed to load configuration"`. The underlying
+  `UNKNOWN_CONTEXT` error from the loader was being blanket-wrapped by
+  `appState.load()`, which stripped its code and hint. The wrapper now
+  passes structured `*CLIError` values through untouched, so callers
+  see the real reason and the recovery hint.
+- The `UNKNOWN_CONTEXT` hint is now actionable. It lists every
+  available context inline (`Available contexts: alpha, beta.`), so
+  users do not have to run a second command to recover from a typo or
+  an unset `current_context`. (The historical "Did you mean X?"
+  case-mismatch suggestion is now mostly a defensive belt — see the
+  case-insensitive lookup item above.)
 
 ## [0.5.0] - 2026-05-24
 

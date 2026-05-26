@@ -361,14 +361,18 @@ func TestSelectContext(t *testing.T) {
 		}
 	})
 
-	// Case-insensitive matches should be called out — "Did you mean X?" is far
-	// more actionable than a context list when the user just got the case wrong.
-	t.Run("hint suggests case-different match", func(t *testing.T) {
+	// Case-insensitive lookup: `--use-context cloud` against a legacy
+	// `Cloud` config must succeed and return the canonical name. The
+	// `current_context` we persist must agree with what is in the contexts
+	// list, otherwise CI lookup against the rewritten file would orphan it.
+	t.Run("case-insensitive lookup returns canonical name", func(t *testing.T) {
 		ff := File{Contexts: []NamedContext{{Name: "Cloud"}, {Name: "default"}}}
-		_, err := selectContext(ff, "cloud", "")
-		ce := err.(*cerrors.CLIError)
-		if !strings.Contains(ce.Hint, `Did you mean "Cloud"`) {
-			t.Errorf("hint = %q, want did-you-mean suggestion", ce.Hint)
+		got, err := selectContext(ff, "cloud", "")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got != "Cloud" {
+			t.Errorf("got %q, want canonical %q", got, "Cloud")
 		}
 	})
 

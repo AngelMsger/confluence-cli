@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/angelmsger/confluence-cli/pkg/constants"
 	"gopkg.in/yaml.v3"
@@ -54,10 +55,15 @@ type File struct {
 	Defaults       Defaults
 }
 
-// Context returns the context with the given name.
+// Context returns the context whose name matches, case-insensitively. The
+// returned struct carries the canonical (as-stored) name; callers that intend
+// to persist a reference to the context (e.g. set CurrentContext or filter a
+// kept list) must use the returned NamedContext.Name, not the lookup string —
+// otherwise a CI lookup against a legacy mixed-case file would write back a
+// name that no longer exists in the contexts list.
 func (f File) Context(name string) (NamedContext, bool) {
 	for _, c := range f.Contexts {
-		if c.Name == name {
+		if strings.EqualFold(c.Name, name) {
 			return c, true
 		}
 	}

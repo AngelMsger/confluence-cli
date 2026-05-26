@@ -55,14 +55,12 @@ type namedLayer struct {
 // context that does not exist is an error.
 func selectContext(f File, flagCtx, envCtx string) (string, error) {
 	pick := func(name, src string) (string, error) {
-		if _, ok := f.Context(name); ok {
-			return name, nil
+		if c, ok := f.Context(name); ok {
+			// Return the canonical (as-stored) name so downstream lookups,
+			// keychain account keys, and any user-facing labels all agree on
+			// one spelling regardless of how the user wrote the override.
+			return c.Name, nil
 		}
-		// Context names are case-sensitive on purpose — a case-insensitive
-		// match could silently route a typo to the wrong server. But when we
-		// find a CI match it almost always *is* a typo, so the hint should
-		// point at it directly. Otherwise list every available name so the
-		// user can fix the override without a second command.
 		return "", cerrors.Newf(cerrors.CategoryConfig, "UNKNOWN_CONTEXT",
 			"context %q (from %s) is not defined in the config file", name, src).
 			WithHint(unknownContextHint(name, f.ContextNames()))
@@ -84,11 +82,20 @@ func selectContext(f File, flagCtx, envCtx string) (string, error) {
 	}
 }
 
-// unknownContextHint builds the hint shown when a context override (flag, env,
-// or current_context) names a context that does not exist. It prefers a
-// case-insensitive "did you mean" suggestion; otherwise it lists every
-// available name; otherwise it falls back to a generic pointer to
-// get-contexts.
+// UnknownContextHint builds the hint shown when a context override (flag,
+// env, current_context, or a positional argument to a config subcommand)
+// names a context that does not exist. It prefers a case-insensitive "did
+// you mean" suggestion; otherwise it lists every available name; otherwise
+// it falls back to a generic pointer to get-contexts.
+//
+// File.Context already does CI lookup, so the "did you mean" branch is now
+// mostly a defensive belt — it can still fire for legacy configs that have
+// two contexts differing only in case (CI lookup hits the first one in
+// iteration order; a user typing the second one's casing still misses).
+func UnknownContextHint(name string, available []string) string {
+	return unknownContextHint(name, available)
+}
+
 func unknownContextHint(name string, available []string) string {
 	for _, a := range available {
 		if strings.EqualFold(a, name) && a != name {

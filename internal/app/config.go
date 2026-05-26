@@ -212,6 +212,12 @@ func newConfigGetContextsCmd(s *appState) *cobra.Command {
 	}
 }
 
+// unknownContextHintFor wraps the config-package hint helper for use by
+// app-level commands.
+func unknownContextHintFor(file config.File, name string) string {
+	return config.UnknownContextHint(name, file.ContextNames())
+}
+
 func newConfigUseContextCmd(s *appState) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "use-context <name>",
@@ -226,17 +232,21 @@ func newConfigUseContextCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if _, ok := file.Context(name); !ok {
+			target, ok := file.Context(name)
+			if !ok {
 				return cerrors.Newf(cerrors.CategoryConfig, "UNKNOWN_CONTEXT",
 					"context %q is not defined", name).
-					WithHint("Run `confluence-cli config get-contexts` to list defined contexts.")
+					WithHint(unknownContextHintFor(file, name))
 			}
-			file.CurrentContext = name
+			// Persist the canonical name so a CI lookup against a legacy
+			// mixed-case file does not leave current_context pointing at a
+			// spelling that is not in the contexts list.
+			file.CurrentContext = target.Name
 			if err := config.WriteFile(s.cfgDir, file); err != nil {
 				return cerrors.Wrap(err, cerrors.CategoryConfig, "CONFIG_WRITE",
 					"failed to write the config file")
 			}
-			return s.emit(map[string]any{"context": name, "status": "current"})
+			return s.emit(map[string]any{"context": target.Name, "status": "current"})
 		},
 	}
 	cmd.ValidArgsFunction = completeContextNames(s)
@@ -259,7 +269,7 @@ func newConfigDeleteContextCmd(s *appState) *cobra.Command {
 			if !ok {
 				return cerrors.Newf(cerrors.CategoryConfig, "UNKNOWN_CONTEXT",
 					"context %q is not defined", name).
-					WithHint("Run `confluence-cli config get-contexts` to list defined contexts.")
+					WithHint(unknownContextHintFor(file, name))
 			}
 			if len(file.Contexts) == 1 {
 				return cerrors.New(cerrors.CategoryUsage, "LAST_CONTEXT",
@@ -271,21 +281,23 @@ func newConfigDeleteContextCmd(s *appState) *cobra.Command {
 			}
 			_ = auth.Forget(target.BaseURL, scheme, s.store)
 
+			// Filter by canonical name so a CI lookup against a mixed-case
+			// legacy file still removes the right entry.
 			kept := file.Contexts[:0]
 			for _, c := range file.Contexts {
-				if c.Name != name {
+				if c.Name != target.Name {
 					kept = append(kept, c)
 				}
 			}
 			file.Contexts = kept
-			if file.CurrentContext == name {
+			if file.CurrentContext == target.Name {
 				file.CurrentContext = file.Contexts[0].Name
 			}
 			if err := config.WriteFile(s.cfgDir, file); err != nil {
 				return cerrors.Wrap(err, cerrors.CategoryConfig, "CONFIG_WRITE",
 					"failed to write the config file")
 			}
-			return s.emit(map[string]any{"context": name, "status": "deleted"})
+			return s.emit(map[string]any{"context": target.Name, "status": "deleted"})
 		},
 	}
 	cmd.ValidArgsFunction = completeContextNames(s)

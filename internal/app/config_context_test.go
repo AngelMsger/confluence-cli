@@ -122,10 +122,12 @@ func TestCmdUseContextUnknownPreservesStructuredError(t *testing.T) {
 	}
 }
 
-// Case-only mismatch should produce a "Did you mean X?" hint.
-func TestCmdUseContextCaseMismatchHintsAtCorrectName(t *testing.T) {
+// Case-only mismatch should now succeed via case-insensitive lookup — the
+// previous "Did you mean X?" UX is unnecessary when the lookup just works.
+// The output must show the *canonical* server, not whatever URL might have
+// been associated with a hypothetical lower-cased duplicate.
+func TestCmdUseContextLowercaseMatchesMixedCaseLegacyContext(t *testing.T) {
 	dir := t.TempDir()
-	// Use a case-mixed name so we can confirm the hint quotes it back.
 	content := `current_context: alpha
 contexts:
   - name: Cloud
@@ -140,16 +142,44 @@ contexts:
 	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	_, err := runCLIFile(t, dir, "--use-context", "cloud", "config", "show")
-	if err == nil {
-		t.Fatal("expected error")
+	out, err := runCLIFile(t, dir, "--use-context", "cloud", "config", "show")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
-	var ce *cerrors.CLIError
-	if !errors.As(err, &ce) {
-		t.Fatalf("err = %T %v, want *CLIError", err, err)
+	if !strings.Contains(out, "https://acme.atlassian.net/wiki") {
+		t.Errorf("--use-context cloud should resolve to the Cloud context's server: %s", out)
 	}
-	if !strings.Contains(ce.Hint, `Did you mean "Cloud"`) {
-		t.Errorf("hint = %q, want did-you-mean suggestion for 'Cloud'", ce.Hint)
+}
+
+// `config use-context` persists the *canonical* name, not whatever casing
+// the user typed — otherwise a CI lookup against the rewritten file would
+// leave current_context pointing at a spelling that is not in the
+// contexts list.
+func TestCmdUseContextPersistsCanonicalName(t *testing.T) {
+	dir := t.TempDir()
+	content := `current_context: alpha
+contexts:
+  - name: Cloud
+    server: https://acme.atlassian.net/wiki
+    flavor: cloud
+    auth: {scheme: basic, username: u@acme.com}
+  - name: alpha
+    server: https://alpha.example.com
+    flavor: datacenter
+    auth: {scheme: pat}
+`
+	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := runCLIFile(t, dir, "config", "use-context", "cloud"); err != nil {
+		t.Fatalf("use-context cloud: %v", err)
+	}
+	file, _, err := config.ReadFile(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if file.CurrentContext != "Cloud" {
+		t.Errorf("CurrentContext = %q, want canonical %q", file.CurrentContext, "Cloud")
 	}
 }
 

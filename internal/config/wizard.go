@@ -124,14 +124,17 @@ func defaultSchemeForFlavor(flavor, detected string) string {
 // When picks.KeepSecret is true the secret is sourced from kept rather than
 // picks.Secret.
 func assembleContextResult(picks contextPicks, kept Secrets) ContextResult {
+	// Normalize at the write seam, not at each call site, so every wizard
+	// path (plain, huh, hand-built ContextResult in tests) lands in the
+	// same canonical form on disk.
 	nc := NamedContext{
-		Name:           picks.Name,
+		Name:           NormalizeContextName(picks.Name),
 		BaseURL:        picks.BaseURL,
 		Flavor:         picks.Flavor,
 		DetectedFlavor: picks.DetectedFlavor,
 		Auth: AuthConfig{
 			Scheme:   picks.Scheme,
-			Username: picks.Username,
+			Username: NormalizeUsername(picks.Username),
 		},
 	}
 	isCloud := picks.Flavor == FlavorCloud || picks.DetectedFlavor == FlavorCloud
