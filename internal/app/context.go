@@ -28,6 +28,10 @@ type globalFlags struct {
 	// ANSI-colored JSON (in every command that emits JSON). Off by default
 	// so Agent / scripted / pipe usage stays byte-identical.
 	pretty bool
+	// allowWrites overrides read-only mode for the current invocation. The
+	// posture itself is set via config (defaults.read_only) or env
+	// (CONFLUENCE_CLI_READ_ONLY); this flag is the per-call escape hatch.
+	allowWrites bool
 }
 
 // appState is the shared runtime context, built once in the root command's
@@ -97,7 +101,21 @@ func (s *appState) newClient(ctx context.Context) (apiclient.Client, error) {
 		MaxRetries:    cfg.Defaults.MaxRetries,
 		PageSize:      cfg.Defaults.PageSize,
 	})
-	return client, err
+	if err != nil {
+		return nil, err
+	}
+	if s.readOnly() {
+		client = apiclient.NewReadOnly(client)
+	}
+	return client, nil
+}
+
+// readOnly reports whether the effective posture for this invocation is
+// read-only. The posture is set via config (defaults.read_only) or the env
+// var CONFLUENCE_CLI_READ_ONLY; --allow-writes flips it back to read-write
+// for the current call.
+func (s *appState) readOnly() bool {
+	return s.cfg().Defaults.ReadOnly && !s.gflags.allowWrites
 }
 
 // emit writes a successful result to stdout in the configured format.

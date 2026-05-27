@@ -21,6 +21,7 @@ type defaultsShape struct {
 	PageSize   int    `yaml:"page_size,omitempty"`
 	Timeout    string `yaml:"timeout,omitempty"`
 	MaxRetries int    `yaml:"max_retries,omitempty"`
+	ReadOnly   bool   `yaml:"read_only,omitempty"`
 }
 
 type contextShape struct {
@@ -162,6 +163,7 @@ func WriteFile(dir string, f File) error {
 		fs.Defaults.Timeout = f.Defaults.Timeout.String()
 	}
 	fs.Defaults.MaxRetries = f.Defaults.MaxRetries
+	fs.Defaults.ReadOnly = f.Defaults.ReadOnly
 
 	out, err := yaml.Marshal(&fs)
 	if err != nil {
@@ -178,6 +180,7 @@ func defaultsFromShape(ds defaultsShape) Defaults {
 		PageSize:   ds.PageSize,
 		Timeout:    durationOr(ds.Timeout, 0),
 		MaxRetries: ds.MaxRetries,
+		ReadOnly:   ds.ReadOnly,
 	}
 }
 

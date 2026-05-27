@@ -15,6 +15,7 @@ var envBindings = map[string]string{
 	"CONFLUENCE_PERSONAL_ACCESS_TOKEN": fieldPAT,
 	"CONFLUENCE_PASSWORD":              fieldPassword,
 	"CONFLUENCE_API_TOKEN":             fieldAPIToken,
+	"CONFLUENCE_CLI_READ_ONLY":         fieldReadOnly,
 }
 
 // layerFromVars converts a name->value map into a layer map. Empty values are

@@ -71,6 +71,40 @@ input" error path, also add a `scripts/e2e.sh` assertion that the error
 output contains the discovery command's name (use a stderr-capturing helper
 when needed, since structured errors are written to stderr).
 
+## Safety modes — `--dry-run` and read-only posture
+
+Two orthogonal protections guard every operation that mutates remote state:
+
+1. **`--dry-run`** is a per-command flag on every mutating command. It must
+   resolve the request via `Client.DescribeWrite(ctx, op)` and emit the
+   resulting `WriteRequestPlan{Method, URL, Payload}` instead of sending the
+   HTTP request. Use the shared `emitDryRun(s, client, ctx, op)` helper —
+   never re-implement the dispatch inline. Every write request type that
+   reaches a command must also have a `DescribeWrite` case; the read path
+   (build helper) must be the same code path the live write uses so the
+   preview cannot drift from the actual request.
+2. **Read-only posture** is a session-level switch: `defaults.read_only`
+   in the config file, or `CONFLUENCE_CLI_READ_ONLY` in the environment.
+   When active, `appState.newClient()` wraps the client in
+   `apiclient.NewReadOnly(...)`, which returns a structured
+   `READONLY_BLOCKED` (`category=permission`) error from every mutating
+   method *before* any HTTP request is sent. `--allow-writes` (root
+   persistent flag) overrides the posture for one invocation.
+
+When you add a new mutating method on `Client`:
+
+- Add the method override on `readOnlyClient` in `internal/apiclient/readonly.go`
+  so the wrapper actually blocks it.
+- Add a `DescribeWrite` case + a `--dry-run` branch on the calling command.
+- Add an e2e assertion for both the `--dry-run` happy path and the
+  `READONLY_BLOCKED` rejection (see `scripts/e2e.sh`).
+- Add a row to the wrapper's table test in
+  `internal/apiclient/readonly_test.go`.
+
+`--dry-run` must *not* be blocked by read-only mode — `DescribeWrite` sends
+no HTTP and is the right tool to inspect what a write would look like under
+a read-only session. The wrapper intentionally does not override it.
+
 ## Documentation — keep it current
 
 - **Actively maintain the docs.** When a change affects architecture,

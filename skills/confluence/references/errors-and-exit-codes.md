@@ -45,8 +45,12 @@ indicates whether retrying the same command can succeed.
 - **auth (4)** → `confluence-cli auth status`; if not configured, `config init --pretty`.
 - **not_found (6)** → the ID/URL is wrong or the page moved; `confluence-cli
   search --text "<keywords>"` to relocate it.
-- **permission (5)** → the credential works but lacks rights; this is not
-  fixable by retrying — tell the user the account needs access.
+- **permission (5)** → either a 403 from Confluence (the credential works
+  but lacks rights — not fixable by retrying, tell the user the account
+  needs access), **or** `READONLY_BLOCKED` from local read-only mode
+  (`defaults.read_only` / `CONFLUENCE_CLI_READ_ONLY=1`). To send the
+  blocked write anyway, add `--allow-writes`; to preview without sending,
+  add `--dry-run`. See `safety-modes.md`.
 - **rate_limit (7) / server (9) / network (8)** → `retryable: true`; wait and
   retry, and prefer a narrower query over `--all`.
 - **conflict (11)** → `page update` lost a race; the page changed since it was

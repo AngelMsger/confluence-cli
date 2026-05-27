@@ -131,6 +131,9 @@ func buildFileLayer(f File, ctxName string) map[string]string {
 	if f.Defaults.MaxRetries > 0 {
 		m[fieldMaxRetries] = strconv.Itoa(f.Defaults.MaxRetries)
 	}
+	if f.Defaults.ReadOnly {
+		m[fieldReadOnly] = "true"
+	}
 	return m
 }
 
@@ -214,4 +217,5 @@ const (
 	FieldTimeout    = fieldTimeout
 	FieldPageSize   = fieldPageSize
 	FieldMaxRetries = fieldMaxRetries
+	FieldReadOnly   = fieldReadOnly
 )

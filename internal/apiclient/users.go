@@ -10,10 +10,10 @@ import (
 // SearchUsers enumerates users matching a query — the discovery path for the
 // `search --author` / `search --contributor` flags.
 //
-//   Cloud: GET /wiki/rest/api/search/user?cql=user.fullname~"..."  (CQL-driven;
-//          Query is required because Cloud has no global user-list endpoint)
-//   DC:    GET /rest/api/1.0/users?filter=...                       (DC-wide
-//          user catalog under the /rest/api/1.0 namespace; Query is optional)
+//	Cloud: GET /wiki/rest/api/search/user?cql=user.fullname~"..."  (CQL-driven;
+//	       Query is required because Cloud has no global user-list endpoint)
+//	DC:    GET /rest/api/1.0/users?filter=...                       (DC-wide
+//	       user catalog under the /rest/api/1.0 namespace; Query is optional)
 func (c *apiClient) SearchUsers(ctx context.Context, opt UserSearchOpts) (ListResult[User], error) {
 	limit := c.limitOf(opt.ListOpts)
 	if c.flavor == FlavorCloud {
@@ -91,8 +91,9 @@ func (c *apiClient) SearchUsers(ctx context.Context, opt UserSearchOpts) (ListRe
 }
 
 // GetUser fetches a single user by selector.
-//   Cloud: GET /wiki/rest/api/user?accountId={selector}
-//   DC:    GET /rest/api/1.0/users/{slug}
+//
+//	Cloud: GET /wiki/rest/api/user?accountId={selector}
+//	DC:    GET /rest/api/1.0/users/{slug}
 func (c *apiClient) GetUser(ctx context.Context, selector string) (*User, error) {
 	if selector == "" {
 		return nil, cerrors.New(cerrors.CategoryUsage, "USER_NO_SELECTOR",

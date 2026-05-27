@@ -9,6 +9,7 @@ package config
 
 import (
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/angelmsger/confluence-cli/pkg/constants"
@@ -62,6 +63,10 @@ type Defaults struct {
 	PageSize   int           `yaml:"page_size"`
 	Timeout    time.Duration `yaml:"timeout"`
 	MaxRetries int           `yaml:"max_retries"`
+	// ReadOnly blocks every mutating client method. Settable from the config
+	// file, from CONFLUENCE_CLI_READ_ONLY, or temporarily overridden via
+	// --allow-writes.
+	ReadOnly bool `yaml:"read_only,omitempty"`
 }
 
 // Secrets holds credentials observed in non-file layers. Empty fields mean the
@@ -98,6 +103,7 @@ const (
 	fieldPageSize       = "defaults.page_size"
 	fieldTimeout        = "defaults.timeout"
 	fieldMaxRetries     = "defaults.max_retries"
+	fieldReadOnly       = "defaults.read_only"
 	// Secret field keys (never persisted to the YAML file).
 	fieldPAT      = "secret.pat"
 	fieldPassword = "secret.password"
@@ -131,9 +137,24 @@ func configFromMap(m map[string]string) Config {
 			PageSize:   atoiOr(m[fieldPageSize], constants.DefaultPageSize),
 			Timeout:    durationOr(m[fieldTimeout], constants.DefaultTimeout),
 			MaxRetries: atoiOr(m[fieldMaxRetries], constants.DefaultMaxRetries),
+			ReadOnly:   boolOr(m[fieldReadOnly], false),
 		},
 	}
 	return c
+}
+
+// boolOr parses a flag-style truthy string. "1", "true", "yes", "on" count as
+// true; everything else (including empty) yields the fallback.
+func boolOr(s string, fallback bool) bool {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "":
+		return fallback
+	case "1", "true", "yes", "on":
+		return true
+	case "0", "false", "no", "off":
+		return false
+	}
+	return fallback
 }
 
 // contextConfig builds a Config from a NamedContext plus the built-in runtime

@@ -38,6 +38,17 @@ assert_contains() {
   fi
 }
 
+# assert_err_contains <description> <needle> <command...>  (captures stderr too)
+assert_err_contains() {
+  local desc="$1" needle="$2"; shift 2
+  out="$("$@" 2>&1)"
+  if [[ "$out" == *"$needle"* ]]; then
+    pass "$desc"
+  else
+    fail "$desc (combined output did not contain '$needle')"
+  fi
+}
+
 # assert_exit <description> <expected-code> <command...>
 assert_exit() {
   local desc="$1" want="$2"; shift 2
@@ -130,6 +141,22 @@ assert_contains  "skill uninstall (repeat)" '"not_installed"' \
 assert_contains  "skill show"             "name: confluence" "${CLI[@]}" skill show
 assert_exit      "missing page -> 6"      6                "${CLI[@]}" page get 404
 assert_exit      "bad flag -> 2"          2                "${CLI[@]}" page get 123 --bogus
+
+# Read-only mode: env CONFLUENCE_CLI_READ_ONLY blocks writes; --allow-writes
+# overrides it; --dry-run remains usable.
+RO_ENV=(env CONFLUENCE_CLI_READ_ONLY=1)
+assert_err_contains "read-only blocks page delete"   "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" page delete 123 --yes
+assert_err_contains "read-only error names --allow-writes" "--allow-writes" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" page delete 123 --yes
+assert_exit         "read-only exit category=permission -> 5" 5 \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" page delete 123 --yes
+assert_contains     "read-only + --dry-run still previews" '"method": "DELETE"' \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" page delete 123 --yes --dry-run
+assert_contains     "--allow-writes overrides read-only"   "trashed" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" --allow-writes page delete 123 --yes
+assert_err_contains "read-only blocks comment add"   "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" comment add 123 --body "x"
 
 echo "==> multi-context checks"
 TMPCFG2="$(mktemp -d)"

@@ -7,8 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-05-27
+
 ### Added
 
+- **Read-only mode.** A session-level safety switch that blocks every
+  mutating client method before any HTTP request is sent. Enable it via
+  `defaults.read_only: true` in `~/.confluence/config.yaml` or
+  `CONFLUENCE_CLI_READ_ONLY=1` in the environment. Blocked writes return a
+  structured `READONLY_BLOCKED` error (`category=permission`, exit code 5)
+  whose `next_steps[0]` is `--allow-writes`. The new root-level
+  `--allow-writes` persistent flag overrides the posture for a single
+  invocation, so `CONFLUENCE_CLI_READ_ONLY=1 confluence-cli --allow-writes
+  page delete <id> --yes` is the documented escape hatch. `--dry-run`
+  remains usable under read-only — it sends no HTTP, so the wrapper passes
+  `DescribeWrite` through unchanged.
 - `confluence-cli user search` / `user get` / `user me` close the
   discoverability gap for `search --author` and `search --contributor`.
   Cloud uses the CQL-driven `/wiki/rest/api/search/user?cql=user.fullname~"..."`

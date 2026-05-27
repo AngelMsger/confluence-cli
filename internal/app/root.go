@@ -68,6 +68,8 @@ func newRootCmd() *cobra.Command {
 	pf.BoolVarP(&state.gflags.verbose, "verbose", "v", false, "verbose diagnostics on stderr")
 	pf.BoolVar(&state.gflags.pretty, "pretty", false,
 		"human-friendly mode: interactive TUI in `config init`, colorized JSON elsewhere")
+	pf.BoolVar(&state.gflags.allowWrites, "allow-writes", false,
+		"override read-only mode (defaults.read_only / CONFLUENCE_CLI_READ_ONLY) for this invocation")
 
 	root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {
 		return cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_FLAG", err.Error())
