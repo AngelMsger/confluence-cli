@@ -142,6 +142,19 @@ confluence-cli --use-context prod page get 123   # override for one command
 `CONFLUENCE_CONTEXT` overrides the current context via the environment. Legacy
 single-server config files are read unchanged.
 
+## Related
+
+Working with Bitbucket pull requests in the same flow? Pair this with
+**[bitbucket-cli](https://github.com/AngelMsger/bitbucket-cli)** — the sister
+CLI that drives Bitbucket PR review, inline commenting and merge from the same
+terminal. Same design philosophy (agent-first JSON, structured errors,
+`--dry-run` on every write, optional read-only mode, companion Skill), and it
+shares the `~/.angelmsger/` config root, so one credential store covers both.
+
+A natural pipeline: **bitbucket-cli** reviews and merges the PR →
+**confluence-cli** writes up the change in the team wiki, all without leaving
+the terminal.
+
 ## Development
 
 ```bash
