@@ -32,6 +32,45 @@ up front.
   conventions in `CONTRIBUTING.md`.
 - Never commit `.env`, credentials, tokens, or build artifacts.
 
+## Discoverability — no dead-end inputs
+
+**Every non-trivial identifier a command accepts as input must be discoverable
+through another command in this CLI.** Examples of inputs covered by this
+rule: space keys, page IDs, comment IDs, attachment IDs, label names, version
+numbers, user identifiers (accountId on Cloud, username on Data Center), and
+file paths within an attachment.
+
+The rule is symmetric: an input is *only* discoverable if (a) the CLI has a
+command that lists / searches values of that kind, **and** (b) that listing
+command itself is reachable without already knowing some other value the CLI
+can't tell you about. A `comment list` that demands a page ID is only useful
+if `search` (or another path-to-page command) also exists.
+
+When you add a command or flag that takes a new kind of input:
+
+1. Walk every parameter the new surface accepts. For each, answer:
+   *"Where does the caller (especially an AI agent) get this value?"*
+2. If the answer is **another command in this CLI**, you are done.
+3. If the answer is **an existing identifier the user already had in hand**
+   (e.g. they pasted a Confluence page URL), that counts too — `pkg/urlref`
+   already parses page / comment IDs out of URLs.
+4. If the answer is **out-of-band** (a web UI, another tool, the API
+   directly), that is a gap. Add the missing discovery command in the same
+   PR, or surface it as a follow-up issue and document the dead end in
+   `CHANGELOG.md` under *Known gaps*.
+
+The same rule applies to error messages. When a command rejects an
+invocation for missing a required identifier, the resulting `CLIError`'s
+`next_steps` must include the discovery command (e.g. `space list`,
+`search`, `comment list`, `attachment list`). Errors that say
+"Pass `--space <key>`" without showing the user how to find a valid `<key>`
+are defects.
+
+The e2e harness should exercise this contract: when adding a "missing
+input" error path, also add a `scripts/e2e.sh` assertion that the error
+output contains the discovery command's name (use a stderr-capturing helper
+when needed, since structured errors are written to stderr).
+
 ## Documentation — keep it current
 
 - **Actively maintain the docs.** When a change affects architecture,

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Known gaps (discoverability)
+
+Per the discoverability rule in [`AGENTS.md`](AGENTS.md), the following
+identifiers still have no listing command:
+
+- **User identifiers** (`--author`, `--contributor` filters on `search`).
+  CQL accepts a Cloud accountId or a DC username, but the CLI has no
+  command that enumerates users. Underlying APIs: Cloud has no truly
+  global user list — closest is `GET /wiki/rest/api/search/user?cql=...`
+  (a CQL-flavoured user search) and `GET /wiki/rest/api/space/{key}/permission`;
+  DC `GET /rest/api/1.0/users` (paginated, query-filterable). Until added,
+  callers must obtain the identifier out-of-band (e.g. from a page they
+  already opened or by pasting an accountId).
+
 ### Changed
 
 - Error `next_steps`, `--help` examples, and the long descriptions
