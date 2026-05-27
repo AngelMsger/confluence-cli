@@ -114,6 +114,7 @@ keychain (with a `0600` file fallback) and never written to the config file.
 | `attachment list` / `download` / `upload` / `update` / `delete` | inspect, fetch and manage attachments |
 | `label list` / `add` / `remove` | manage page labels |
 | `whoami` | print the user the credentials authenticate as |
+| `user search` / `user get` / `user me` | discover Confluence users — the values `--author` / `--contributor` accept (Cloud: `--query` required; DC: optional) |
 | `skill install` / `skill uninstall` | deploy or remove the embedded companion Skill (Claude Code, Codex) |
 | `config get-contexts` / `use-context` / `delete-context` | manage multiple named servers |
 | `config` / `auth` / `doctor` / `version` | setup and diagnostics |

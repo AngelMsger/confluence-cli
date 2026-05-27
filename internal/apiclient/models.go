@@ -102,7 +102,17 @@ type User struct {
 	AccountID   string `json:"account_id,omitempty"`
 	Username    string `json:"username,omitempty"`
 	DisplayName string `json:"display_name,omitempty"`
+	Email       string `json:"email,omitempty"`
 	Type        string `json:"type,omitempty"`
+}
+
+// UserSearchOpts narrows a user search. The Query field is required on Cloud
+// (Cloud has no global user enumeration endpoint — only a CQL-driven search);
+// it acts as a name/email filter on Data Center, which can return everyone
+// when blank.
+type UserSearchOpts struct {
+	ListOpts
+	Query string
 }
 
 // SearchHit is a normalized CQL search result.

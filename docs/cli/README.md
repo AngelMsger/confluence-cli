@@ -104,6 +104,15 @@ is published at <https://angelmsger.github.io/confluence-cli/cli/>.
 | [`confluence-cli space get`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-space-get) | Fetch a single space by key |
 | [`confluence-cli space list`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-space-list) | List spaces |
 
+## user
+
+| Command | Description |
+| --- | --- |
+| [`confluence-cli user`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-user) | Discover Confluence users — the values --author / --contributor accept |
+| [`confluence-cli user get`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-user-get) | Show details of a single user (accountId on Cloud; username on DC) |
+| [`confluence-cli user me`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-user-me) | Print the user the configured credentials authenticate as (alias for whoami) |
+| [`confluence-cli user search`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-user-search) | Search users by display-name substring |
+
 ## version
 
 | Command | Description |

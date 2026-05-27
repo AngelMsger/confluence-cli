@@ -103,6 +103,13 @@
       <a href="#confluence-cli-space-list">confluence-cli space list</a>
       </div>
     <div class="side-group">
+      <div class="side-title">user</div>
+      <a href="#confluence-cli-user">confluence-cli user</a>
+      <a href="#confluence-cli-user-get">confluence-cli user get</a>
+      <a href="#confluence-cli-user-me">confluence-cli user me</a>
+      <a href="#confluence-cli-user-search">confluence-cli user search</a>
+      </div>
+    <div class="side-group">
       <div class="side-title">version</div>
       <a href="#confluence-cli-version">confluence-cli version</a>
       </div>
@@ -807,9 +814,9 @@ or build one from filter flags (--text, --author, --space, ...).</p>
         <tbody>
         <tr><td><code>--after</code></td><td></td><td>modified on/after date, e.g. 2025-01-01</td></tr>
         <tr><td><code>--all</code></td><td><code>false</code></td><td>fetch every page of results</td></tr>
-        <tr><td><code>--author</code></td><td></td><td>original creator (CQL: creator =)</td></tr>
+        <tr><td><code>--author</code></td><td></td><td>original creator (CQL: creator =); find IDs with `user search`</td></tr>
         <tr><td><code>--before</code></td><td></td><td>modified on/before date, e.g. 2025-12-31</td></tr>
-        <tr><td><code>--contributor</code></td><td></td><td>any contributor (CQL: contributor =)</td></tr>
+        <tr><td><code>--contributor</code></td><td></td><td>any contributor (CQL: contributor =); find IDs with `user search`</td></tr>
         <tr><td><code>--cursor</code></td><td></td><td>start from this pagination cursor (the &#39;next&#39; of a prior page)</td></tr>
         <tr><td><code>--label</code></td><td></td><td>label (CQL: label =)</td></tr>
         <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
@@ -931,6 +938,54 @@ from each one found.</p>
         <tr><td><code>--cursor</code></td><td></td><td>start from this pagination cursor (the &#39;next&#39; of a prior page)</td></tr>
         <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
         <tr><td><code>--type</code></td><td></td><td>filter by type: global or personal</td></tr>
+        </tbody>
+      </table>
+      
+    </section>
+    
+    <section class="cmd" id="confluence-cli-user">
+      <h2>confluence-cli user<span class="group-tag">command group</span></h2>
+      <p class="short">Discover Confluence users — the values --author / --contributor accept</p>
+      <pre>confluence-cli user</pre>
+      
+      
+      
+    </section>
+    
+    <section class="cmd" id="confluence-cli-user-get">
+      <h2>confluence-cli user get</h2>
+      <p class="short">Show details of a single user (accountId on Cloud; username on DC)</p>
+      <pre>confluence-cli user get &lt;selector&gt;</pre>
+      
+      
+      
+    </section>
+    
+    <section class="cmd" id="confluence-cli-user-me">
+      <h2>confluence-cli user me</h2>
+      <p class="short">Print the user the configured credentials authenticate as (alias for whoami)</p>
+      <pre>confluence-cli user me</pre>
+      
+      
+      
+    </section>
+    
+    <section class="cmd" id="confluence-cli-user-search">
+      <h2>confluence-cli user search</h2>
+      <p class="short">Search users by display-name substring</p>
+      <pre>confluence-cli user search [flags]</pre>
+      <p class="long">Search Confluence users.
+
+Cloud: --query is required (the CQL `user.fullname ~ &#34;...&#34;` search).
+DC:    --query is optional (omit for a paginated walk of every user).</p>
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--all</code></td><td><code>false</code></td><td>fetch every page of results</td></tr>
+        <tr><td><code>--cursor</code></td><td></td><td>start from this pagination cursor (the &#39;next&#39; of a prior page)</td></tr>
+        <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
+        <tr><td><code>--query</code></td><td></td><td>display-name substring (required on Cloud)</td></tr>
         </tbody>
       </table>
       

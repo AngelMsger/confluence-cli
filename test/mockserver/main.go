@@ -122,6 +122,27 @@ func routes() http.Handler {
 		w.Write([]byte("attachment payload\n"))
 	})
 
+	// User discovery (DC's shared /rest/api/1.0/users directory, distinct from
+	// /rest/api/user that serves Confluence content-tree user lookups).
+	mux.HandleFunc("GET /rest/api/1.0/users", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, map[string]any{
+			"values": []any{
+				map[string]any{
+					"name": "alice", "slug": "alice", "displayName": "Alice Example",
+					"emailAddress": "alice@example.com", "active": true, "type": "NORMAL",
+				},
+			},
+			"size": 1, "limit": 25, "start": 0, "isLastPage": true,
+		})
+	})
+	mux.HandleFunc("GET /rest/api/1.0/users/{slug}", func(w http.ResponseWriter, r *http.Request) {
+		slug := r.PathValue("slug")
+		writeJSON(w, map[string]any{
+			"name": slug, "slug": slug, "displayName": "Alice Example",
+			"emailAddress": "alice@example.com", "active": true, "type": "NORMAL",
+		})
+	})
+
 	// Stand-in for the GitHub "latest release" API used by the update check.
 	mux.HandleFunc("GET /releases/latest", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]any{"tag_name": "v99.0.0"})

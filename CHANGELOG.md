@@ -7,19 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Known gaps (discoverability)
+### Added
 
-Per the discoverability rule in [`AGENTS.md`](AGENTS.md), the following
-identifiers still have no listing command:
-
-- **User identifiers** (`--author`, `--contributor` filters on `search`).
-  CQL accepts a Cloud accountId or a DC username, but the CLI has no
-  command that enumerates users. Underlying APIs: Cloud has no truly
-  global user list — closest is `GET /wiki/rest/api/search/user?cql=...`
-  (a CQL-flavoured user search) and `GET /wiki/rest/api/space/{key}/permission`;
-  DC `GET /rest/api/1.0/users` (paginated, query-filterable). Until added,
-  callers must obtain the identifier out-of-band (e.g. from a page they
-  already opened or by pasting an accountId).
+- `confluence-cli user search` / `user get` / `user me` close the
+  discoverability gap for `search --author` and `search --contributor`.
+  Cloud uses the CQL-driven `/wiki/rest/api/search/user?cql=user.fullname~"..."`
+  (so `--query` is required there); Data Center uses the global
+  `/rest/api/1.0/users` directory (`--query` is optional). `user me`
+  mirrors the top-level `whoami` inside the subtree, so a single
+  `bitbucket-cli`-style mental model works across both projects.
+- The `search --author` / `search --contributor` flag descriptions now
+  point at `user search` as the discovery path.
 
 ### Changed
 

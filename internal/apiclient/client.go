@@ -52,6 +52,8 @@ type Client interface {
 	DeleteComment(ctx context.Context, req DeleteCommentReq) error
 
 	CurrentUser(ctx context.Context) (*User, error)
+	SearchUsers(ctx context.Context, opt UserSearchOpts) (ListResult[User], error)
+	GetUser(ctx context.Context, selector string) (*User, error)
 
 	ListAttachments(ctx context.Context, pageID string, opt ListOpts) (ListResult[Attachment], error)
 	GetAttachment(ctx context.Context, id string) (*Attachment, error)

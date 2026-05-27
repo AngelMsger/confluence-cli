@@ -50,8 +50,8 @@ func newSearchCmd(s *appState) *cobra.Command {
 	}
 	f := cmd.Flags()
 	f.StringVar(&params.Text, "text", "", "free-text match (CQL: text ~)")
-	f.StringVar(&params.Author, "author", "", "original creator (CQL: creator =)")
-	f.StringVar(&params.Contributor, "contributor", "", "any contributor (CQL: contributor =)")
+	f.StringVar(&params.Author, "author", "", "original creator (CQL: creator =); find IDs with `user search`")
+	f.StringVar(&params.Contributor, "contributor", "", "any contributor (CQL: contributor =); find IDs with `user search`")
 	f.StringVar(&params.Space, "space", "", "space key (CQL: space =)")
 	f.StringVar(&params.Label, "label", "", "label (CQL: label =)")
 	f.StringVar(&params.Type, "type", "", "content type: page, blogpost, comment, attachment")

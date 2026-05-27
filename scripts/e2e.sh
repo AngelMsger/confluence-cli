@@ -116,6 +116,8 @@ assert_contains  "attachment list"        "spec.txt"       "${CLI[@]}" attachmen
 assert_contains  "attachment download"    "attachment payload" \
                                           "${CLI[@]}" attachment download att1 --output -
 assert_contains  "fields projection"      '"id"'           "${CLI[@]}" page get 123 --fields id,title
+assert_contains  "user search (DC global)" "alice"          "${CLI[@]}" user search
+assert_contains  "user get"               "Alice Example"  "${CLI[@]}" user get alice
 SKILL_DIR="$(mktemp -d)"
 assert_contains  "skill install"          '"installed"' \
                                           "${CLI[@]}" skill install --dir "$SKILL_DIR"
