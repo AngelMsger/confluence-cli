@@ -113,7 +113,8 @@ Defaults   { Format string         // json (default)
 ### 4.2 Sources and precedence
 
 Highest → lowest: CLI flags > environment variables (`CONFLUENCE_*`) >
-`.env` file > `~/.confluence/config.yaml` > built-in defaults.
+`.env` file > `~/.angelmsger/confluence/config.yaml` (or the legacy
+`~/.confluence/config.yaml` when only that exists) > built-in defaults.
 Implemented as an ordered `mergeLayers([]Config)`: each layer is a
 sparse `Config`, and non-zero fields override lower layers. Provenance
 is recorded per-field so `config show --explain` can report it.
@@ -144,10 +145,12 @@ holds.
 
 Secrets are never persisted to `config.yaml`. `config init` stores them
 in the OS keychain (`go-keyring`, service `confluence-cli`, account
-`<host>:<scheme>`); on failure it falls back to
-`~/.confluence/credentials` (file 0600, dir 0700). Runtime secrets
-supplied via env / `.env` / flag are used transiently and not
-persisted.
+`<host>:<scheme>`); on failure it falls back to a `credentials` file
+inside the resolved config directory (file 0600, dir 0700) —
+`~/.angelmsger/confluence/credentials` by default, or
+`~/.confluence/credentials` when the CLI is running against the legacy
+location. Runtime secrets supplied via env / `.env` / flag are used
+transiently and not persisted.
 
 ### 4.4 The `init` wizard
 

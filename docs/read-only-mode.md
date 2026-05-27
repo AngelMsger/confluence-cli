@@ -52,7 +52,7 @@ client method is blocked **before** the HTTP request is built.
 Either set it in config:
 
 ```yaml
-# ~/.confluence/config.yaml
+# ~/.angelmsger/confluence/config.yaml  (legacy: ~/.confluence/config.yaml)
 defaults:
   read_only: true
 ```
@@ -78,7 +78,7 @@ $ confluence-cli page delete 123 --yes
     "next_steps": [
       "Add --allow-writes to the command line",
       "unset CONFLUENCE_CLI_READ_ONLY",
-      "Set defaults.read_only=false in ~/.confluence/config.yaml"
+      "Set defaults.read_only=false in ~/.angelmsger/confluence/config.yaml"
     ],
     "retryable": false
   }

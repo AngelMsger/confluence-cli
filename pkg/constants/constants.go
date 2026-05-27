@@ -17,8 +17,19 @@ const (
 	// EnvPrefix is the environment variable prefix for all settings.
 	EnvPrefix = "CONFLUENCE_"
 
-	// ConfigDirName is the per-user config directory under $HOME.
-	ConfigDirName = ".confluence"
+	// ConfigParentDirName groups every angelmsger CLI's per-user config under
+	// one shared $HOME-relative directory (~/.angelmsger).
+	ConfigParentDirName = ".angelmsger"
+
+	// ConfigDirName is the per-CLI config directory under ConfigParentDirName,
+	// i.e. ~/.angelmsger/confluence.
+	ConfigDirName = "confluence"
+
+	// LegacyConfigDirName is the pre-0.7 per-user config directory at
+	// ~/.confluence. It is consulted as a read-write fallback when the new
+	// location does not yet exist, so existing users keep working until they
+	// move the directory manually.
+	LegacyConfigDirName = ".confluence"
 
 	// ConfigFileName is the YAML config file within ConfigDirName.
 	ConfigFileName = "config.yaml"

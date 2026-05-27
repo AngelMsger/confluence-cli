@@ -387,3 +387,83 @@ func TestSelectContext(t *testing.T) {
 		}
 	})
 }
+
+// TestResolveConfigDir covers the "prefer new, fall back to legacy" rule used
+// when --config was not supplied. It overrides $HOME with a temp directory so
+// the real user's config is never touched.
+func TestResolveConfigDir(t *testing.T) {
+	withFakeHome := func(t *testing.T) string {
+		t.Helper()
+		home := t.TempDir()
+		t.Setenv("HOME", home)
+		return home
+	}
+
+	t.Run("neither exists → new path", func(t *testing.T) {
+		home := withFakeHome(t)
+		dir, err := ResolveConfigDir()
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := filepath.Join(home, ".angelmsger", "confluence")
+		if dir != want {
+			t.Errorf("dir = %q, want %q", dir, want)
+		}
+	})
+
+	t.Run("only legacy has config.yaml → legacy path", func(t *testing.T) {
+		home := withFakeHome(t)
+		legacy := filepath.Join(home, ".confluence")
+		if err := os.MkdirAll(legacy, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		writeFile(t, filepath.Join(legacy, "config.yaml"), "server: https://x")
+		dir, err := ResolveConfigDir()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if dir != legacy {
+			t.Errorf("dir = %q, want %q (legacy fallback)", dir, legacy)
+		}
+	})
+
+	t.Run("new has config.yaml → new path wins", func(t *testing.T) {
+		home := withFakeHome(t)
+		newDir := filepath.Join(home, ".angelmsger", "confluence")
+		if err := os.MkdirAll(newDir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		writeFile(t, filepath.Join(newDir, "config.yaml"), "server: https://y")
+		// Also create legacy to ensure new still wins when both exist.
+		legacy := filepath.Join(home, ".confluence")
+		if err := os.MkdirAll(legacy, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		writeFile(t, filepath.Join(legacy, "config.yaml"), "server: https://legacy")
+		dir, err := ResolveConfigDir()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if dir != newDir {
+			t.Errorf("dir = %q, want %q (new path)", dir, newDir)
+		}
+	})
+
+	t.Run("legacy dir without config.yaml is ignored", func(t *testing.T) {
+		home := withFakeHome(t)
+		legacy := filepath.Join(home, ".confluence")
+		if err := os.MkdirAll(legacy, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		// No config.yaml inside legacy. Expect resolver to return the new
+		// path, not the empty legacy dir.
+		dir, err := ResolveConfigDir()
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := filepath.Join(home, ".angelmsger", "confluence")
+		if dir != want {
+			t.Errorf("dir = %q, want %q", dir, want)
+		}
+	})
+}

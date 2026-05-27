@@ -28,7 +28,7 @@ func blocked(op string) *cerrors.CLIError {
 		WithNextSteps(
 			"Add --allow-writes to the command line",
 			"unset CONFLUENCE_CLI_READ_ONLY",
-			"Set defaults.read_only=false in ~/.confluence/config.yaml",
+			"Set defaults.read_only=false in ~/.angelmsger/confluence/config.yaml (or ~/.confluence/config.yaml on legacy installs)",
 		)
 }
 

@@ -63,7 +63,7 @@ func newRootCmd() *cobra.Command {
 	pf.StringVarP(&state.gflags.format, "format", "f", "", "output format: json, table or ndjson")
 	pf.StringVar(&state.gflags.fields, "fields", "", "comma-separated dot-path fields to keep")
 	pf.StringVar(&state.gflags.timeout, "timeout", "", "request timeout, e.g. 30s")
-	pf.StringVar(&state.gflags.configPath, "config", "", "config directory (default ~/.confluence)")
+	pf.StringVar(&state.gflags.configPath, "config", "", "config directory (default ~/.angelmsger/confluence, falling back to ~/.confluence when only that exists)")
 	pf.StringVar(&state.gflags.useContext, "use-context", "", "use a named context for this invocation")
 	pf.BoolVarP(&state.gflags.verbose, "verbose", "v", false, "verbose diagnostics on stderr")
 	pf.BoolVar(&state.gflags.pretty, "pretty", false,

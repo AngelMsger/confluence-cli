@@ -142,7 +142,7 @@ func buildFileLayer(f File, ctxName string) map[string]string {
 func Load(opt LoadOptions) (*Resolved, error) {
 	dir := opt.ConfigDir
 	if dir == "" {
-		d, err := DefaultConfigDir()
+		d, err := ResolveConfigDir()
 		if err != nil {
 			return nil, err
 		}

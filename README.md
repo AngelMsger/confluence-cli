@@ -94,7 +94,8 @@ confluence-cli comment list <id|url>
 ## Configuration
 
 Settings resolve in precedence order (highest first): CLI flags → environment
-variables (`CONFLUENCE_*`) → `.env` → `~/.confluence/config.yaml` → defaults.
+variables (`CONFLUENCE_*`) → `.env` → `~/.angelmsger/confluence/config.yaml`
+(legacy fallback `~/.confluence/config.yaml`) → defaults.
 See `.env.example` and
 [docs/installation.md](docs/installation.md). Secrets are stored in the OS
 keychain (with a `0600` file fallback) and never written to the config file.

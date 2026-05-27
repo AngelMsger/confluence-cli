@@ -47,7 +47,7 @@ type appState struct {
 func (s *appState) load() error {
 	cfgDir := s.gflags.configPath
 	if cfgDir == "" {
-		d, err := config.DefaultConfigDir()
+		d, err := config.ResolveConfigDir()
 		if err != nil {
 			return cerrors.Wrap(err, cerrors.CategoryConfig, "NO_HOME",
 				"could not determine the home directory")

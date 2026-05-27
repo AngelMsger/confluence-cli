@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Default config location moved to `~/.angelmsger/confluence/`.** New
+  installs and `config init` now write `config.yaml` (and the
+  credentials fallback file) under `~/.angelmsger/confluence/`, grouping
+  every angelmsger CLI under one shared dotfile root. The legacy
+  `~/.confluence/` directory is still honored — if it has a
+  `config.yaml` and the new location does not, the CLI reads and writes
+  there as before, so existing installations keep working without a
+  migration step. To migrate manually:
+  `mkdir -p ~/.angelmsger && mv ~/.confluence ~/.angelmsger/confluence`.
+  Keychain entries are unaffected (the service key has not changed).
+
 ## [0.6.0] - 2026-05-27
 
 ### Added

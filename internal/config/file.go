@@ -80,13 +80,50 @@ func (f File) ContextNames() []string {
 	return names
 }
 
-// DefaultConfigDir returns the per-user config directory (~/.confluence).
+// DefaultConfigDir returns the new-form per-user config directory
+// (~/.angelmsger/confluence). Callers that want the smart "prefer new,
+// fall back to legacy" resolution should use ResolveConfigDir instead;
+// this function is the unconditional new path used by writes.
 func DefaultConfigDir() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, constants.ConfigDirName), nil
+	return filepath.Join(home, constants.ConfigParentDirName, constants.ConfigDirName), nil
+}
+
+// LegacyConfigDir returns the pre-0.7 config directory (~/.confluence).
+// It is consulted as a read-write fallback by ResolveConfigDir.
+func LegacyConfigDir() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, constants.LegacyConfigDirName), nil
+}
+
+// ResolveConfigDir picks the config directory to use when --config was not
+// supplied. It prefers the new ~/.angelmsger/confluence location, but falls
+// back to the legacy ~/.confluence directory when the new path has no
+// config.yaml yet and the legacy path does — so existing users keep working
+// without an explicit migration step. When neither directory has a config
+// file it returns the new path (so first-time setup writes there).
+func ResolveConfigDir() (string, error) {
+	newDir, err := DefaultConfigDir()
+	if err != nil {
+		return "", err
+	}
+	if _, statErr := os.Stat(filepath.Join(newDir, constants.ConfigFileName)); statErr == nil {
+		return newDir, nil
+	}
+	legacyDir, err := LegacyConfigDir()
+	if err != nil {
+		return newDir, nil
+	}
+	if _, statErr := os.Stat(filepath.Join(legacyDir, constants.ConfigFileName)); statErr == nil {
+		return legacyDir, nil
+	}
+	return newDir, nil
 }
 
 // ConfigFilePath returns the YAML config file path inside dir.

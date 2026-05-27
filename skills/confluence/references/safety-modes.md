@@ -36,7 +36,9 @@ Available on every page / comment / attachment / label / watch write — see
 A session-level switch that blocks every mutating client method before any
 HTTP request is sent. Enable it by either:
 
-- `defaults.read_only: true` in `~/.confluence/config.yaml`, or
+- `defaults.read_only: true` in `~/.angelmsger/confluence/config.yaml` (the
+  legacy `~/.confluence/config.yaml` location is still honored when only it
+  exists), or
 - `CONFLUENCE_CLI_READ_ONLY=1` in the environment.
 
 Blocked operations return a structured error:
@@ -50,7 +52,7 @@ Blocked operations return a structured error:
     "next_steps": [
       "Add --allow-writes to the command line",
       "unset CONFLUENCE_CLI_READ_ONLY",
-      "Set defaults.read_only=false in ~/.confluence/config.yaml"
+      "Set defaults.read_only=false in ~/.angelmsger/confluence/config.yaml"
     ]
   }
 }

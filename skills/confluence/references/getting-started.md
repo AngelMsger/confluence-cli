@@ -26,7 +26,8 @@ Settings are resolved in this precedence order (highest first):
 1. CLI flags (`--base-url`, `--flavor`, `--format`, `--timeout`)
 2. Environment variables (`CONFLUENCE_*`)
 3. A `.env` file in the working directory
-4. `~/.confluence/config.yaml`
+4. `~/.angelmsger/confluence/config.yaml` (or the legacy
+   `~/.confluence/config.yaml` when only that exists)
 5. Built-in defaults
 
 Key environment variables:
@@ -53,7 +54,8 @@ scripts, dotfiles bootstrap, and non-TTY environments where the TUI
 cannot render. Both forms ask for the server URL, detect the flavor,
 collect a credential, validate it live, and store the secret in the OS
 keychain (falling back to a `0600` file). Non-secret settings go to
-`~/.confluence/config.yaml`; secrets are never written there.
+`~/.angelmsger/confluence/config.yaml` (the legacy `~/.confluence/config.yaml`
+is still read when only that exists); secrets are never written there.
 
 > **Cloud auth note.** On Atlassian Cloud (`*.atlassian.net`) the auth
 > scheme must be `basic` with the user's Atlassian email + an API token
