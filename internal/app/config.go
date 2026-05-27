@@ -52,7 +52,8 @@ func newConfigInitCmd(s *appState) *cobra.Command {
 		Long: "Run the interactive setup wizard. It collects a server URL, detects\n" +
 			"the flavor, validates a credential and stores it. The wizard can also\n" +
 			"configure additional named contexts for working with several servers.",
-		Example: "  confluence-cli config init",
+		Example: "  confluence-cli config init --pretty   # interactive TUI (recommended)\n" +
+			"  confluence-cli config init             # plain line-by-line wizard (scripts, non-TTY)",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			// Load any existing config so the wizard can offer to edit it and
 			// prefill prompts with the stored values.
@@ -177,7 +178,7 @@ func readConfigFile(s *appState) (config.File, error) {
 	if !exists || len(file.Contexts) == 0 {
 		return config.File{}, cerrors.New(cerrors.CategoryConfig, "NO_CONFIG",
 			"no configured contexts").
-			WithHint("Run `confluence-cli config init` to create one.")
+			WithHint("Run `confluence-cli config init --pretty` to create one.")
 	}
 	return file, nil
 }
@@ -328,7 +329,7 @@ func persistInitResult(s *appState, result *config.WizardResult, existing config
 		if cr.Context.Name == "" {
 			return configInitOutput{}, cerrors.New(cerrors.CategoryConfig, "CTX_NAME_EMPTY",
 				"refusing to persist a context with an empty name").
-				WithHint("Re-run `confluence-cli config init` and provide a name when prompted.")
+				WithHint("Re-run `confluence-cli config init --pretty` and provide a name when prompted.")
 		}
 		cred := credentialFromContext(cr.Context, cr.Secrets)
 		if cerr := cred.Validate(); cerr != nil {

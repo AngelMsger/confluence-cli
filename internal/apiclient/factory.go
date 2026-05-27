@@ -27,7 +27,7 @@ func Build(ctx context.Context, p BuildParams) (Client, Flavor, error) {
 	if p.BaseURL == "" {
 		return nil, FlavorAuto, cerrors.New(cerrors.CategoryConfig, "NO_BASE_URL",
 			"no Confluence server URL configured").
-			WithNextSteps("confluence-cli config init", "Set CONFLUENCE_SERVER or pass --base-url.")
+			WithNextSteps("confluence-cli config init --pretty", "Set CONFLUENCE_SERVER or pass --base-url.")
 	}
 	base := NormalizeBaseURL(p.BaseURL)
 

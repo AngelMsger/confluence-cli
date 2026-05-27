@@ -10,10 +10,10 @@ func defaultGuidance(cat Category) (hint string, steps []string) {
 			[]string{"confluence-cli <command> --help"}
 	case CategoryConfig:
 		return "No usable configuration was found or it is invalid.",
-			[]string{"confluence-cli config init", "confluence-cli config show --explain"}
+			[]string{"confluence-cli config init --pretty", "confluence-cli config show --explain"}
 	case CategoryAuth:
 		return "The server rejected the credentials. The token may be expired or wrong.",
-			[]string{"confluence-cli auth status", "confluence-cli config init"}
+			[]string{"confluence-cli auth status", "confluence-cli config init --pretty"}
 	case CategoryPermission:
 		return "The credentials are valid but lack permission for this resource.",
 			[]string{"Verify the account can access the page/space in a browser."}

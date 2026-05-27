@@ -126,9 +126,10 @@ themselves, one JSON object per line.
 ### Multiple servers (contexts)
 
 A single config file can hold several Confluence servers as named *contexts*.
-Most users need only one and never see the concept — `config init` configures a
-`default` context and the flow is unchanged. To work with more than one server,
-re-run `config init --pretty` and pick **Add a new context**, then:
+Most users need only one and never see the concept — `config init --pretty`
+configures a `default` context and the flow is unchanged. To work with more
+than one server, re-run `config init --pretty` and pick **Add a new context**,
+then:
 
 ```bash
 confluence-cli config get-contexts          # list contexts, current marked

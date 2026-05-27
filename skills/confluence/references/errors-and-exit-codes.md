@@ -13,7 +13,7 @@ to parse errors.
     "code": "HTTP_Unauthorized",
     "message": "Confluence returned HTTP 401: ...",
     "hint": "The server rejected the credentials. The token may be expired.",
-    "next_steps": ["confluence-cli auth status", "confluence-cli config init"],
+    "next_steps": ["confluence-cli auth status", "confluence-cli config init --pretty"],
     "retryable": false,
     "http_status": 401
   }
@@ -30,8 +30,8 @@ indicates whether retrying the same command can succeed.
 | 0 | — | success |
 | 1 | internal | unexpected bug; re-run with `--verbose` |
 | 2 | usage | bad flags/arguments; check `--help` |
-| 3 | config | missing/invalid config; run `config init` |
-| 4 | auth | credentials rejected (401); run `auth status`, re-`config init` |
+| 3 | config | missing/invalid config; run `config init --pretty` |
+| 4 | auth | credentials rejected (401); run `auth status`, re-`config init --pretty` |
 | 5 | permission | valid login, no access (403); the account lacks page/space rights |
 | 6 | not_found | page/space/attachment does not exist (404); verify the ID, or `search` |
 | 7 | rate_limit | server throttling (429); wait, then retry; avoid `--all` on huge queries |
@@ -42,7 +42,7 @@ indicates whether retrying the same command can succeed.
 
 ## Recovery patterns
 
-- **auth (4)** → `confluence-cli auth status`; if not configured, `config init`.
+- **auth (4)** → `confluence-cli auth status`; if not configured, `config init --pretty`.
 - **not_found (6)** → the ID/URL is wrong or the page moved; `confluence-cli
   search --text "<keywords>"` to relocate it.
 - **permission (5)** → the credential works but lacks rights; this is not

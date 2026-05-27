@@ -47,7 +47,7 @@ func newDoctorCmd(s *appState) *cobra.Command {
 				return cerrors.New(cerrors.CategoryConfig, "DOCTOR_UNHEALTHY",
 					"one or more diagnostic checks failed").
 					WithNextSteps("Review the failing checks above.",
-						"confluence-cli config init")
+						"confluence-cli config init --pretty")
 			}
 			return nil
 		},

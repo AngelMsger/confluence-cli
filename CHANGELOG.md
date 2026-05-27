@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Error `next_steps`, `--help` examples, and the long descriptions
+  that point users at the setup wizard now uniformly suggest
+  `confluence-cli config init --pretty`. The plain `config init`
+  form is still kept as the second example for scripted / non-TTY
+  setups, but the recommended path for a human at a terminal is
+  the TUI wizard. Touched: the global hint defaults in
+  `internal/errors/hints.go`, the `auth login` / `config init` /
+  `config show` long help, `apiclient.Build`'s no-base-url error,
+  `doctor`'s unhealthy `next_steps`, the README's multi-context
+  section, the companion Skill's `errors-and-exit-codes.md`, and
+  the regenerated `docs/cli/` reference.
+
 ## [0.5.1] - 2026-05-25
 
 ### Changed

@@ -257,7 +257,7 @@ same name already exists, Confluence stores the upload as a new version.</p>
       <h2>confluence-cli auth login</h2>
       <p class="short">Store a credential for the configured server</p>
       <pre>confluence-cli auth login</pre>
-      <p class="long">Prompt for a secret and store it securely. Run `config init` first if the server URL is not set.</p>
+      <p class="long">Prompt for a secret and store it securely. Run `config init --pretty` first if the server URL is not set.</p>
       
       <h3>Examples</h3><pre>  confluence-cli auth login
   confluence-cli --use-context staging auth login</pre>
@@ -406,7 +406,8 @@ used when --use-context is not given — is marked.</p>
 the flavor, validates a credential and stores it. The wizard can also
 configure additional named contexts for working with several servers.</p>
       
-      <h3>Examples</h3><pre>  confluence-cli config init</pre>
+      <h3>Examples</h3><pre>  confluence-cli config init --pretty   # interactive TUI (recommended)
+  confluence-cli config init             # plain line-by-line wizard (scripts, non-TTY)</pre>
     </section>
     
     <section class="cmd" id="confluence-cli-config-path">
