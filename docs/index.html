@@ -74,9 +74,9 @@
         <h3>Comments &amp; threads</h3>
         <p>Read footer comments and post replies, threaded under any parent comment.</p>
       </div>
-      <div class="card feat is-new">
+      <div class="card feat">
         <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4-8 4-8-4z"/><path d="M4 12l8 4 8-4"/><path d="M4 17l8 4 8-4"/></svg></div>
-        <h3>Multiple servers<span class="tag-new">new</span></h3>
+        <h3>Multiple servers</h3>
         <p>kubectl-style named contexts in one config file. Switch the current server, or override per command with <code>--use-context</code>.</p>
       </div>
       <div class="card feat">
@@ -103,33 +103,29 @@
     <div class="section-head">
       <span class="eyebrow">Install</span>
       <h2>Up and running in a minute</h2>
-      <p class="lead">Pick whichever method suits you — or grab a prebuilt binary.</p>
+      <p class="lead">Install with npm, then finish setup in two steps — deploy the Skill, then turn on shell completion.</p>
     </div>
     <div class="term">
       <div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="term-title">install</span></div>
-<pre><span class="c"># npm</span>
-npm install -g @angelmsger/confluence-cli
-
-<span class="c"># go</span>
-go install github.com/angelmsger/confluence-cli/cmd/confluence-cli@latest
-
-<span class="c"># from source</span>
-make install</pre>
+<pre><span class="c"># recommended — fetches the prebuilt binary for your platform</span>
+npm install -g @angelmsger/confluence-cli</pre>
     </div>
-    <p style="margin-top:14px;color:var(--muted)">Prefer a binary? Download one from the
-      <a href="https://github.com/angelmsger/confluence-cli/releases">Releases page</a>.</p>
-    <div class="grid grid-2" style="margin-top:28px">
+    <p style="margin-top:14px;color:var(--muted)">Other methods — <code>go install</code>, a source build, or a prebuilt binary from the
+      <a href="https://github.com/angelmsger/confluence-cli/releases">Releases page</a> — are in the
+      <a href="https://github.com/angelmsger/confluence-cli/blob/main/docs/installation.md">installation guide</a>.</p>
+    <p class="lead" style="margin-top:30px">Then finish setup:</p>
+    <div class="grid grid-2" style="margin-top:14px">
       <div class="card">
-        <h3>Shell completion</h3>
-        <p style="margin:6px 0 12px">Completes subcommands, flag values and live space keys. Load it once:</p>
-        <div class="term"><div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
-<pre><span class="p">$</span> source &lt;(confluence-cli completion bash)</pre></div>
-      </div>
-      <div class="card">
-        <h3>Companion Skill</h3>
+        <h3>1 · Companion Skill</h3>
         <p style="margin:6px 0 12px">A <code>confluence</code> Skill is embedded in the binary. It detects your coding agent — Claude Code, Codex — and installs for each:</p>
         <div class="term"><div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
 <pre><span class="p">$</span> confluence-cli skill install</pre></div>
+      </div>
+      <div class="card">
+        <h3>2 · Shell completion</h3>
+        <p style="margin:6px 0 12px">Completes subcommands, flag values and live space keys. Load it once:</p>
+        <div class="term"><div class="term-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+<pre><span class="p">$</span> source &lt;(confluence-cli completion bash)</pre></div>
       </div>
     </div>
   </div>

@@ -38,19 +38,50 @@ use it. Write commands support `--dry-run`, and destructive ones require `--yes`
 
 ## Installation
 
-### Install the CLI
+Install the CLI with npm, then take two short steps to finish setup — deploy
+the companion Skill, then (optionally) enable shell completion.
+
+### 1. Install the CLI — npm (recommended)
 
 ```bash
-npm install -g @angelmsger/confluence-cli                                   # npm
-go install github.com/angelmsger/confluence-cli/cmd/confluence-cli@latest   # go
-make install                                                                # from source
+npm install -g @angelmsger/confluence-cli
+```
+
+npm downloads the prebuilt binary for your platform, verifies its SHA-256
+checksum, and keeps upgrades one `npm update -g @angelmsger/confluence-cli`
+away.
+
+<details>
+<summary><strong>Other install methods</strong> — go install, source build, prebuilt binary</summary>
+
+```bash
+go install github.com/angelmsger/confluence-cli/cmd/confluence-cli@latest   # go 1.24+
+make install                                                                # from a source checkout
 ```
 
 Or download a prebuilt binary from the
 [Releases page](https://github.com/angelmsger/confluence-cli/releases). The full
 [installation guide](docs/installation.md) covers every method.
 
-### Shell completion (optional)
+</details>
+
+### 2. Deploy the companion Skill
+
+The `confluence` Skill is embedded in the binary; it teaches your coding agent
+(**Claude Code**, **Codex**) how to drive the CLI. `skill install` probes for
+installed agents and installs into each one found:
+
+```bash
+confluence-cli skill install            # auto-detect; install for each agent found
+confluence-cli skill install --agent codex
+confluence-cli skill uninstall          # remove it again
+```
+
+Re-run it after upgrading the CLI to keep the Skill version-matched. Details,
+including the `npx skills` workflow, are in
+[docs/installation.md](docs/installation.md#3-install-the-companion-skill).
+
+### 3. Enable shell completion (optional)
 
 `confluence-cli` completes subcommands, enum flag values and live space keys.
 Load the completion script for your shell once:
@@ -62,22 +93,6 @@ confluence-cli completion zsh > "${fpath[1]}/_confluence-cli"   # zsh, persisten
 
 fish, PowerShell and persistent setup are covered in
 [docs/installation.md](docs/installation.md#2-enable-shell-completion).
-
-### Companion Skill (optional)
-
-The `confluence` Skill is embedded in the binary; deploy it for your coding
-agent. `skill install` probes for installed agents (**Claude Code**, **Codex**)
-and installs into each one found:
-
-```bash
-confluence-cli skill install            # auto-detect; install for each agent found
-confluence-cli skill install --agent codex
-confluence-cli skill uninstall          # remove it again
-```
-
-Re-run it after upgrading the CLI to keep the Skill version-matched. Details,
-including the `npx skills` workflow, are in
-[docs/installation.md](docs/installation.md#3-install-the-companion-skill).
 
 ## Quick start
 

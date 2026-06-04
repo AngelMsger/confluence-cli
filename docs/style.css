@@ -193,13 +193,6 @@ a.card:hover { text-decoration: none; transform: translateY(-3px); border-color:
   display: grid; place-items: center; margin-bottom: 14px;
 }
 .feat .feat-ico svg { width: 20px; height: 20px; stroke: var(--accent); }
-.feat.is-new { border-color: rgba(122, 240, 200, 0.3); }
-.feat .tag-new {
-  font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.1em;
-  text-transform: uppercase; color: var(--accent-2);
-  border: 1px solid rgba(122, 240, 200, 0.3); border-radius: 999px;
-  padding: 2px 8px; margin-left: 8px; vertical-align: 2px;
-}
 
 /* command-group cards */
 .cmd-group { display: block; }
