@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Skill `description` exceeded Codex's 1024-char limit**, so `skill install
+  --agent codex` produced a Skill that failed to load (`invalid description:
+  exceeds maximum length of 1024 characters`). The embedded `confluence` Skill
+  description is trimmed to ~1000 chars (same triggers, tighter wording), and a
+  test now guards the embedded description against the limit so it can't regress.
+  Skill bumped to `1.7.1`.
+
 ## [0.8.0] - 2026-06-05
 
 ### Changed
