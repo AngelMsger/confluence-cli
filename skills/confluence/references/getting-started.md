@@ -51,7 +51,8 @@ confluence-cli config init --pretty
 
 The plain `config init` form (no flag) is line-by-line — use it from
 scripts, dotfiles bootstrap, and non-TTY environments where the TUI
-cannot render. Both forms ask for the server URL, detect the flavor,
+cannot render. `--pretty` is **human-only** (interactive TUI + colorized JSON) and
+errors without a TTY — agents should never pass it. Both forms ask for the server URL, detect the flavor,
 collect a credential, validate it live, and store the secret in the OS
 keychain (falling back to a `0600` file). Non-secret settings go to
 `~/.angelmsger/confluence/config.yaml` (the legacy `~/.confluence/config.yaml`
@@ -62,6 +63,26 @@ is still read when only that exists); secrets are never written there.
 > from id.atlassian.com — the wizard defaults to this when it sees a
 > Cloud tenant. `pat` (Bearer) is Data Center 7.9+ only; Cloud REST
 > endpoints reject Bearer with 403 even when the token itself is valid.
+
+## For agents and sandboxes
+
+If you are an AI agent driving `confluence-cli`, the user has normally already
+configured it. **Reuse their existing config and credentials** from
+`~/.angelmsger/confluence/config.yaml` + the OS keychain — do not run `config init`
+to create a fresh setup, and do not pass `--pretty`.
+
+When you run inside a **sandbox** that cannot read the user's home directory or
+keychain, `doctor` / `auth status` fail with a `config` (3) or `auth` (4) error.
+Do **not** give up, and do **not** re-initialize config inside the sandbox. Instead:
+
+- **Request elevated permissions** (or otherwise re-run with access to the user's
+  real environment / home / keychain) and retry the same command — that is almost
+  always why a configured machine looks "unconfigured" from inside a sandbox.
+- Never launch interactive `config init` or `auth login` yourself: without a TTY they
+  fail fast (and historically could hang). If credentials are genuinely missing, ask
+  the user to run `config init` in their own terminal, or to export `CONFLUENCE_*`
+  env vars (`CONFLUENCE_SERVER` + `CONFLUENCE_PERSONAL_ACCESS_TOKEN`, or
+  `CONFLUENCE_USERNAME` + `CONFLUENCE_API_TOKEN`) which you can then use directly.
 
 ## Multiple servers (contexts)
 

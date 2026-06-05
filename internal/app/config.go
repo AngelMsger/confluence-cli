@@ -178,7 +178,7 @@ func readConfigFile(s *appState) (config.File, error) {
 	if !exists || len(file.Contexts) == 0 {
 		return config.File{}, cerrors.New(cerrors.CategoryConfig, "NO_CONFIG",
 			"no configured contexts").
-			WithHint("Run `confluence-cli config init --pretty` to create one.")
+			WithHint("Run `confluence-cli config init` to create one.")
 	}
 	return file, nil
 }
@@ -329,7 +329,7 @@ func persistInitResult(s *appState, result *config.WizardResult, existing config
 		if cr.Context.Name == "" {
 			return configInitOutput{}, cerrors.New(cerrors.CategoryConfig, "CTX_NAME_EMPTY",
 				"refusing to persist a context with an empty name").
-				WithHint("Re-run `confluence-cli config init --pretty` and provide a name when prompted.")
+				WithHint("Re-run `confluence-cli config init` and provide a name when prompted.")
 		}
 		cred := credentialFromContext(cr.Context, cr.Secrets)
 		if cerr := cred.Validate(); cerr != nil {

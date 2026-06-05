@@ -67,7 +67,7 @@ func newRootCmd() *cobra.Command {
 	pf.StringVar(&state.gflags.useContext, "use-context", "", "use a named context for this invocation")
 	pf.BoolVarP(&state.gflags.verbose, "verbose", "v", false, "verbose diagnostics on stderr")
 	pf.BoolVar(&state.gflags.pretty, "pretty", false,
-		"human-friendly mode: interactive TUI in `config init`, colorized JSON elsewhere")
+		"human-friendly mode for interactive terminal use only (agents/scripts should omit): TUI in `config init`, colorized JSON elsewhere; errors without a TTY")
 	pf.BoolVar(&state.gflags.allowWrites, "allow-writes", false,
 		"override read-only mode (defaults.read_only / CONFLUENCE_CLI_READ_ONLY) for this invocation")
 

@@ -1,6 +1,6 @@
 ---
 name: confluence
-version: 1.6.1
+version: 1.7.0
 description: "Use a Confluence wiki as an external knowledge base. Search, read and summarise Confluence pages, browse spaces and page trees, create and edit pages, view version history and restore earlier versions, read post and edit comments, upload and manage file attachments, manage page labels, and watch pages. Every mutating command also accepts --dry-run to preview the HTTP request without sending it, and a session-level read-only posture (defaults.read_only / CONFLUENCE_CLI_READ_ONLY=1, overridable per-call via --allow-writes) blocks every write before it leaves the CLI. Use this skill when the user gives a Confluence page URL or ID, mentions a Confluence/wiki page, asks to find or look up something in Confluence, asks to read/summarise/extract a Confluence page, browse a space, list child pages, create/update/delete/move/copy a page, view a page's history or restore an old version, read page comments, post/edit/delete a comment, upload/replace/delete an attachment, add/remove page labels, watch/unwatch a page, check which Confluence user they are, or wants a dry-run / read-only / safe-mode session. Works with both Confluence Cloud and Confluence Data Center / Server."
 metadata:
   requires:
@@ -106,6 +106,41 @@ By default they return one page; when `has_more` is true, pass `--cursor` with
 the `next` value to read the following page. Use `--all` to fetch every page in
 one call, or `--limit N` to size each request. For very large outputs use
 `--format ndjson` (one JSON object per line, items only).
+
+## AI attribution (agent writes)
+
+When you, as an AI agent, write to Confluence on the user's behalf, mark the content
+as AI-authored with a link back to the tool. This applies **only** to agent-driven
+writes — `page create` / `page update` and `comment add` — never to anything a human
+authored directly. Include the marker exactly once per page/comment.
+
+- **Pages** — prepend a one-line banner at the top of the body. With `--body-format
+  storage`, use an Info macro; with markdown/wiki, a leading callout line. See
+  [writing-pages.md](references/writing-pages.md).
+- **Comments** — prefix the body with a link. Comment bodies are storage XHTML by
+  default, so use an `<a>` anchor, **not** `[AI](url)`. See
+  [comments.md](references/comments.md).
+
+Write the attribution sentence in the **same language as the content** (the user's
+language); keep the 🤖 emoji, the URL `https://angelmsger.github.io/confluence-cli/`,
+and the `AI` / `confluence-cli` label constant.
+
+## Configuration & credentials (agents)
+
+The user has normally already configured `confluence-cli`. **Reuse their existing
+config and credentials** from `~/.angelmsger/confluence/config.yaml` + the OS keychain
+— do not run `config init` to create a fresh setup, and never pass `--pretty` (a
+human-only flag for the interactive TUI / colorized JSON; it errors without a TTY and
+agents never need it).
+
+If you run inside a **sandbox** that cannot read the user's home or keychain you'll
+see a `config` (3) or `auth` (4) error from `doctor` / `auth status`. **Request
+elevated permissions / re-run with access to the user's real environment, then retry
+— do not give up, and do not re-initialize config inside the sandbox.** Never launch
+interactive `config init` / `auth login` yourself (no TTY → they fail fast, and
+historically could hang); if credentials are truly missing, ask the user to run
+`config init` in their own terminal or to export `CONFLUENCE_*` env vars. See
+[getting-started.md](references/getting-started.md).
 
 ## Global flags
 
