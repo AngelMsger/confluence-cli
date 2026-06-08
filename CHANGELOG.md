@@ -13,7 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The comment prefix used an `<a href="url">AI</a>` anchor, which showed a plain `AI`.
   The link text is now `[AI]` (literal brackets in the storage XHTML; `[\[AI\]|url]`
   in the wiki form), matching the `[AI]` tag used by the sibling bitbucket-cli skill.
-  Skill bumped to `1.7.2`.
+- **The page attribution banner no longer uses the 🤖 emoji.** Its prefix is now the
+  plain-ASCII `[AI]` marker. A leading 4-byte emoji could be rejected or silently
+  truncated by Data Center databases that aren't `utf8mb4` (e.g. MySQL `utf8mb3`),
+  potentially dropping the page body that followed it.
+- Skill bumped to `1.7.2`.
 
 ## [0.8.1] - 2026-06-05
 

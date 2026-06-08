@@ -123,8 +123,9 @@ authored directly. Include the marker exactly once per page/comment.
   [comments.md](references/comments.md).
 
 Write the attribution sentence in the **same language as the content** (the user's
-language); keep the 🤖 emoji, the URL `https://angelmsger.github.io/confluence-cli/`,
-and the `[AI]` / `confluence-cli` label constant.
+language); keep the plain-ASCII `[AI]` marker (never an emoji — some Data Center
+databases can't store 4-byte characters), the URL
+`https://angelmsger.github.io/confluence-cli/`, and the `confluence-cli` label constant.
 
 ## Configuration & credentials (agents)
 
