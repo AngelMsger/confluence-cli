@@ -6,7 +6,7 @@
 
 const fs = require('fs');
 const { spawnSync } = require('child_process');
-const { binPath, install, maybeWelcome } = require('../install.js');
+const { binPath, install } = require('../install.js');
 
 async function main() {
   const { file } = binPath();
@@ -15,10 +15,6 @@ async function main() {
     process.stderr.write('confluence-cli: downloading binary...\n');
     await install();
   }
-
-  // First interactive run: print the getting-started banner once (no-op for
-  // non-TTY / CI / agent use, and it only touches stderr).
-  maybeWelcome();
 
   const res = spawnSync(file, process.argv.slice(2), { stdio: 'inherit' });
   if (res.error) {

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The getting-started banner now prints only at `npm install` (postinstall), not
+  on first CLI run.** The first-run banner shipped in 0.9.0 could surface during an
+  agent/script invocation (e.g. inside a PTY) and intrude on a command's output, so
+  it was removed — the CLI now emits nothing beyond a command's own output. The
+  welcome moved to the postinstall script. (Heads-up: npm v7+ hides postinstall
+  output by default; run `npm install --foreground-scripts` to see it.)
+
 ## [0.9.0] - 2026-06-08
 
 ### Added

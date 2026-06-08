@@ -106,9 +106,9 @@ async function install() {
   return file;
 }
 
-// welcomeText is the one-time getting-started banner shown on the first
-// interactive run (see bin/confluence-cli.js). It points at the two setup
-// commands and a couple of everyday ones.
+// welcomeText is the getting-started banner printed once at install time (by the
+// postinstall script below). It is never printed by the CLI itself, so command
+// output — JSON and everything else — is never touched.
 function welcomeText() {
   return [
     '',
@@ -127,28 +127,13 @@ function welcomeText() {
   ].join('\n');
 }
 
-// maybeWelcome prints welcomeText once, the first time the CLI is run in an
-// interactive terminal. It writes to stderr (never stdout, so JSON output stays
-// clean) and is skipped for non-TTY / CI / agent use. The marker file lives next
-// to the binary so it survives across invocations but resets on reinstall.
-function maybeWelcome() {
-  try {
-    if (!process.stderr.isTTY || process.env.CI) return;
-    const { dir } = binPath();
-    const marker = path.join(dir, '.welcomed');
-    if (fs.existsSync(marker)) return;
-    process.stderr.write(welcomeText() + '\n');
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(marker, '');
-  } catch {
-    // A welcome banner must never break the actual command.
-  }
-}
-
-module.exports = { install, binPath, assetName, REPO, welcomeText, maybeWelcome };
+module.exports = { install, binPath, assetName, REPO };
 
 // When run directly as the npm postinstall script, download best-effort: a
 // failure here is not fatal because the bin shim retries lazily on first run.
+// The getting-started banner is printed here (install time) and nowhere else.
+// Note: npm v7+ hides postinstall output unless `npm install --foreground-scripts`
+// is used, so this may not be visible on a default install.
 if (require.main === module) {
   install()
     .then((file) => {
@@ -159,5 +144,8 @@ if (require.main === module) {
         `confluence-cli: postinstall download skipped (${err.message}); ` +
           'the binary will be fetched on first run.\n'
       );
+    })
+    .finally(() => {
+      if (!process.env.CI) process.stdout.write(welcomeText());
     });
 }
