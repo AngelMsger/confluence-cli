@@ -1,6 +1,6 @@
 ---
 name: confluence
-version: 1.7.1
+version: 1.7.2
 description: "Use a Confluence wiki as an external knowledge base. Search, read and summarise pages, browse spaces and page trees, create/update/delete/move/copy pages, view history and restore versions, read and post/edit/delete comments, manage attachments and page labels, and watch pages. Every mutating command accepts --dry-run, and a session read-only posture (defaults.read_only / CONFLUENCE_CLI_READ_ONLY=1, overridable via --allow-writes) blocks writes before they leave the CLI. Use this skill when the user gives a Confluence page URL or ID or mentions a Confluence/wiki page; asks to find, read, summarise or extract a page; browse a space or list child pages; create/update/delete/move/copy a page; view history or restore a version; read or post/edit/delete a comment; upload/replace/delete an attachment; add/remove labels; watch/unwatch a page; check which Confluence user they are; or wants a dry-run / read-only / safe-mode session. Works with both Confluence Cloud and Data Center / Server."
 metadata:
   requires:
@@ -117,13 +117,14 @@ authored directly. Include the marker exactly once per page/comment.
 - **Pages** — prepend a one-line banner at the top of the body. With `--body-format
   storage`, use an Info macro; with markdown/wiki, a leading callout line. See
   [writing-pages.md](references/writing-pages.md).
-- **Comments** — prefix the body with a link. Comment bodies are storage XHTML by
-  default, so use an `<a>` anchor, **not** `[AI](url)`. See
+- **Comments** — prefix the body with a clickable **`[AI]`** tag. Comment bodies are
+  storage XHTML by default, so use an `<a>` anchor with literal brackets in its text —
+  `<a href="url">[AI]</a>`, **not** `[AI](url)`. See
   [comments.md](references/comments.md).
 
 Write the attribution sentence in the **same language as the content** (the user's
 language); keep the 🤖 emoji, the URL `https://angelmsger.github.io/confluence-cli/`,
-and the `AI` / `confluence-cli` label constant.
+and the `[AI]` / `confluence-cli` label constant.
 
 ## Configuration & credentials (agents)
 
