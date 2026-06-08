@@ -139,7 +139,7 @@ Data Center / Server, and emits agent-friendly JSON with structured errors.</p>
         <tr><td><code>--fields</code></td><td></td><td>comma-separated dot-path fields to keep</td></tr>
         <tr><td><code>--flavor</code></td><td></td><td>backend flavor: cloud, datacenter or auto</td></tr>
         <tr><td><code>--format, -f</code></td><td></td><td>output format: json, table or ndjson</td></tr>
-        <tr><td><code>--pretty</code></td><td><code>false</code></td><td>human-friendly mode: interactive TUI in `config init`, colorized JSON elsewhere</td></tr>
+        <tr><td><code>--pretty</code></td><td><code>false</code></td><td>human-friendly mode for interactive terminal use only (agents/scripts should omit): TUI in `config init`, colorized JSON elsewhere; errors without a TTY</td></tr>
         <tr><td><code>--timeout</code></td><td></td><td>request timeout, e.g. 30s</td></tr>
         <tr><td><code>--use-context</code></td><td></td><td>use a named context for this invocation</td></tr>
         <tr><td><code>--verbose, -v</code></td><td><code>false</code></td><td>verbose diagnostics on stderr</td></tr>
@@ -265,7 +265,7 @@ same name already exists, Confluence stores the upload as a new version.</p>
       <h2>confluence-cli auth login</h2>
       <p class="short">Store a credential for the configured server</p>
       <pre>confluence-cli auth login</pre>
-      <p class="long">Prompt for a secret and store it securely. Run `config init --pretty` first if the server URL is not set.</p>
+      <p class="long">Prompt for a secret and store it securely. Run `config init` first if the server URL is not set.</p>
       
       <h3>Examples</h3><pre>  confluence-cli auth login
   confluence-cli --use-context staging auth login</pre>
