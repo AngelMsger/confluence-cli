@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-06-08
+
 ### Changed
 
 - **The getting-started banner now prints only at `npm install` (postinstall), not
