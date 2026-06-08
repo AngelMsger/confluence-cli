@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-06-08
+
+### Added
+
+- **First-run getting-started banner (npm).** The first time `confluence-cli` runs
+  in an interactive terminal, it prints a one-time banner pointing at
+  `config init --pretty` and `skill install` plus a couple of everyday commands. It
+  writes only to stderr, is shown once (recorded by a marker file), and is skipped
+  for non-TTY / CI / agent use, so it never pollutes JSON output or scripted runs.
+  (A `postinstall` banner was avoided: npm hides postinstall stdout by default.)
+
 ### Skill
 
 - **AI attribution now renders the `[AI]` comment tag with its brackets visible.**

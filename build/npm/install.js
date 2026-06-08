@@ -106,7 +106,46 @@ async function install() {
   return file;
 }
 
-module.exports = { install, binPath, assetName, REPO };
+// welcomeText is the one-time getting-started banner shown on the first
+// interactive run (see bin/confluence-cli.js). It points at the two setup
+// commands and a couple of everyday ones.
+function welcomeText() {
+  return [
+    '',
+    'confluence-cli is ready. First-time setup:',
+    '',
+    '  confluence-cli config init --pretty   configure your server + credentials (interactive)',
+    '  confluence-cli skill install          install the coding-agent Skill',
+    '',
+    'Everyday use:',
+    '  confluence-cli search "<text>"',
+    '  confluence-cli page get <pageId>',
+    '  confluence-cli --help',
+    '',
+    'Docs: https://angelmsger.github.io/confluence-cli/',
+    '',
+  ].join('\n');
+}
+
+// maybeWelcome prints welcomeText once, the first time the CLI is run in an
+// interactive terminal. It writes to stderr (never stdout, so JSON output stays
+// clean) and is skipped for non-TTY / CI / agent use. The marker file lives next
+// to the binary so it survives across invocations but resets on reinstall.
+function maybeWelcome() {
+  try {
+    if (!process.stderr.isTTY || process.env.CI) return;
+    const { dir } = binPath();
+    const marker = path.join(dir, '.welcomed');
+    if (fs.existsSync(marker)) return;
+    process.stderr.write(welcomeText() + '\n');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(marker, '');
+  } catch {
+    // A welcome banner must never break the actual command.
+  }
+}
+
+module.exports = { install, binPath, assetName, REPO, welcomeText, maybeWelcome };
 
 // When run directly as the npm postinstall script, download best-effort: a
 // failure here is not fatal because the bin shim retries lazily on first run.
