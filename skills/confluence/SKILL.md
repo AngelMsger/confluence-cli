@@ -1,6 +1,6 @@
 ---
 name: confluence
-version: 1.7.2
+version: 1.8.0
 description: "Use a Confluence wiki as an external knowledge base. Search, read and summarise pages, browse spaces and page trees, create/update/delete/move/copy pages, view history and restore versions, read and post/edit/delete comments, manage attachments and page labels, and watch pages. Every mutating command accepts --dry-run, and a session read-only posture (defaults.read_only / CONFLUENCE_CLI_READ_ONLY=1, overridable via --allow-writes) blocks writes before they leave the CLI. Use this skill when the user gives a Confluence page URL or ID or mentions a Confluence/wiki page; asks to find, read, summarise or extract a page; browse a space or list child pages; create/update/delete/move/copy a page; view history or restore a version; read or post/edit/delete a comment; upload/replace/delete an attachment; add/remove labels; watch/unwatch a page; check which Confluence user they are; or wants a dry-run / read-only / safe-mode session. Works with both Confluence Cloud and Data Center / Server."
 metadata:
   requires:
@@ -52,12 +52,12 @@ guess an ID — run `confluence-cli search` first, then act on the ID from the h
 ## Commands
 
 ```
-confluence-cli page get <id|url>          # fetch + render a page body
+confluence-cli page get <id|url>          # fetch + render a page body (-o writes body to a file)
 confluence-cli page children <id|url>     # direct child pages
 confluence-cli page descendants <id|url>  # all descendant pages
 confluence-cli page create                # create a page (--space --title)
 confluence-cli page update <id|url>       # edit a page's title / body
-confluence-cli page delete <id|url>       # trash a page (needs --yes)
+confluence-cli page delete <id|url>...    # trash one or more pages (needs --yes)
 confluence-cli page move <id|url>         # reparent / move to another space
 confluence-cli page copy <id|url>         # shallow-copy a page
 confluence-cli page history <id|url>      # list a page's version history
@@ -69,7 +69,7 @@ confluence-cli space get <key>            # one space
 confluence-cli comment list <id|url>      # page comments
 confluence-cli comment add <id|url>       # post a comment
 confluence-cli comment update <id|url>    # edit a comment's body
-confluence-cli comment delete <id|url>    # delete a comment (needs --yes)
+confluence-cli comment delete <id|url>... # delete one or more comments (needs --yes)
 confluence-cli attachment list <id|url>   # page attachments
 confluence-cli attachment download <id>   # download an attachment
 confluence-cli attachment upload <id|url> # attach a file (--file)
@@ -95,7 +95,10 @@ stages so you spend the least context:
 3. `page get <id> --scope keyword --keyword "<term>"` — when you only have a
    fuzzy term, get matching blocks plus their heading.
 
-Only fall back to `--scope full` when the whole page is genuinely needed.
+Only fall back to `--scope full` when the whole page is genuinely needed. When
+you *do* need the full body but not in your context (e.g. to save or post-process
+it), use `page get <id> -o <file>`: the body is written to the file and stdout
+carries only metadata (`id`, `title`, `output_path`, `bytes`).
 [reading-pages.md](references/reading-pages.md) has the full decision tree.
 
 ## Large result sets
@@ -106,6 +109,32 @@ By default they return one page; when `has_more` is true, pass `--cursor` with
 the `next` value to read the following page. Use `--all` to fetch every page in
 one call, or `--limit N` to size each request. For very large outputs use
 `--format ndjson` (one JSON object per line, items only).
+
+## Batch deletes
+
+`page delete` and `comment delete` take several IDs at once, or a single `-` to
+read newline-separated IDs from stdin — handy for pruning search results:
+
+```
+confluence-cli search --text obsolete --format json | jq -r '.items[].id' \
+  | confluence-cli page delete - --yes
+```
+
+A single ID behaves as before; with more than one, output is an `{items,
+has_more}` aggregate with a per-item `ok`/`error`, every item runs even if some
+fail, and the exit code is non-zero on any failure. `--yes` / `--dry-run` apply
+to the whole batch.
+
+## Agent-facing conventions
+
+- **Update notices on stderr.** When a newer release exists, commands print a
+  one-line `{"_notice":{"update":{…}}}` to **stderr** (never stdout, so parsing
+  the data is unaffected). `doctor` reports it too. Silence with
+  `CONFLUENCE_CLI_NO_UPDATE_NOTIFIER=1`.
+- **Forgiving flags.** camelCase/snake_case flag names (`--spaceKey`) and a flag
+  stuck to its value (`--limit100`) are auto-corrected to the canonical form when
+  it is a real flag; each fix is echoed as a `{"_notice":{"corrections":[…]}}`
+  line on stderr. Prefer the canonical `--kebab-case value` form regardless.
 
 ## AI attribution (agent writes)
 

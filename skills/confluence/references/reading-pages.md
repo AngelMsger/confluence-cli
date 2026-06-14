@@ -67,6 +67,17 @@ Returns each block containing the term plus its nearest heading for context.
 `--no-body` fetches metadata only. `--body-format storage|view` selects the
 source representation to fetch (default `storage`).
 
+`--output <file>` (`-o`) writes the rendered (or `--as raw`) body to a file
+instead of inlining it. stdout then returns only metadata (`id`, `title`,
+`output_path`, `bytes`) — use this when you need the full body on disk for
+post-processing or to hand to the user, without spending the page's worth of
+tokens in context. It cannot be combined with `--no-body` (nothing to write).
+
+```bash
+confluence-cli page get 12345 -o page.md            # body -> page.md, metadata on stdout
+confluence-cli page get 12345 --as raw -o page.xml  # untouched storage source -> file
+```
+
 ## Rendering loss — macros and images
 
 `markdown` / `text` rendering cannot represent every Confluence construct:

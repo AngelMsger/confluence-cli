@@ -30,7 +30,7 @@ is published at <https://angelmsger.github.io/confluence-cli/cli/>.
 | --- | --- |
 | [`confluence-cli comment`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-comment) | Read and post page comments |
 | [`confluence-cli comment add`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-comment-add) | Post a comment on a page |
-| [`confluence-cli comment delete`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-comment-delete) | Delete a comment |
+| [`confluence-cli comment delete`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-comment-delete) | Delete one or more comments |
 | [`confluence-cli comment list`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-comment-list) | List the footer comments of a page |
 | [`confluence-cli comment update`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-comment-update) | Edit a comment's body |
 
@@ -69,7 +69,7 @@ is published at <https://angelmsger.github.io/confluence-cli/cli/>.
 | [`confluence-cli page children`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-page-children) | List the direct child pages of a page |
 | [`confluence-cli page copy`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-page-copy) | Copy a page's title and body to a new page |
 | [`confluence-cli page create`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-page-create) | Create a new page |
-| [`confluence-cli page delete`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-page-delete) | Delete a page (move it to the trash) |
+| [`confluence-cli page delete`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-page-delete) | Delete one or more pages (move them to the trash) |
 | [`confluence-cli page descendants`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-page-descendants) | List all descendant pages of a page |
 | [`confluence-cli page get`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-page-get) | Fetch a page and render its body |
 | [`confluence-cli page history`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-page-history) | List a page's version history |

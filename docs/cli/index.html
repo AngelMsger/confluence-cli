@@ -322,10 +322,12 @@ comment.</p>
     
     <section class="cmd" id="confluence-cli-comment-delete">
       <h2>confluence-cli comment delete</h2>
-      <p class="short">Delete a comment</p>
-      <pre>confluence-cli comment delete &lt;comment-id|url&gt; [flags]</pre>
-      <p class="long">Delete a comment by its content ID. Deletion requires --yes, or an
-interactive confirmation when stdin is a terminal.</p>
+      <p class="short">Delete one or more comments</p>
+      <pre>confluence-cli comment delete &lt;comment-id|url&gt;... [flags]</pre>
+      <p class="long">Delete a comment by its content ID. Pass several IDs to delete them in
+one run, or a single &#39;-&#39; to read newline-separated IDs from stdin.
+Deletion requires --yes (or an interactive confirmation when stdin is a
+terminal); --yes applies to the whole batch.</p>
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -334,7 +336,8 @@ interactive confirmation when stdin is a terminal.</p>
         <tr><td><code>--yes</code></td><td><code>false</code></td><td>skip the deletion confirmation</td></tr>
         </tbody>
       </table>
-      <h3>Examples</h3><pre>  confluence-cli comment delete 789 --yes</pre>
+      <h3>Examples</h3><pre>  confluence-cli comment delete 789 --yes
+  confluence-cli comment delete 789 790 --yes</pre>
     </section>
     
     <section class="cmd" id="confluence-cli-comment-list">
@@ -602,11 +605,13 @@ Markdown (--body-format markdown, converted on a best-effort basis).</p>
     
     <section class="cmd" id="confluence-cli-page-delete">
       <h2>confluence-cli page delete</h2>
-      <p class="short">Delete a page (move it to the trash)</p>
-      <pre>confluence-cli page delete &lt;id|url&gt; [flags]</pre>
+      <p class="short">Delete one or more pages (move them to the trash)</p>
+      <pre>confluence-cli page delete &lt;id|url&gt;... [flags]</pre>
       <p class="long">Move a page to the trash. With --purge the trashed page is then
-permanently removed. Deletion requires --yes, or an interactive
-confirmation when stdin is a terminal.</p>
+permanently removed. Pass several IDs to delete them in one run, or a
+single &#39;-&#39; to read newline-separated IDs from stdin. Deletion requires
+--yes (or an interactive confirmation when stdin is a terminal); --yes
+applies to the whole batch.</p>
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -617,7 +622,8 @@ confirmation when stdin is a terminal.</p>
         </tbody>
       </table>
       <h3>Examples</h3><pre>  confluence-cli page delete 123456 --yes
-  confluence-cli page delete 123456 --purge --yes</pre>
+  confluence-cli page delete 123456 123457 --purge --yes
+  confluence-cli search --text obsolete --format json | jq -r &#39;.items[].id&#39; | confluence-cli page delete - --yes</pre>
     </section>
     
     <section class="cmd" id="confluence-cli-page-descendants">
@@ -659,6 +665,7 @@ Use --as raw to get the untouched source body instead.</p>
         <tr><td><code>--detail</code></td><td><code>simple</code></td><td>block detail: simple, with-ids or full</td></tr>
         <tr><td><code>--keyword</code></td><td></td><td>keyword (with --scope keyword)</td></tr>
         <tr><td><code>--no-body</code></td><td><code>false</code></td><td>fetch metadata only, skip the body</td></tr>
+        <tr><td><code>--output, -o</code></td><td></td><td>write the page body to a file; stdout then carries only metadata (id, title, output_path, bytes)</td></tr>
         <tr><td><code>--scope</code></td><td><code>full</code></td><td>read scope: full, outline, section or keyword</td></tr>
         <tr><td><code>--section</code></td><td></td><td>section ID (with --scope section)</td></tr>
         </tbody>

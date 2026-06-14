@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/angelmsger/confluence-cli/internal/cliflags"
 	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
 	"github.com/angelmsger/confluence-cli/internal/output"
 	"github.com/angelmsger/confluence-cli/pkg/constants"
@@ -19,6 +20,13 @@ func NewRootCmd() *cobra.Command { return newRootCmd() }
 // Execute builds and runs the root command, returning a process exit code.
 func Execute() int {
 	root := newRootCmd()
+	// Absorb common LLM argv slips (--userId -> --user-id, --limit100 ->
+	// --limit 100) before cobra parses, echoing each fix to stderr so the data
+	// on stdout is untouched and the agent learns the canonical form.
+	if corrected, corrections := cliflags.Normalize(os.Args[1:], cliflags.Collect(root)); len(corrections) > 0 {
+		root.SetArgs(corrected)
+		output.EmitNotice(os.Stderr, map[string]any{"_notice": map[string]any{"corrections": corrections}})
+	}
 	if err := root.Execute(); err != nil {
 		// cobra flag/usage errors are not CLIErrors; classify them as usage.
 		ce := cerrors.AsCLIError(err)
@@ -54,6 +62,13 @@ func newRootCmd() *cobra.Command {
 			// must run even when nothing is configured yet.
 			output.SetErrorPretty(state.gflags.pretty)
 			return state.load()
+		},
+		// PersistentPostRunE runs only after a command succeeds (cobra skips
+		// the Post hooks when RunE errors), so the update notice never piggy-
+		// backs on a failed command. It writes to stderr only.
+		PersistentPostRunE: func(cmd *cobra.Command, _ []string) error {
+			maybeNotifyUpdate(state, cmd)
+			return nil
 		},
 	}
 

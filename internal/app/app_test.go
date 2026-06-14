@@ -214,6 +214,49 @@ func TestCmdPageGetOutlineScope(t *testing.T) {
 	}
 }
 
+func TestCmdPageGetOutputToFile(t *testing.T) {
+	srv := mockConfluence(t)
+	dest := filepath.Join(t.TempDir(), "page.md")
+	out, err := runCLI(t, srv, "page", "get", "123", "--output", dest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got map[string]any
+	if err := json.Unmarshal([]byte(out), &got); err != nil {
+		t.Fatalf("output not JSON: %v\n%s", err, out)
+	}
+	// stdout carries metadata, not the body.
+	if _, hasBody := got["body"]; hasBody {
+		t.Errorf("stdout should omit body when --output is set: %v", got)
+	}
+	if got["output_path"] != dest {
+		t.Errorf("output_path = %v; want %s", got["output_path"], dest)
+	}
+	// The body landed on disk.
+	data, readErr := os.ReadFile(dest)
+	if readErr != nil {
+		t.Fatalf("body file not written: %v", readErr)
+	}
+	if !strings.Contains(string(data), "# Hi") {
+		t.Errorf("body file missing rendered heading: %q", data)
+	}
+	if n, _ := got["bytes"].(float64); int(n) != len(data) {
+		t.Errorf("bytes = %v; want %d", got["bytes"], len(data))
+	}
+}
+
+func TestCmdPageGetOutputNoBodyConflicts(t *testing.T) {
+	srv := mockConfluence(t)
+	dest := filepath.Join(t.TempDir(), "x.md")
+	_, err := runCLI(t, srv, "page", "get", "123", "--output", dest, "--no-body")
+	if err == nil {
+		t.Fatal("expected --output with --no-body to fail")
+	}
+	if !strings.Contains(err.Error(), "has nothing to write") {
+		t.Errorf("error = %v; want the --no-body conflict message", err)
+	}
+}
+
 func TestCmdPageGetFromURL(t *testing.T) {
 	srv := mockConfluence(t)
 	url := srv.URL + "/pages/viewpage.action?pageId=123"

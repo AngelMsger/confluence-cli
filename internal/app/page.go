@@ -30,6 +30,11 @@ type pageOutput struct {
 	// RenderNotes lists content the markdown/text renderer could not represent
 	// (e.g. unrendered macros). When non-empty, re-read with --as raw.
 	RenderNotes []string `json:"render_notes,omitempty"`
+	// OutputPath and Bytes are set when --output wrote the body to a file
+	// instead of inlining it. Body is then omitted from stdout so a large page
+	// never floods the agent's context — the content lives on disk.
+	OutputPath string `json:"output_path,omitempty"`
+	Bytes      int    `json:"bytes,omitempty"`
 }
 
 // dryRunOutput is the result shape emitted for a --dry-run write.
@@ -68,13 +73,23 @@ func pageMetaOutput(p *apiclient.Page) pageOutput {
 // emitDryRun resolves a write request into the HTTP request it would send and
 // emits that plan instead of performing the write.
 func emitDryRun(s *appState, client apiclient.Client, ctx context.Context, op any) error {
-	plan, err := client.DescribeWrite(ctx, op)
+	out, err := dryRunPlan(client, ctx, op)
 	if err != nil {
 		return err
 	}
-	return s.emit(dryRunOutput{
+	return s.emit(out)
+}
+
+// dryRunPlan resolves a write request into its dry-run output object without
+// emitting it, so batch commands can collect one plan per item.
+func dryRunPlan(client apiclient.Client, ctx context.Context, op any) (dryRunOutput, error) {
+	plan, err := client.DescribeWrite(ctx, op)
+	if err != nil {
+		return dryRunOutput{}, err
+	}
+	return dryRunOutput{
 		DryRun: true, Method: plan.Method, URL: plan.URL, Payload: plan.Payload,
-	})
+	}, nil
 }
 
 // resolvePageBody reads the body for a write command from --body or --body-file
@@ -143,6 +158,7 @@ func newPageGetCmd(s *appState) *cobra.Command {
 		keyword    string
 		as         string
 		noBody     bool
+		outputPath string
 	)
 	cmd := &cobra.Command{
 		Use:   "get <id|url>",
@@ -214,10 +230,29 @@ func newPageGetCmd(s *appState) *cobra.Command {
 					out.RenderNotes = rendered.Notes
 				}
 			}
+			if outputPath != "" {
+				if noBody {
+					return cerrors.New(cerrors.CategoryUsage, "OUTPUT_NEEDS_BODY",
+						"--output has nothing to write together with --no-body").
+						WithHint("Drop --no-body to write the page body to the file.")
+				}
+				if err := os.WriteFile(outputPath, []byte(out.Body), 0o644); err != nil {
+					return cerrors.Wrap(err, cerrors.CategoryUsage, "OUTPUT_WRITE",
+						"failed to write the page body to "+outputPath).
+						WithHint("Check the path is writable and its parent directory exists.")
+				}
+				out.Bytes = len(out.Body)
+				out.OutputPath = outputPath
+				// Body now lives on disk; keep it out of stdout so a large page
+				// never floods the agent's context.
+				out.Body = ""
+			}
 			return s.emit(out)
 		},
 	}
 	f := cmd.Flags()
+	f.StringVarP(&outputPath, "output", "o", "",
+		"write the page body to a file; stdout then carries only metadata (id, title, output_path, bytes)")
 	f.StringVar(&bodyFormat, "body-format", "storage", "source body format: storage or view")
 	f.StringVar(&detail, "detail", "simple", "block detail: simple, with-ids or full")
 	f.StringVar(&scope, "scope", "full", "read scope: full, outline, section or keyword")
@@ -417,16 +452,19 @@ func newPageDeleteCmd(s *appState) *cobra.Command {
 		dryRun bool
 	)
 	cmd := &cobra.Command{
-		Use:   "delete <id|url>",
-		Short: "Delete a page (move it to the trash)",
+		Use:   "delete <id|url>...",
+		Short: "Delete one or more pages (move them to the trash)",
 		Long: "Move a page to the trash. With --purge the trashed page is then\n" +
-			"permanently removed. Deletion requires --yes, or an interactive\n" +
-			"confirmation when stdin is a terminal.",
+			"permanently removed. Pass several IDs to delete them in one run, or a\n" +
+			"single '-' to read newline-separated IDs from stdin. Deletion requires\n" +
+			"--yes (or an interactive confirmation when stdin is a terminal); --yes\n" +
+			"applies to the whole batch.",
 		Example: "  confluence-cli page delete 123456 --yes\n" +
-			"  confluence-cli page delete 123456 --purge --yes",
-		Args: cobra.ExactArgs(1),
+			"  confluence-cli page delete 123456 123457 --purge --yes\n" +
+			"  confluence-cli search --text obsolete --format json | jq -r '.items[].id' | confluence-cli page delete - --yes",
+		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id, err := resolvePageID(args[0])
+			items, err := collectBatchArgs(args, cmd.InOrStdin())
 			if err != nil {
 				return err
 			}
@@ -436,21 +474,29 @@ func newPageDeleteCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			req := apiclient.DeletePageReq{ID: id, Purge: purge}
-			if dryRun {
-				return emitDryRun(s, client, ctx, req)
-			}
-			if err := confirmDelete("page "+id+" (moves it to the trash)", yes); err != nil {
-				return err
-			}
-			if err := client.DeletePage(ctx, req); err != nil {
-				return err
+			if !dryRun {
+				if cerr := confirmDelete(deletePrompt("page", items, "(moves it to the trash)"), yes); cerr != nil {
+					return cerr
+				}
 			}
 			status := "trashed"
 			if purge {
 				status = "purged"
 			}
-			return s.emit(map[string]any{"id": id, "status": status})
+			return runBatch(s, items, func(arg string) (any, error) {
+				id, rerr := resolvePageID(arg)
+				if rerr != nil {
+					return nil, rerr
+				}
+				req := apiclient.DeletePageReq{ID: id, Purge: purge}
+				if dryRun {
+					return dryRunPlan(client, ctx, req)
+				}
+				if derr := client.DeletePage(ctx, req); derr != nil {
+					return nil, derr
+				}
+				return map[string]any{"id": id, "status": status}, nil
+			})
 		},
 	}
 	f := cmd.Flags()

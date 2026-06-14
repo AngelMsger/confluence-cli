@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Runtime update notice.** Every command — except setup/meta commands like
+  `doctor` (which already reports it), `config` and `auth` — now emits a one-line
+  `{"_notice":{"update":{…}}}` to **stderr** when a newer release is available,
+  backed by a 24h on-disk cache (so at most one command per day touches the
+  network, with an ~800ms bound). stdout data is byte-identical; silence it with
+  `CONFLUENCE_CLI_NO_UPDATE_NOTIFIER=1`.
+- **`page get --output <file>` (`-o`).** Write the page body to a file instead of
+  inlining it; stdout then carries only metadata (`id`, `title`, `output_path`,
+  `bytes`), so a large page no longer floods an agent's context. Honors `--as`
+  (markdown / text / raw) and the `--scope` selectors.
+- **Batch deletes.** `page delete` and `comment delete` accept several IDs at
+  once, or a single `-` to read newline-separated IDs from stdin (e.g.
+  `search --text obsolete --format json | jq -r '.items[].id' | confluence-cli page delete - --yes`).
+  A single argument behaves exactly as before; with more than one the output is an
+  `{items, has_more}` aggregate with a per-item `ok`/`error`, every item runs even
+  if some fail, and the exit code is non-zero on any failure (`--yes` / `--dry-run`
+  apply to the whole batch).
+- **Forgiving flag input.** Common argv slips are now corrected before cobra
+  parses — camelCase / snake_case flag names (`--spaceKey` → `--space-key`) and a
+  flag stuck to its value (`--limit100` → `--limit 100`) — but only when the
+  result is a flag the command actually defines, so unknown flags still error as
+  usual. Each fix is echoed as a `{"_notice":{"corrections":[…]}}` line on stderr.
+
 ## [0.9.1] - 2026-06-08
 
 ### Changed

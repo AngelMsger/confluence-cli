@@ -13,8 +13,10 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/angelmsger/confluence-cli/internal/transport"
 )
@@ -46,15 +48,17 @@ func endpoint() string {
 // Check fetches the latest release and compares it with the running version.
 // It never returns an error: a failed lookup is reported in Status.Detail.
 func Check(ctx context.Context, doer transport.Doer, current string) Status {
-	st := Status{Current: current}
-
 	latest, err := fetchLatest(ctx, doer)
 	if err != nil {
-		st.Detail = "could not check for updates: " + err.Error()
-		return st
+		return Status{Current: current, Detail: "could not check for updates: " + err.Error()}
 	}
-	st.Latest = latest
+	return compare(current, latest)
+}
 
+// compare builds a Status by comparing the running version against latest.
+// Non-release builds (e.g. "dev") skip the comparison rather than guess.
+func compare(current, latest string) Status {
+	st := Status{Current: current, Latest: latest}
 	cur, curOK := parse(current)
 	lat, latOK := parse(latest)
 	if !curOK || !latOK {
@@ -70,6 +74,79 @@ func Check(ctx context.Context, doer transport.Doer, current string) Status {
 	}
 	st.Detail = "up to date"
 	return st
+}
+
+// cacheTTL bounds how long a cached release lookup is reused before a refresh.
+const cacheTTL = 24 * time.Hour
+
+// cacheFileName is the on-disk memo of the last successful release lookup,
+// stored under the CLI's config directory.
+const cacheFileName = "update-cache.json"
+
+// cacheEntry is the persisted shape of a release lookup.
+type cacheEntry struct {
+	CheckedAt time.Time `json:"checked_at"`
+	Latest    string    `json:"latest"`
+}
+
+// Cached returns an update Status backed by a 24h on-disk cache in cacheDir.
+// It is the per-command counterpart to Check: a fresh cache is served without
+// any network call, and only on a miss/expiry does it perform one bounded
+// lookup (bounded by the doer's own timeout) and rewrite the cache. A failed
+// lookup falls back to any stale cache, and otherwise degrades to a non-
+// available Status — it never blocks beyond the doer and never returns an
+// error, so a routine command is never slowed or failed by the check.
+func Cached(ctx context.Context, doer transport.Doer, cacheDir, current string) Status {
+	if entry, ok := readCache(cacheDir); ok && time.Since(entry.CheckedAt) < cacheTTL {
+		return compare(current, entry.Latest)
+	}
+	latest, err := fetchLatest(ctx, doer)
+	if err != nil {
+		if entry, ok := readCache(cacheDir); ok {
+			return compare(current, entry.Latest)
+		}
+		return Status{Current: current, Detail: "could not check for updates: " + err.Error()}
+	}
+	writeCache(cacheDir, cacheEntry{CheckedAt: time.Now(), Latest: latest})
+	return compare(current, latest)
+}
+
+// readCache loads the memoized release lookup; ok is false on any error so the
+// caller transparently falls back to a network refresh.
+func readCache(cacheDir string) (cacheEntry, bool) {
+	if cacheDir == "" {
+		return cacheEntry{}, false
+	}
+	raw, err := os.ReadFile(filepath.Join(cacheDir, cacheFileName))
+	if err != nil {
+		return cacheEntry{}, false
+	}
+	var entry cacheEntry
+	if err := json.Unmarshal(raw, &entry); err != nil || entry.Latest == "" {
+		return cacheEntry{}, false
+	}
+	return entry, true
+}
+
+// writeCache persists the release lookup. Failures are ignored: a missing
+// cache only means the next command performs another lookup.
+func writeCache(cacheDir string, entry cacheEntry) {
+	if cacheDir == "" {
+		return
+	}
+	if err := os.MkdirAll(cacheDir, 0o700); err != nil {
+		return
+	}
+	raw, err := json.Marshal(entry)
+	if err != nil {
+		return
+	}
+	path := filepath.Join(cacheDir, cacheFileName)
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, raw, 0o600); err != nil {
+		return
+	}
+	_ = os.Rename(tmp, path)
 }
 
 // fetchLatest queries the release endpoint and returns the latest version with

@@ -71,7 +71,13 @@ echo "Revised." | confluence-cli comment update <comment-id> --body-file -
 
 # delete a comment (requires --yes, or an interactive confirmation)
 confluence-cli comment delete <comment-id> --yes
+confluence-cli comment delete <id-1> <id-2> --yes   # batch: several at once
 ```
+
+`comment delete` accepts several IDs, or a single `-` to read newline-separated
+IDs from stdin. With more than one it returns an `{items, has_more}` aggregate
+with a per-comment `ok`/`error`, deletes every one even if some fail, and exits
+non-zero on any failure.
 
 `update` bumps the comment to a new version; pass `--version N` to assert the
 version you last read. Both commands accept `--dry-run` to preview the request.

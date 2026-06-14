@@ -100,7 +100,13 @@ version comment.
 ```bash
 confluence-cli page delete 12345 --yes            # move to trash
 confluence-cli page delete 12345 --purge --yes    # permanently remove
+confluence-cli page delete 12345 12346 --yes      # batch: several IDs at once
 ```
+
+`page delete` accepts several IDs, or a single `-` to read newline-separated IDs
+from stdin. With more than one it returns an `{items, has_more}` aggregate with a
+per-page `ok`/`error`, deletes every one even if some fail, and exits non-zero on
+any failure. `--yes` / `--purge` / `--dry-run` apply to the whole batch.
 
 ## Move and copy
 

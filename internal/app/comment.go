@@ -198,14 +198,17 @@ func newCommentUpdateCmd(s *appState) *cobra.Command {
 func newCommentDeleteCmd(s *appState) *cobra.Command {
 	var yes, dryRun bool
 	cmd := &cobra.Command{
-		Use:   "delete <comment-id|url>",
-		Short: "Delete a comment",
-		Long: "Delete a comment by its content ID. Deletion requires --yes, or an\n" +
-			"interactive confirmation when stdin is a terminal.",
-		Example: "  confluence-cli comment delete 789 --yes",
-		Args:    cobra.ExactArgs(1),
+		Use:   "delete <comment-id|url>...",
+		Short: "Delete one or more comments",
+		Long: "Delete a comment by its content ID. Pass several IDs to delete them in\n" +
+			"one run, or a single '-' to read newline-separated IDs from stdin.\n" +
+			"Deletion requires --yes (or an interactive confirmation when stdin is a\n" +
+			"terminal); --yes applies to the whole batch.",
+		Example: "  confluence-cli comment delete 789 --yes\n" +
+			"  confluence-cli comment delete 789 790 --yes",
+		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id, err := resolveCommentID(args[0])
+			items, err := collectBatchArgs(args, cmd.InOrStdin())
 			if err != nil {
 				return err
 			}
@@ -215,17 +218,25 @@ func newCommentDeleteCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			req := apiclient.DeleteCommentReq{ID: id}
-			if dryRun {
-				return emitDryRun(s, client, ctx, req)
+			if !dryRun {
+				if cerr := confirmDelete(deletePrompt("comment", items, ""), yes); cerr != nil {
+					return cerr
+				}
 			}
-			if err := confirmDelete("comment "+id, yes); err != nil {
-				return err
-			}
-			if err := client.DeleteComment(ctx, req); err != nil {
-				return err
-			}
-			return s.emit(map[string]any{"id": id, "status": "deleted"})
+			return runBatch(s, items, func(arg string) (any, error) {
+				id, rerr := resolveCommentID(arg)
+				if rerr != nil {
+					return nil, rerr
+				}
+				req := apiclient.DeleteCommentReq{ID: id}
+				if dryRun {
+					return dryRunPlan(client, ctx, req)
+				}
+				if derr := client.DeleteComment(ctx, req); derr != nil {
+					return nil, derr
+				}
+				return map[string]any{"id": id, "status": "deleted"}, nil
+			})
 		},
 	}
 	f := cmd.Flags()

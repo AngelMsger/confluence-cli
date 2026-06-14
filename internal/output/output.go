@@ -103,6 +103,18 @@ func EmitList(items any, next string, hasMore bool, opt Options) error {
 	}
 }
 
+// EmitNotice writes a single compact JSON line carrying out-of-band notices
+// (e.g. a newer-release notice, or input corrections) to w — typically stderr.
+// It deliberately never touches stdout, so the command's data contract on
+// stdout stays byte-identical; agents still see the notice via the shell.
+// Failures are swallowed: a notice must never turn a successful command into
+// a failure.
+func EmitNotice(w io.Writer, notice any) {
+	enc := json.NewEncoder(w)
+	enc.SetEscapeHTML(false)
+	_ = enc.Encode(notice)
+}
+
 func badFormat(format string) error {
 	return cerrors.Newf(cerrors.CategoryUsage, "BAD_FORMAT",
 		"unknown output format %q (want json, table or ndjson)", format)

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 )
 
 // doerFunc adapts a function to transport.Doer.
@@ -139,5 +140,62 @@ func TestEndpointEnvOverride(t *testing.T) {
 	t.Setenv(EndpointEnv, "https://example.test/latest")
 	if got := endpoint(); got != "https://example.test/latest" {
 		t.Errorf("endpoint() with override = %q", got)
+	}
+}
+
+// countingDoer wraps a Doer and counts how many times it is invoked, so tests
+// can assert the cache prevents redundant network lookups.
+type countingDoer struct {
+	inner doerFunc
+	calls int
+}
+
+func (c *countingDoer) Do(r *http.Request) (*http.Response, error) {
+	c.calls++
+	return c.inner(r)
+}
+
+func TestCachedMissThenHit(t *testing.T) {
+	dir := t.TempDir()
+	doer := &countingDoer{inner: jsonResponder(200, `{"tag_name":"v2.0.0"}`)}
+
+	st := Cached(context.Background(), doer, dir, "1.0.0")
+	if !st.Available || st.Latest != "2.0.0" {
+		t.Fatalf("first Cached = %+v; want available 2.0.0", st)
+	}
+	if doer.calls != 1 {
+		t.Fatalf("first Cached made %d network calls; want 1", doer.calls)
+	}
+
+	st = Cached(context.Background(), doer, dir, "1.0.0")
+	if !st.Available || st.Latest != "2.0.0" {
+		t.Fatalf("cached Cached = %+v; want available 2.0.0", st)
+	}
+	if doer.calls != 1 {
+		t.Fatalf("cached Cached made %d network calls; want 1 (served from cache)", doer.calls)
+	}
+}
+
+func TestCachedFallsBackToStaleOnFetchError(t *testing.T) {
+	dir := t.TempDir()
+	writeCache(dir, cacheEntry{CheckedAt: time.Now().Add(-48 * time.Hour), Latest: "2.0.0"})
+
+	doer := &countingDoer{inner: func(*http.Request) (*http.Response, error) {
+		return nil, context.DeadlineExceeded
+	}}
+	st := Cached(context.Background(), doer, dir, "1.0.0")
+	if doer.calls != 1 {
+		t.Fatalf("stale cache should trigger one refresh attempt; got %d", doer.calls)
+	}
+	if !st.Available || st.Latest != "2.0.0" {
+		t.Fatalf("failed refresh should fall back to stale cache: %+v", st)
+	}
+}
+
+func TestCachedNoDirNoCache(t *testing.T) {
+	doer := &countingDoer{inner: jsonResponder(200, `{"tag_name":"v2.0.0"}`)}
+	st := Cached(context.Background(), doer, "", "1.0.0")
+	if !st.Available || doer.calls != 1 {
+		t.Fatalf("no-dir Cached = %+v calls=%d; want available with 1 call", st, doer.calls)
 	}
 }
