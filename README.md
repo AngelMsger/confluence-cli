@@ -159,11 +159,14 @@ single-server config files are read unchanged.
 
 ## Related
 
-From the same author, same agent-first design:
-**[bitbucket-cli](https://github.com/AngelMsger/bitbucket-cli)** (Bitbucket pull
-requests and code review) and
-**[openobserve-cli](https://github.com/AngelMsger/openobserve-cli)** (query
-OpenObserve logs, metrics and traces).
+Part of a family of agent-facing CLIs — one skeleton, one set of conventions, all
+built for coding agents. Browse the full set at
+**[github.com/AngelMsger](https://github.com/AngelMsger)**:
+
+- **confluence-cli** — Confluence as a knowledge base *(this project)*
+- **[bitbucket-cli](https://github.com/AngelMsger/bitbucket-cli)** — Bitbucket pull requests & code review
+- **[openobserve-cli](https://github.com/AngelMsger/openobserve-cli)** — OpenObserve logs, metrics & traces
+- **[jenkins-cli](https://github.com/AngelMsger/jenkins-cli)** — inspect Jenkins jobs & builds
 
 ## Development
 
