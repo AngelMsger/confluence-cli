@@ -1,9 +1,9 @@
 // Package update reports whether a newer confluence-cli release is available.
 //
-// It is a passive, opt-in check: nothing here runs unless a command (today
-// only `doctor`) explicitly calls Check. A failed check never returns an
-// error — it degrades into an informational Status — so an offline or
-// rate-limited environment never turns a diagnostic into a failure.
+// It is a passive, opt-in check: nothing here runs unless a caller (the root
+// post-run notice, or `doctor`) explicitly invokes it. A failed check never
+// returns an error — it degrades into an informational Status — so an offline
+// or rate-limited environment never turns a routine command into a failure.
 package update
 
 import (
