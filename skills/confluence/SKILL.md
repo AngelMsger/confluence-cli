@@ -127,6 +127,13 @@ to the whole batch.
 
 ## Agent-facing conventions
 
+- **Skill handshake — set `CONFLUENCE_CLI_SKILL=1`.** Once you have loaded this
+  Skill, export `CONFLUENCE_CLI_SKILL=1` in the environment you run the CLI from.
+  When the variable is absent the CLI assumes you may be inferring commands
+  blindly and prints a one-line `{"_notice":{"skill":{…}}}` discovery hint on
+  **stderr** (non-interactive sessions only). Setting it silences the hint;
+  `confluence-cli skill status` reports whether it is set. (To suppress the hint
+  without loading the Skill, use `CONFLUENCE_CLI_NO_SKILL_HINT=1`.)
 - **Update notices on stderr.** When a newer release exists, commands print a
   one-line `{"_notice":{"update":{…}}}` to **stderr** (never stdout, so parsing
   the data is unaffected). `doctor` reports it too. Silence with

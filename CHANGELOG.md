@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-06-24
+
+### Added
+
+- **Companion-Skill discovery for agents.** Agents sometimes shell out to this
+  CLI without loading the `confluence` Skill, bypassing the usage recipes and
+  safety guidance it maintains. The root `--help` now carries an `AGENT NOTE`
+  pointing at the Skill; `confluence-cli skill status` reports whether the Skill
+  is loaded (via the `CONFLUENCE_CLI_SKILL` handshake) and installed; and any
+  real command run non-interactively without that handshake prints a one-line
+  `{"_notice":{"skill":…}}` hint to **stderr** (stdout stays clean). The hint is
+  silent for humans (TTY), self-silences once the Skill sets
+  `CONFLUENCE_CLI_SKILL=1`, and can be turned off with `CONFLUENCE_CLI_NO_SKILL_HINT=1`.
+
+### Fixed
+
+- **Cloud user search was capped at the first page.** `SearchUsers` (the
+  discovery path behind `search --author` / `--contributor`) read `--limit` on
+  Cloud but ignored the page cursor and never returned a `next` token, so results
+  silently stopped at the first batch while the Data Center branch paged
+  correctly. The Cloud branch now honors the offset cursor and emits `next` when
+  a full page comes back, matching DC.
+
 ## [0.10.0] - 2026-06-14
 
 ### Added
@@ -434,7 +457,8 @@ Initial release.
 - Distribution via npm (`@angelmsger/confluence-cli`), `go install`, prebuilt
   release binaries and `make install`.
 
-[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.10.1...HEAD
+[0.10.1]: https://github.com/angelmsger/confluence-cli/compare/v0.10.0...v0.10.1
 [0.5.1]: https://github.com/angelmsger/confluence-cli/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/angelmsger/confluence-cli/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/angelmsger/confluence-cli/compare/v0.3.1...v0.4.0

@@ -22,9 +22,8 @@ func (c *apiClient) SearchUsers(ctx context.Context, opt UserSearchOpts) (ListRe
 				"Confluence Cloud user search requires --query (Cloud has no global user list)").
 				WithHint(`Pass --query "<substring>" to search by display name.`)
 		}
-		q := url.Values{}
+		q := offsetQuery(opt.Cursor, limit)
 		q.Set("cql", `user.fullname ~ "`+escapeQuotes(opt.Query)+`"`)
-		q.Set("limit", itoaUser(limit))
 		var raw struct {
 			Results []struct {
 				User struct {
@@ -43,6 +42,15 @@ func (c *apiClient) SearchUsers(ctx context.Context, opt UserSearchOpts) (ListRe
 			return ListResult[User]{}, err
 		}
 		res := ListResult[User]{}
+		// A full page implies there may be more; advance the offset cursor so
+		// callers can page past the first batch (matching the DC branch below).
+		if len(raw.Results) == limit {
+			next := raw.Start + raw.Limit
+			if raw.Limit == 0 {
+				next = raw.Start + limit
+			}
+			res.Next = itoaUser(next)
+		}
 		for _, r := range raw.Results {
 			res.Items = append(res.Items, User{
 				AccountID:   r.User.AccountID,

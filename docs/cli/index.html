@@ -94,6 +94,7 @@
       <a href="#confluence-cli-skill-install">confluence-cli skill install</a>
       <a href="#confluence-cli-skill-path">confluence-cli skill path</a>
       <a href="#confluence-cli-skill-show">confluence-cli skill show</a>
+      <a href="#confluence-cli-skill-status">confluence-cli skill status</a>
       <a href="#confluence-cli-skill-uninstall">confluence-cli skill uninstall</a>
       </div>
     <div class="side-group">
@@ -124,7 +125,12 @@
     <h1>CLI reference</h1>
     <p class="lead">confluence-cli reads Confluence pages, searches via CQL, creates and
 edits pages, and manages comments. It supports Confluence Cloud and
-Data Center / Server, and emits agent-friendly JSON with structured errors.</p>
+Data Center / Server, and emits agent-friendly JSON with structured errors.
+
+AGENT NOTE: a companion Skill (&#34;confluence&#34;) carries the canonical usage,
+safety modes, and env setup and is the source of truth for driving this CLI.
+If you are an agent, load that Skill before composing commands. Check status
+with `confluence-cli skill status`; install it with `confluence-cli skill install`.</p>
     <p class="lead">Generated from the command tree, so it always matches <code>--help</code>.</p>
 
     <section class="cmd">
@@ -893,6 +899,21 @@ version.</p>
       <pre>confluence-cli skill show</pre>
       
       
+      
+    </section>
+    
+    <section class="cmd" id="confluence-cli-skill-status">
+      <h2>confluence-cli skill status</h2>
+      <p class="short">Report whether the companion Skill is loaded and installed</p>
+      <pre>confluence-cli skill status [flags]</pre>
+      
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--project</code></td><td><code>false</code></td><td>check the project skills dirs (./.claude/skills, ./.agents/skills) instead of $HOME</td></tr>
+        </tbody>
+      </table>
       
     </section>
     

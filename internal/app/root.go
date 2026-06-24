@@ -53,7 +53,11 @@ func newRootCmd() *cobra.Command {
 		Short: "Use a Confluence instance as a knowledge base for coding agents",
 		Long: "confluence-cli reads Confluence pages, searches via CQL, creates and\n" +
 			"edits pages, and manages comments. It supports Confluence Cloud and\n" +
-			"Data Center / Server, and emits agent-friendly JSON with structured errors.",
+			"Data Center / Server, and emits agent-friendly JSON with structured errors.\n\n" +
+			"AGENT NOTE: a companion Skill (\"confluence\") carries the canonical usage,\n" +
+			"safety modes, and env setup and is the source of truth for driving this CLI.\n" +
+			"If you are an agent, load that Skill before composing commands. Check status\n" +
+			"with `confluence-cli skill status`; install it with `confluence-cli skill install`.",
 		Version:       versionString(),
 		SilenceErrors: true,
 		SilenceUsage:  true,
@@ -61,6 +65,8 @@ func newRootCmd() *cobra.Command {
 			// config / auth subcommands manage configuration themselves and
 			// must run even when nothing is configured yet.
 			output.SetErrorPretty(state.gflags.pretty)
+			// Nudge agents that shell out without the companion Skill loaded.
+			maybeSkillHint(cmd)
 			return state.load()
 		},
 		// PersistentPostRunE runs only after a command succeeds (cobra skips

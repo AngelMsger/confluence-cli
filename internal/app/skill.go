@@ -9,6 +9,7 @@ import (
 
 	confluencecli "github.com/angelmsger/confluence-cli"
 	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
+	"github.com/angelmsger/confluence-cli/pkg/constants"
 	"github.com/spf13/cobra"
 )
 
@@ -32,8 +33,61 @@ func newSkillCmd(s *appState) *cobra.Command {
 		newSkillInstallCmd(s),
 		newSkillUninstallCmd(s),
 		newSkillPathCmd(s),
+		newSkillStatusCmd(s),
 		newSkillShowCmd(),
 	)
+	return cmd
+}
+
+// newSkillStatusCmd reports, in one shot, whether the companion Skill is loaded
+// into the current agent context (via the CONFLUENCE_CLI_SKILL handshake) and
+// where it is installed on disk — plus the single next action to take. It is the
+// command an agent runs to self-check after seeing the discovery nudge.
+func newSkillStatusCmd(s *appState) *cobra.Command {
+	var project bool
+	cmd := &cobra.Command{
+		Use:   "status",
+		Short: "Report whether the companion Skill is loaded and installed",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			loaded := os.Getenv(envSkillLoaded) != ""
+
+			installs := make([]skillResult, 0, len(agentSpecs))
+			anyInstalled := false
+			for _, spec := range agentSpecs {
+				p, err := agentDest(spec, project)
+				if err != nil {
+					return err
+				}
+				status := "not_installed"
+				if _, err := os.Stat(filepath.Join(p, "SKILL.md")); err == nil {
+					status = "installed"
+					anyInstalled = true
+				}
+				installs = append(installs, skillResult{Agent: spec.id, Path: p, Status: status})
+			}
+			sort.Slice(installs, func(i, j int) bool { return installs[i].Agent < installs[j].Agent })
+
+			next := ""
+			switch {
+			case loaded:
+				next = "" // nothing to do; the Skill is in context
+			case anyInstalled:
+				next = "the Skill is installed but not loaded — load it before composing commands"
+			default:
+				next = "run `" + constants.AppName + " skill install` then load it"
+			}
+
+			return s.emit(map[string]any{
+				"loaded":           loaded,
+				"loaded_env":       envSkillLoaded,
+				"embedded_version": embeddedSkillVersion(),
+				"installs":         installs,
+				"next":             next,
+			})
+		},
+	}
+	cmd.Flags().BoolVar(&project, "project", false,
+		"check the project skills dirs (./.claude/skills, ./.agents/skills) instead of $HOME")
 	return cmd
 }
 

@@ -32,6 +32,26 @@ up front.
   conventions in `CONTRIBUTING.md`.
 - Never commit `.env`, credentials, tokens, or build artifacts.
 
+## Cloud / Data Center parity — touch both branches, always
+
+This CLI targets **two backends** (Confluence Cloud and Data Center / Server).
+Writes go through the v1 REST API on both, but the flavors still diverge on
+endpoints, pagination, and field shapes — and the recurring bug class is a
+branch (often Cloud) honouring an input the other branch silently drops. A real
+example: Cloud user search ignored the page cursor and capped at the first page
+while the DC branch paged correctly.
+
+When you touch any path that branches on `c.flavor`:
+
+1. **Handle both branches or consciously diverge** — every input the command
+   accepts (filters, cursors, version, expand) must be consumed by both flavor
+   branches, or the gap must be deliberate and documented. Compiling proves
+   nothing; a branch that never reads a field is silently wrong.
+2. **Verify pagination + optimistic-lock symmetry.** If one branch returns a
+   `next` cursor or sends a `version`, the other almost certainly must too.
+3. **Add a test that exercises both flavors** for the changed path so a
+   one-sided change is caught.
+
 ## Discoverability — no dead-end inputs
 
 **Every non-trivial identifier a command accepts as input must be discoverable
