@@ -42,7 +42,7 @@ func TestRunWizardPrettyNoTTY(t *testing.T) {
 // so a write failure could leave the user with a still-active old config
 // pointing at a now-vanished credential.
 func TestPersistInitResultPreservesOldCredentialOnWriteFailure(t *testing.T) {
-	t.Parallel()
+	// Not parallel: writes the shared, non-goroutine-safe go-keyring mock map.
 	cfgDir := t.TempDir()
 
 	// Pre-create config.yaml as a directory so os.WriteFile (used by
@@ -109,7 +109,7 @@ func TestPersistInitResultPreservesOldCredentialOnWriteFailure(t *testing.T) {
 // TestPersistInitResultCleansUpOrphanAfterSuccess confirms the happy path:
 // when persistence fully succeeds, the orphaned old credential is forgotten.
 func TestPersistInitResultCleansUpOrphanAfterSuccess(t *testing.T) {
-	t.Parallel()
+	// Not parallel: writes the shared, non-goroutine-safe go-keyring mock map.
 	cfgDir := t.TempDir()
 	store := auth.NewStore(cfgDir)
 	const (
@@ -164,7 +164,7 @@ func TestPersistInitResultCleansUpOrphanAfterSuccess(t *testing.T) {
 // resolve the target context). The defensive check must reject it before any
 // disk or keychain write.
 func TestPersistInitResultRejectsEmptyContextName(t *testing.T) {
-	t.Parallel()
+	// Not parallel: writes the shared, non-goroutine-safe go-keyring mock map.
 	cfgDir := t.TempDir()
 	s := &appState{cfgDir: cfgDir, store: auth.NewStore(cfgDir)}
 	result := &config.WizardResult{
@@ -207,7 +207,7 @@ func TestPersistInitResultRejectsEmptyContextName(t *testing.T) {
 // written, so a UI bug that lets an empty secret through cannot leave a
 // half-written config.yaml pointing at a non-existent credential.
 func TestPersistInitResultEmptySecretLeavesConfigUntouched(t *testing.T) {
-	t.Parallel()
+	// Not parallel: writes the shared, non-goroutine-safe go-keyring mock map.
 	cfgDir := t.TempDir()
 	s := &appState{
 		cfgDir: cfgDir,

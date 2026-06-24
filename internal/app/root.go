@@ -17,9 +17,17 @@ import (
 // the CLI runs, keeping generated reference docs in lock-step with --help.
 func NewRootCmd() *cobra.Command { return newRootCmd() }
 
+// newRootCmd builds the command tree, discarding the appState handle. Callers
+// that need the state (Execute, to emit the post-run update notice) use
+// newRootCmdWithState instead.
+func newRootCmd() *cobra.Command {
+	root, _ := newRootCmdWithState()
+	return root
+}
+
 // Execute builds and runs the root command, returning a process exit code.
 func Execute() int {
-	root := newRootCmd()
+	root, state := newRootCmdWithState()
 	// Absorb common LLM argv slips (--userId -> --user-id, --limit100 ->
 	// --limit 100) before cobra parses, echoing each fix to stderr so the data
 	// on stdout is untouched and the agent learns the canonical form.
@@ -27,7 +35,14 @@ func Execute() int {
 		root.SetArgs(corrected)
 		output.EmitNotice(os.Stderr, map[string]any{"_notice": map[string]any{"corrections": corrections}})
 	}
-	if err := root.Execute(); err != nil {
+	cmd, err := root.ExecuteC()
+	// Surface an available-update notice on stderr regardless of whether the
+	// command succeeded: it is purely informational, and an agent whose commands
+	// often fail should still learn a newer release exists. ExecuteC gives us the
+	// command that actually ran so the skip list still applies. Best-effort and
+	// bounded — it never affects the exit code.
+	maybeNotifyUpdate(state, cmd)
+	if err != nil {
 		// cobra flag/usage errors are not CLIErrors; classify them as usage.
 		ce := cerrors.AsCLIError(err)
 		if ce.Category == cerrors.CategoryInternal && !isCLIError(err) {
@@ -44,8 +59,9 @@ func isCLIError(err error) bool {
 	return ok
 }
 
-// newRootCmd assembles the full command tree.
-func newRootCmd() *cobra.Command {
+// newRootCmdWithState assembles the full command tree and returns the appState
+// it is wired to, so Execute can emit the update notice after the command runs.
+func newRootCmdWithState() (*cobra.Command, *appState) {
 	state := &appState{}
 
 	root := &cobra.Command{
@@ -69,13 +85,9 @@ func newRootCmd() *cobra.Command {
 			maybeSkillHint(cmd)
 			return state.load()
 		},
-		// PersistentPostRunE runs only after a command succeeds (cobra skips
-		// the Post hooks when RunE errors), so the update notice never piggy-
-		// backs on a failed command. It writes to stderr only.
-		PersistentPostRunE: func(cmd *cobra.Command, _ []string) error {
-			maybeNotifyUpdate(state, cmd)
-			return nil
-		},
+		// The available-update notice is emitted from Execute (after ExecuteC),
+		// not a PersistentPostRunE: cobra skips the Post hooks when a command
+		// fails, but the notice should surface on failure too.
 	}
 
 	pf := root.PersistentFlags()
@@ -116,7 +128,7 @@ func newRootCmd() *cobra.Command {
 		newSkillCmd(state),
 		newVersionCmd(),
 	)
-	return root
+	return root, state
 }
 
 // versionString renders the version, commit and build time as one line.

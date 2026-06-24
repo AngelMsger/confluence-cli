@@ -38,11 +38,17 @@ var updateNoticeSkip = map[string]bool{
 }
 
 // maybeNotifyUpdate emits a one-line {"_notice":{"update":{…}}} to stderr when
-// a newer release is available. It runs from the root PersistentPostRunE, i.e.
-// only after a command has succeeded, and never returns an error: a failed or
-// skipped check simply produces no notice. The notice goes to stderr so the
-// stdout data contract is untouched while agents still see it via the shell.
+// a newer release is available. It runs from Execute after ExecuteC returns —
+// on success and on failure alike — so a failure-heavy workflow still learns a
+// newer release exists; a failed or skipped check simply produces no notice.
+// The notice goes to stderr so the stdout data contract is untouched while
+// agents still see it via the shell.
 func maybeNotifyUpdate(s *appState, cmd *cobra.Command) {
+	// cmd is whatever ExecuteC resolved. Skip non-runnable commands — the bare
+	// root or a command group that only printed help — and any meta command.
+	if cmd == nil || !cmd.Runnable() {
+		return
+	}
 	if envTruthy(os.Getenv(noUpdateNotifierEnv)) {
 		return
 	}

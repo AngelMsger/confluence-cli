@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.2] - 2026-06-24
+
+### Fixed
+
+- **The "update available" notice was suppressed on failed commands.** It was
+  emitted from a `PersistentPostRunE`, which cobra runs only after a command
+  succeeds — so a command that errored never surfaced the notice, even when a
+  newer release existed. It now fires from `Execute` after the command runs, on
+  success and failure alike. The stderr-only delivery, the skip list, and the
+  `CONFLUENCE_CLI_NO_UPDATE_NOTIFIER` opt-out are unchanged.
+
 ## [0.10.1] - 2026-06-24
 
 ### Added
@@ -457,7 +468,8 @@ Initial release.
 - Distribution via npm (`@angelmsger/confluence-cli`), `go install`, prebuilt
   release binaries and `make install`.
 
-[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.10.1...HEAD
+[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.10.2...HEAD
+[0.10.2]: https://github.com/angelmsger/confluence-cli/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/angelmsger/confluence-cli/compare/v0.10.0...v0.10.1
 [0.5.1]: https://github.com/angelmsger/confluence-cli/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/angelmsger/confluence-cli/compare/v0.4.0...v0.5.0
