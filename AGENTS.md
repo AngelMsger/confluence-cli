@@ -13,7 +13,7 @@ repository. It is intentionally short — the real guidance lives elsewhere.
    [`docs/`](docs/):
 
    - [`docs/technical-design.md`](docs/technical-design.md) — architecture, the
-     `internal/` package layout, the API-client/flavor abstraction, the config
+     package layout, the API-client/flavor abstraction, the config
      and error models, and the rendering pipeline. Read before changing core
      behavior.
    - [`docs/installation.md`](docs/installation.md) — install methods, shell
@@ -113,13 +113,13 @@ Two orthogonal protections guard every operation that mutates remote state:
 
 When you add a new mutating method on `Client`:
 
-- Add the method override on `readOnlyClient` in `internal/apiclient/readonly.go`
+- Add the method override on `readOnlyClient` in `pkg/apiclient/readonly.go`
   so the wrapper actually blocks it.
 - Add a `DescribeWrite` case + a `--dry-run` branch on the calling command.
 - Add an e2e assertion for both the `--dry-run` happy path and the
   `READONLY_BLOCKED` rejection (see `scripts/e2e.sh`).
 - Add a row to the wrapper's table test in
-  `internal/apiclient/readonly_test.go`.
+  `pkg/apiclient/readonly_test.go`.
 
 `--dry-run` must *not* be blocked by read-only mode — `DescribeWrite` sends
 no HTTP and is the right tool to inspect what a write would look like under

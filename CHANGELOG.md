@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-06-25
+
+### Added
+
+- **The API client is now an importable Go library.** The HTTP client that
+  powers the CLI moved out of `internal/` into `pkg/` (`pkg/apiclient`, `pkg/transport` and `pkg/errors`), so external
+  Go projects — e.g. a GUI — can import and reuse it: the `Client` interface, the
+  `Build` factory, the normalized models and the structured `*errors.CLIError`
+  values. See the "Use as a Go library" section in the README. No CLI behavior
+  change — a package-path move plus documentation.
+
 ## [0.10.3] - 2026-06-25
 
 ### Fixed

@@ -71,7 +71,7 @@ detection result can be cached as `detected_flavor` in the config file.
 ## 3. Normalized data model
 
 Every API method returns flavor-agnostic models
-(`internal/apiclient/models.go`):
+(`pkg/apiclient/models.go`):
 
 ```
 ServerInfo { Flavor, BaseURL, Version, Reachable }
@@ -276,7 +276,7 @@ Result struct: `RenderedBody{Outline, Body, ScopeApplied, Truncated}`.
 ## 8. CQL construction
 
 When `search` has no positional argument the CQL is assembled from
-flags (`internal/apiclient/cql.go`):
+flags (`pkg/apiclient/cql.go`):
 
 | Flag | CQL fragment |
 |------|--------------|

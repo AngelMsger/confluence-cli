@@ -8,7 +8,7 @@ For deeper background see [`docs/`](docs/) — start with
 
 ## Project Structure & Module Organization
 
-This repository is a Go CLI for Confluence. The executable entrypoint is in `cmd/confluence-cli/`. Core implementation lives under `internal/`, grouped by responsibility: `app` for Cobra commands, `apiclient` for Confluence APIs, `auth` and `config` for setup, `render` and `output` for presentation, and `transport` for HTTP behavior. Public helper packages are in `pkg/`. Tests sit beside the code as `*_test.go`; the mock Confluence server is in `test/mockserver/`. Documentation is in `docs/`, companion agent skill files are in `skills/confluence/`, and npm wrapper/release assets are in `build/npm/`.
+This repository is a Go CLI for Confluence. The executable entrypoint is in `cmd/confluence-cli/`. Core implementation is split between `internal/` (CLI-only: `app` for Cobra commands, `auth` and `config` for setup, `render` and `output` for presentation) and `pkg/`, which holds the importable client library (`apiclient` for Confluence APIs, `transport` for HTTP behavior, `errors` for the structured error model) alongside other public helpers. Tests sit beside the code as `*_test.go`; the mock Confluence server is in `test/mockserver/`. Documentation is in `docs/`, companion agent skill files are in `skills/confluence/`, and npm wrapper/release assets are in `build/npm/`.
 
 ## Build, Test, and Development Commands
 
@@ -22,7 +22,7 @@ This repository is a Go CLI for Confluence. The executable entrypoint is in `cmd
 
 ## Coding Style & Naming Conventions
 
-Use standard Go formatting; CI requires `gofmt` cleanliness and `go vet ./...`. Keep package names short, lowercase, and aligned with their directory purpose. Prefer focused internal packages over broad shared utilities. Command behavior should stay in `internal/app`, API mapping in `internal/apiclient`, and user-facing constants in `pkg/constants`. Export identifiers only when they are consumed across package boundaries or by public `pkg` APIs.
+Use standard Go formatting; CI requires `gofmt` cleanliness and `go vet ./...`. Keep package names short, lowercase, and aligned with their directory purpose. Prefer focused internal packages over broad shared utilities. Command behavior should stay in `internal/app`, API mapping in `pkg/apiclient`, and user-facing constants in `pkg/constants`. Export identifiers only when they are consumed across package boundaries or by public `pkg` APIs.
 
 ## Testing Guidelines
 
