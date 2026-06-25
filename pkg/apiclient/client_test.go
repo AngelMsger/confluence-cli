@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
-	"github.com/angelmsger/confluence-cli/internal/transport"
+	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
+	"github.com/angelmsger/confluence-cli/pkg/transport"
 )
 
 // newTestClient builds a Data Center flavored client pointed at handler.

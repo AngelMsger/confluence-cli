@@ -5,9 +5,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/angelmsger/confluence-cli/internal/apiclient"
-	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
 	"github.com/angelmsger/confluence-cli/internal/render"
+	"github.com/angelmsger/confluence-cli/pkg/apiclient"
+	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 	"github.com/spf13/cobra"
 )
 

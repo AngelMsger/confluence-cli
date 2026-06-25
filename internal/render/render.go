@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"strings"
 
-	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
+	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 )
 
 // Scope values control how much of a page body is returned.

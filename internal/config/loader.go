@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
+	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 )
 
 // FlagValues carries the global CLI flags that override configuration. Empty

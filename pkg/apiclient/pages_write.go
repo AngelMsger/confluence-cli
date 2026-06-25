@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/url"
 
-	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
+	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 )
 
 // pages_write.go holds the page write operations: create, update, delete,

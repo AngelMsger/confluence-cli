@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strconv"
 
-	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
+	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 )
 
 // versions.go holds the page version-history operations: listing a page's

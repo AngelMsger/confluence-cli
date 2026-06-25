@@ -1,6 +1,13 @@
 // Package apiclient is a flavor-agnostic Confluence REST client. It supports
 // Confluence Cloud (REST v1 + v2) and Data Center / Server (REST v1) behind a
 // single Client interface returning normalized models.
+//
+// This package backs the confluence-cli command layer and is also importable as a
+// standalone client library (e.g. by a GUI); see the repository README. Its
+// exported surface — the Client interface, the normalized models, and the
+// read-only / dry-run semantics — is a contract the CLI and its companion
+// Skill depend on. Extend it additively and keep existing shapes and behavior
+// stable; do not reshape the public API to suit a single local call site.
 package apiclient
 
 // Flavor identifies the Confluence backend variant.

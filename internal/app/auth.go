@@ -8,7 +8,7 @@ import (
 
 	"github.com/angelmsger/confluence-cli/internal/auth"
 	"github.com/angelmsger/confluence-cli/internal/config"
-	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
+	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 	"github.com/spf13/cobra"
 )
 

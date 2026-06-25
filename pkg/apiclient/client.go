@@ -12,9 +12,9 @@ import (
 	"sort"
 	"strings"
 
-	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
-	"github.com/angelmsger/confluence-cli/internal/transport"
 	"github.com/angelmsger/confluence-cli/pkg/constants"
+	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
+	"github.com/angelmsger/confluence-cli/pkg/transport"
 )
 
 // Client is the flavor-agnostic Confluence API surface. All methods return

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
+	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 	"github.com/zalando/go-keyring"
 )
 

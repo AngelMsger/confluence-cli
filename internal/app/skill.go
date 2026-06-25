@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	confluencecli "github.com/angelmsger/confluence-cli"
-	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
 	"github.com/angelmsger/confluence-cli/pkg/constants"
+	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 	"github.com/spf13/cobra"
 )
 

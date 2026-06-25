@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
+	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 )
 
 func writeFile(t *testing.T, path, content string) {

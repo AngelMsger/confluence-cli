@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/url"
 
-	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
+	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 )
 
 // comments_write.go holds the comment write operations: editing and deleting a

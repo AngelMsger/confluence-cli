@@ -5,11 +5,11 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/angelmsger/confluence-cli/internal/apiclient"
 	"github.com/angelmsger/confluence-cli/internal/auth"
-	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
 	"github.com/angelmsger/confluence-cli/internal/update"
+	"github.com/angelmsger/confluence-cli/pkg/apiclient"
 	"github.com/angelmsger/confluence-cli/pkg/constants"
+	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 	"github.com/spf13/cobra"
 )
 

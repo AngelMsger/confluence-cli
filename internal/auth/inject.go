@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"net/http"
 
-	"github.com/angelmsger/confluence-cli/internal/transport"
+	"github.com/angelmsger/confluence-cli/pkg/transport"
 )
 
 // Header returns the Authorization header value for the credential.

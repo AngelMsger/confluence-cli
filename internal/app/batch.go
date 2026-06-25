@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
+	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 )
 
 // deletePrompt builds the confirmDelete prompt for a one-or-many delete: the

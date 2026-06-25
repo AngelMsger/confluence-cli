@@ -3,8 +3,8 @@ package app
 import (
 	"context"
 
-	"github.com/angelmsger/confluence-cli/internal/apiclient"
 	"github.com/angelmsger/confluence-cli/internal/config"
+	"github.com/angelmsger/confluence-cli/pkg/apiclient"
 	"github.com/spf13/cobra"
 )
 

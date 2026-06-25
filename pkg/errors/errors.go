@@ -4,6 +4,12 @@
 // a human message, an agent-facing hint and concrete next steps. The category
 // maps deterministically to a process exit code (see codes.go) and to recovery
 // guidance (see hints.go).
+//
+// This package is shared by the confluence-cli command layer and is also importable as a
+// library; see the repository README. The Category set, the stable Codes, and
+// their deterministic mapping to exit codes are an agent-facing contract relied
+// on by the CLI and its companion Skill. Add new codes rather than renaming or
+// repurposing existing ones, and keep the category -> exit-code mapping stable.
 package errors
 
 import (

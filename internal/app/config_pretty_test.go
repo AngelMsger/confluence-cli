@@ -7,8 +7,8 @@ import (
 
 	"github.com/angelmsger/confluence-cli/internal/auth"
 	"github.com/angelmsger/confluence-cli/internal/config"
-	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
 	"github.com/angelmsger/confluence-cli/pkg/constants"
+	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 )
 
 // TestRunWizardPrettyNoTTY verifies that --pretty refuses to start the huh

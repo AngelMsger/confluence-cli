@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/angelmsger/confluence-cli/internal/config"
-	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
+	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 )
 
 // Resolve produces a Credential from configuration. A secret supplied via

@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"net/url"
 
-	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
+	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 )
 
 // ListAttachments lists the attachments of a page.

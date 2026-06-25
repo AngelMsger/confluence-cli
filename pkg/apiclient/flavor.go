@@ -6,8 +6,8 @@ import (
 	"net/url"
 	"strings"
 
-	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
-	"github.com/angelmsger/confluence-cli/internal/transport"
+	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
+	"github.com/angelmsger/confluence-cli/pkg/transport"
 )
 
 // NormalizeBaseURL trims a trailing slash and a trailing "/wiki" segment so the

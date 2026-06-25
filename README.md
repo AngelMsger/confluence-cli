@@ -168,6 +168,54 @@ built for coding agents. Browse the full set at
 - **[openobserve-cli](https://github.com/AngelMsger/openobserve-cli)** — OpenObserve logs, metrics & traces
 - **[jenkins-cli](https://github.com/AngelMsger/jenkins-cli)** — inspect Jenkins jobs & builds
 
+## Use as a Go library
+
+The HTTP client that powers the CLI is published as a standalone Go package, so a
+GUI or other tool can drive Confluence directly — same normalized models, Cloud /
+Data Center flavor handling and structured errors, without shelling out to the
+binary.
+
+```go
+import (
+	"context"
+	"net/http"
+	"os"
+
+	api "github.com/angelmsger/confluence-cli/pkg/apiclient"
+	cerr "github.com/angelmsger/confluence-cli/pkg/errors"
+	"github.com/angelmsger/confluence-cli/pkg/transport"
+)
+
+// Authentication is a transport.Decorator you supply — it sets the
+// Authorization header on every request. PAT uses a Bearer token:
+func bearer(token string) transport.Decorator {
+	return func(r *http.Request) { r.Header.Set("Authorization", "Bearer "+token) }
+}
+
+ctx := context.Background()
+client, flavor, err := api.Build(ctx, api.BuildParams{
+	BaseURL:       "https://wiki.example.com",
+	Flavor:        "auto", // "cloud" | "datacenter" | "auto"
+	AuthDecorator: bearer(os.Getenv("CONFLUENCE_PERSONAL_ACCESS_TOKEN")),
+})
+if err != nil { /* see error handling below */ }
+
+page, err := client.GetPage(ctx, "123456", api.GetPageOpts{})
+```
+
+Errors are `*errors.CLIError` with a stable `Category` and `Code`, so callers branch
+on failure kinds instead of parsing strings:
+
+```go
+if ce := cerr.AsCLIError(err); ce != nil {
+    // ce.Category, ce.Code, ce.Hint, ce.NextSteps, ce.HTTPStatus, ce.Retryable
+}
+```
+
+> These `pkg/...` packages primarily back this CLI and its companion Skill; their
+> exported surface is treated as a stable contract. Read the package doc comment
+> (`go doc ./pkg/apiclient`) before changing it.
+
 ## Development
 
 ```bash

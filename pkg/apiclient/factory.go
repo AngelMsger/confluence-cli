@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
-	"github.com/angelmsger/confluence-cli/internal/transport"
+	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
+	"github.com/angelmsger/confluence-cli/pkg/transport"
 )
 
 // BuildParams configures Build.

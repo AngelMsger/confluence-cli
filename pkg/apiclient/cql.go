@@ -3,7 +3,7 @@ package apiclient
 import (
 	"strings"
 
-	cerrors "github.com/angelmsger/confluence-cli/internal/errors"
+	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 )
 
 // CQLParams describes a search expressed as discrete filters. BuildCQL turns it
