@@ -35,6 +35,10 @@ confluence-cli search 'space = "ENG" AND text ~ "oncall" AND type = page'
 Multiple flags are combined with `AND`. Dates accept `YYYY-MM-DD` or relative
 forms like `-1w` (CQL native).
 
+`--author` / `--contributor` take a Cloud `accountId` or a DC username. Resolve a
+display name to that identifier first with `confluence-cli user search --query
+"<name>"` (or `user get <selector>`).
+
 ## Results
 
 Each hit has `id`, `type`, `title`, `space_key`, `url`, `excerpt` and

@@ -78,10 +78,15 @@ confluence-cli attachment delete <id>     # delete an attachment (needs --yes)
 confluence-cli label list <id|url>        # labels on a page
 confluence-cli label add <id|url> <l>...  # add labels to a page
 confluence-cli label remove <id|url> <l>  # remove a label from a page
+confluence-cli user search                # find users (--query); resolves --author/--contributor IDs
+confluence-cli user get <selector>        # one user by accountId / username / key
+confluence-cli user me                    # the current user (alias: current; same as whoami)
 confluence-cli config init|show           # configuration
+confluence-cli config get-contexts|use-context|delete-context|path  # named contexts
 confluence-cli auth status                # credential check
 confluence-cli whoami                      # the user the credentials act as
 confluence-cli doctor                     # diagnose setup + connectivity
+confluence-cli skill install|status|path|show|uninstall  # manage the companion Skill
 ```
 
 ## Reading efficiently — do not slurp whole pages
@@ -104,11 +109,13 @@ carries only metadata (`id`, `title`, `output_path`, `bytes`).
 ## Large result sets
 
 `search`, `page children/descendants`, `page history`, `comment list`,
-`attachment list` and `label list` return a `{items, next, has_more}` envelope.
-By default they return one page; when `has_more` is true, pass `--cursor` with
-the `next` value to read the following page. Use `--all` to fetch every page in
-one call, or `--limit N` to size each request. For very large outputs use
-`--format ndjson` (one JSON object per line, items only).
+`attachment list`, `label list` and `user search` return a `{items, next,
+has_more}` envelope (Cloud `user search` paginates too — it is no longer capped
+at the first page). By default they return one page; when `has_more` is true,
+pass `--cursor` with the `next` value to read the following page. Use `--all` to
+fetch every page in one call (it resumes from `--cursor` when both are set), or
+`--limit N` to size each request. For very large outputs use `--format ndjson`
+(one JSON object per line, items only).
 
 ## Batch deletes
 

@@ -137,6 +137,16 @@ a read-only session. The wrapper intentionally does not override it.
   touches `docs/`. When commands, the feature
   list, or install instructions change, update `docs/index.html` to match — do
   not let the landing page drift from the README and the CLI.
+- **Keep the companion Skill in sync — it is the agent-facing source of truth.**
+  The embedded Skill under [`skills/confluence/`](skills/confluence/) (`SKILL.md`
+  + `references/`) is what coding agents read *instead of* `--help`, so a
+  capability the Skill omits effectively does not exist for them. Any new
+  command, subcommand, flag, or alias — and any change to flavor-specific
+  behavior (Cloud vs Data Center / Server) — must be reflected in the Skill's
+  `## Commands` list and the relevant `references/` file in the *same* commit. In
+  particular: a flag whose help text points at another command (e.g.
+  `--author` saying "find IDs with `user search`") must have that command listed
+  in the Skill; and never leave a Skill claim that contradicts the code.
 
 ## Changelog & versioning — required
 

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.3] - 2026-06-25
+
+### Fixed
+
+- **The companion Skill drifted out of sync with the CLI.** The agent-facing
+  Skill (`skills/confluence/`) — which coding agents read instead of `--help` —
+  omitted the `user` (search / get / me) and `skill` command trees and some
+  `config` context commands from its command list, even though the
+  `--author` / `--contributor` search flags point agents at `user search` to
+  resolve IDs; it also didn't note that Cloud `user search` now paginates. All
+  are now documented, and an AGENTS.md rule requires the Skill to be updated in
+  lockstep with the CLI. (Skill content only — no behavior change.)
+
 ## [0.10.2] - 2026-06-24
 
 ### Fixed
@@ -468,7 +481,8 @@ Initial release.
 - Distribution via npm (`@angelmsger/confluence-cli`), `go install`, prebuilt
   release binaries and `make install`.
 
-[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.10.2...HEAD
+[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.10.3...HEAD
+[0.10.3]: https://github.com/angelmsger/confluence-cli/compare/v0.10.2...v0.10.3
 [0.10.2]: https://github.com/angelmsger/confluence-cli/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/angelmsger/confluence-cli/compare/v0.10.0...v0.10.1
 [0.5.1]: https://github.com/angelmsger/confluence-cli/compare/v0.5.0...v0.5.1
