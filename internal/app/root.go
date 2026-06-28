@@ -4,6 +4,7 @@ package app
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/angelmsger/confluence-cli/internal/cliflags"
 	"github.com/angelmsger/confluence-cli/internal/output"
@@ -128,7 +129,49 @@ func newRootCmdWithState() (*cobra.Command, *appState) {
 		newSkillCmd(state),
 		newVersionCmd(),
 	)
+	enforceSubcommands(root)
 	return root, state
+}
+
+// enforceSubcommands makes every pure command group (one with subcommands but no
+// action of its own) reject an unknown subcommand. Cobra's default for such a
+// non-runnable parent is to print help and exit 0 — which reads as a successful
+// no-op to agents and scripts that typo a subcommand (e.g. `config use-contexts`
+// for `config use-context`). Cobra only flags unknown commands at the root (via
+// legacyArgs), so nested groups need this. The root itself is left alone — it is
+// already covered — and runnable leaves are untouched. Applied tree-wide so any
+// group at any depth is covered automatically.
+func enforceSubcommands(cmd *cobra.Command) {
+	for _, child := range cmd.Commands() {
+		enforceSubcommands(child)
+	}
+	if cmd.HasParent() && cmd.HasSubCommands() && !cmd.Runnable() {
+		requireSubcommand(cmd)
+	}
+}
+
+// requireSubcommand gives a group command a RunE so it survives cobra's
+// non-runnable help-and-exit-0 path: a bare invocation still prints help, but an
+// unknown subcommand becomes a structured usage error (exit 2), mirroring the
+// "unknown command ... Did you mean" UX cobra gives at the root.
+func requireSubcommand(cmd *cobra.Command) {
+	cmd.RunE = func(c *cobra.Command, args []string) error {
+		if len(args) == 0 {
+			return c.Help()
+		}
+		msg := fmt.Sprintf("unknown command %q for %q", args[0], c.CommandPath())
+		// SuggestionsFor honors SuggestionsMinimumDistance but, unlike cobra's
+		// root-level findSuggestions, does not default it — so set it here to get
+		// the same "Did you mean" behavior (e.g. use-contexts -> use-context).
+		if c.SuggestionsMinimumDistance <= 0 {
+			c.SuggestionsMinimumDistance = 2
+		}
+		if s := c.SuggestionsFor(args[0]); len(s) > 0 {
+			msg += "\n\nDid you mean this?\n\t" + strings.Join(s, "\n\t")
+		}
+		return cerrors.New(cerrors.CategoryUsage, "UNKNOWN_COMMAND", msg).
+			WithNextSteps(c.CommandPath() + " --help")
+	}
 }
 
 // versionString renders the version, commit and build time as one line.
