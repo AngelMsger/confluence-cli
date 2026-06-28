@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-06-28
+
 ### Fixed
 
 - **An unknown subcommand of a command group no longer looks like success.** A
@@ -503,7 +505,9 @@ Initial release.
 - Distribution via npm (`@angelmsger/confluence-cli`), `go install`, prebuilt
   release binaries and `make install`.
 
-[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.10.3...HEAD
+[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.11.1...HEAD
+[0.11.1]: https://github.com/angelmsger/confluence-cli/compare/v0.11.0...v0.11.1
+[0.11.0]: https://github.com/angelmsger/confluence-cli/compare/v0.10.3...v0.11.0
 [0.10.3]: https://github.com/angelmsger/confluence-cli/compare/v0.10.2...v0.10.3
 [0.10.2]: https://github.com/angelmsger/confluence-cli/compare/v0.10.1...v0.10.2
 [0.10.1]: https://github.com/angelmsger/confluence-cli/compare/v0.10.0...v0.10.1
