@@ -46,39 +46,40 @@ type namedLayer struct {
 	data map[string]string
 }
 
-// selectContext picks the active context name for f. Precedence: the flag, the
+// selectContext picks the active context name for f, plus the source that
+// decided it (one of the ContextSource* constants). Precedence: the flag, the
 // CONFLUENCE_CONTEXT env var, the file's current_context, the sole context,
-// then a context literally named "default". It returns "" (no error) when no
-// context can or need be selected — a missing file, or an ambiguous
-// multi-context file with no current_context; the missing-server error is then
-// raised later, at the point a server is actually needed. An override naming a
-// context that does not exist is an error.
-func selectContext(f File, flagCtx, envCtx string) (string, error) {
-	pick := func(name, src string) (string, error) {
+// then a context literally named "default". It returns "" (source
+// ContextSourceNone, no error) when no context can or need be selected — a
+// missing file, or an ambiguous multi-context file with no current_context;
+// the missing-server error is then raised later, at the point a server is
+// actually needed. An override naming a context that does not exist is an error.
+func selectContext(f File, flagCtx, envCtx string) (string, string, error) {
+	pick := func(name, src, source string) (string, string, error) {
 		if c, ok := f.Context(name); ok {
 			// Return the canonical (as-stored) name so downstream lookups,
 			// keychain account keys, and any user-facing labels all agree on
 			// one spelling regardless of how the user wrote the override.
-			return c.Name, nil
+			return c.Name, source, nil
 		}
-		return "", cerrors.Newf(cerrors.CategoryConfig, "UNKNOWN_CONTEXT",
+		return "", "", cerrors.Newf(cerrors.CategoryConfig, "UNKNOWN_CONTEXT",
 			"context %q (from %s) is not defined in the config file", name, src).
 			WithHint(unknownContextHint(name, f.ContextNames()))
 	}
 	switch {
 	case flagCtx != "":
-		return pick(flagCtx, "--use-context")
+		return pick(flagCtx, "--use-context", ContextSourceFlag)
 	case envCtx != "":
-		return pick(envCtx, "CONFLUENCE_CONTEXT")
+		return pick(envCtx, "CONFLUENCE_CONTEXT", ContextSourceEnv)
 	case f.CurrentContext != "":
-		return pick(f.CurrentContext, "current_context")
+		return pick(f.CurrentContext, "current_context", ContextSourceCurrent)
 	case len(f.Contexts) == 1:
-		return f.Contexts[0].Name, nil
+		return f.Contexts[0].Name, ContextSourceSingle, nil
 	default:
 		if _, ok := f.Context(DefaultContextName); ok {
-			return DefaultContextName, nil
+			return DefaultContextName, ContextSourceDefault, nil
 		}
-		return "", nil
+		return "", ContextSourceNone, nil
 	}
 }
 
@@ -152,7 +153,7 @@ func Load(opt LoadOptions) (*Resolved, error) {
 	if err != nil {
 		return nil, err
 	}
-	ctxName, err := selectContext(file, opt.Context, os.Getenv("CONFLUENCE_CONTEXT"))
+	ctxName, ctxSource, err := selectContext(file, opt.Context, os.Getenv("CONFLUENCE_CONTEXT"))
 	if err != nil {
 		return nil, err
 	}
@@ -194,6 +195,7 @@ func Load(opt LoadOptions) (*Resolved, error) {
 		},
 		Sources:       sources,
 		ActiveContext: ctxName,
+		ContextSource: ctxSource,
 		ContextNames:  file.ContextNames(),
 	}, nil
 }

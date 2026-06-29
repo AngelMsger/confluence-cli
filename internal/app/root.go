@@ -29,6 +29,18 @@ func newRootCmd() *cobra.Command {
 // Execute builds and runs the root command, returning a process exit code.
 func Execute() int {
 	root, state := newRootCmdWithState()
+	// Append a multi-context reminder to --help output. Attached here, not in
+	// newRootCmdWithState, so app.NewRootCmd (used by cmd/gen-docs) stays pure
+	// and this config-dependent block never leaks into generated reference docs.
+	// SetHelpFunc on the root propagates to every subcommand's --help; the
+	// captured default renders each command's own help from its template.
+	defaultHelp := root.HelpFunc()
+	root.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+		defaultHelp(cmd, args)
+		if block := contextReminderBlock(state); block != "" {
+			fmt.Fprint(cmd.OutOrStdout(), "\n"+block)
+		}
+	})
 	// Absorb common LLM argv slips (--userId -> --user-id, --limit100 ->
 	// --limit 100) before cobra parses, echoing each fix to stderr so the data
 	// on stdout is untouched and the agent learns the canonical form.
@@ -84,7 +96,13 @@ func newRootCmdWithState() (*cobra.Command, *appState) {
 			output.SetErrorPretty(state.gflags.pretty)
 			// Nudge agents that shell out without the companion Skill loaded.
 			maybeSkillHint(cmd)
-			return state.load()
+			if err := state.load(); err != nil {
+				return err
+			}
+			// Nudge when several contexts are configured but none was picked
+			// explicitly — the agent may be hitting the wrong instance.
+			maybeContextHint(cmd, state)
+			return nil
 		},
 		// The available-update notice is emitted from Execute (after ExecuteC),
 		// not a PersistentPostRunE: cobra skips the Post hooks when a command

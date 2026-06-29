@@ -302,17 +302,17 @@ func TestSelectContext(t *testing.T) {
 		Contexts:       []NamedContext{{Name: "alpha"}, {Name: "beta"}},
 	}
 	cases := []struct {
-		name, flag, env, want string
-		wantErr               bool
+		name, flag, env, want, wantSource string
+		wantErr                           bool
 	}{
-		{name: "flag wins", flag: "beta", want: "beta"},
-		{name: "env over current", env: "beta", want: "beta"},
-		{name: "current_context", want: "alpha"},
+		{name: "flag wins", flag: "beta", want: "beta", wantSource: ContextSourceFlag},
+		{name: "env over current", env: "beta", want: "beta", wantSource: ContextSourceEnv},
+		{name: "current_context", want: "alpha", wantSource: ContextSourceCurrent},
 		{name: "unknown flag errors", flag: "ghost", wantErr: true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := selectContext(f, tc.flag, tc.env)
+			got, source, err := selectContext(f, tc.flag, tc.env)
 			if tc.wantErr {
 				if err == nil {
 					t.Fatal("expected error")
@@ -325,25 +325,34 @@ func TestSelectContext(t *testing.T) {
 			if got != tc.want {
 				t.Errorf("got %q, want %q", got, tc.want)
 			}
+			if source != tc.wantSource {
+				t.Errorf("source = %q, want %q", source, tc.wantSource)
+			}
 		})
 	}
 
 	t.Run("sole context", func(t *testing.T) {
-		got, err := selectContext(File{Contexts: []NamedContext{{Name: "only"}}}, "", "")
-		if err != nil || got != "only" {
-			t.Errorf("got %q err %v", got, err)
+		got, source, err := selectContext(File{Contexts: []NamedContext{{Name: "only"}}}, "", "")
+		if err != nil || got != "only" || source != ContextSourceSingle {
+			t.Errorf("got %q source %q err %v", got, source, err)
+		}
+	})
+	t.Run("default-named context", func(t *testing.T) {
+		got, source, err := selectContext(File{Contexts: []NamedContext{{Name: "a"}, {Name: "default"}}}, "", "")
+		if err != nil || got != "default" || source != ContextSourceDefault {
+			t.Errorf("got %q source %q err %v", got, source, err)
 		}
 	})
 	t.Run("ambiguous yields empty no error", func(t *testing.T) {
-		got, err := selectContext(File{Contexts: []NamedContext{{Name: "a"}, {Name: "b"}}}, "", "")
-		if err != nil || got != "" {
-			t.Errorf("got %q err %v, want empty/no-error", got, err)
+		got, source, err := selectContext(File{Contexts: []NamedContext{{Name: "a"}, {Name: "b"}}}, "", "")
+		if err != nil || got != "" || source != ContextSourceNone {
+			t.Errorf("got %q source %q err %v, want empty/none/no-error", got, source, err)
 		}
 	})
 	t.Run("no file yields empty", func(t *testing.T) {
-		got, err := selectContext(File{}, "", "")
-		if err != nil || got != "" {
-			t.Errorf("got %q err %v", got, err)
+		got, source, err := selectContext(File{}, "", "")
+		if err != nil || got != "" || source != ContextSourceNone {
+			t.Errorf("got %q source %q err %v", got, source, err)
 		}
 	})
 
@@ -351,7 +360,7 @@ func TestSelectContext(t *testing.T) {
 	// failure) — the surrounding app layer is supposed to pass it through
 	// untouched so the caller sees the code/hint.
 	t.Run("unknown returns UNKNOWN_CONTEXT cli error", func(t *testing.T) {
-		_, err := selectContext(f, "ghost", "")
+		_, _, err := selectContext(f, "ghost", "")
 		ce, ok := err.(*cerrors.CLIError)
 		if !ok || ce.Code != "UNKNOWN_CONTEXT" {
 			t.Fatalf("got %T %v, want *CLIError UNKNOWN_CONTEXT", err, err)
@@ -367,7 +376,7 @@ func TestSelectContext(t *testing.T) {
 	// list, otherwise CI lookup against the rewritten file would orphan it.
 	t.Run("case-insensitive lookup returns canonical name", func(t *testing.T) {
 		ff := File{Contexts: []NamedContext{{Name: "Cloud"}, {Name: "default"}}}
-		got, err := selectContext(ff, "cloud", "")
+		got, _, err := selectContext(ff, "cloud", "")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -380,7 +389,7 @@ func TestSelectContext(t *testing.T) {
 	// does not have to run a second command to recover.
 	t.Run("hint lists available contexts", func(t *testing.T) {
 		ff := File{Contexts: []NamedContext{{Name: "alpha"}, {Name: "beta"}}}
-		_, err := selectContext(ff, "gamma", "")
+		_, _, err := selectContext(ff, "gamma", "")
 		ce := err.(*cerrors.CLIError)
 		if !strings.Contains(ce.Hint, "alpha") || !strings.Contains(ce.Hint, "beta") {
 			t.Errorf("hint = %q, want both context names listed", ce.Hint)
