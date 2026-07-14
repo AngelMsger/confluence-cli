@@ -72,7 +72,8 @@ configured it. **Reuse their existing config and credentials** from
 to create a fresh setup, and do not pass `--pretty`.
 
 When you run inside a **sandbox** that cannot read the user's home directory or
-keychain, `doctor` / `auth status` fail with a `config` (3) or `auth` (4) error.
+keychain, credential resolution returns `CREDENTIAL_STORE_INACCESSIBLE` or
+`CREDENTIAL_NOT_VISIBLE_OR_MISSING` with `recovery.scope=host`.
 Do **not** give up, and do **not** re-initialize config inside the sandbox. Instead:
 
 - **Request elevated permissions** (or otherwise re-run with access to the user's
@@ -83,6 +84,11 @@ Do **not** give up, and do **not** re-initialize config inside the sandbox. Inst
   the user to run `config init` in their own terminal, or to export `CONFLUENCE_*`
   env vars (`CONFLUENCE_SERVER` + `CONFLUENCE_PERSONAL_ACCESS_TOKEN`, or
   `CONFLUENCE_USERNAME` + `CONFLUENCE_API_TOKEN`) which you can then use directly.
+
+The `recovery` object is a machine-readable instruction to the Agent host, not a
+request for the CLI to escape its sandbox. Retry the same invocation in the host
+scope once; if that host retry also reports missing credentials, configuration is
+genuinely required.
 
 ## Multiple servers (contexts)
 

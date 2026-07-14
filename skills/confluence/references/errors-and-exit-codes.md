@@ -21,7 +21,8 @@ to parse errors.
 ```
 
 Always read `hint` and `next_steps` — they tell you how to recover. `retryable`
-indicates whether retrying the same command can succeed.
+indicates whether retrying in the same environment can succeed. Environment
+changes such as a host retry use the optional `recovery` object instead.
 
 ## Exit codes
 
@@ -30,7 +31,7 @@ indicates whether retrying the same command can succeed.
 | 0 | — | success |
 | 1 | internal | unexpected bug; re-run with `--verbose` |
 | 2 | usage | bad flags/arguments; check `--help` |
-| 3 | config | missing/invalid config; run `config init` (agents: reuse the user's config / request elevation — see getting-started.md) |
+| 3 | config | config/credential resolution failed; inspect `code` and `recovery` before reconfiguring |
 | 4 | auth | credentials rejected (401); run `auth status`, re-`config init` |
 | 5 | permission | valid login, no access (403); the account lacks page/space rights |
 | 6 | not_found | page/space/attachment does not exist (404); verify the ID, or `search` |
@@ -42,6 +43,10 @@ indicates whether retrying the same command can succeed.
 
 ## Recovery patterns
 
+- **`CREDENTIAL_STORE_INACCESSIBLE` / `CREDENTIAL_NOT_VISIBLE_OR_MISSING`** →
+  when `recovery.scope` is `host`, request host access and retry the same
+  invocation once. Repeating it in the same sandbox will not help. Only
+  configure credentials when the host retry also reports them missing.
 - **auth (4)** → `confluence-cli auth status`; if not configured, `config init`.
   Agents in a sandbox: the credential is usually the user's, just unreadable from
   the sandbox — request elevation and retry rather than re-initializing. See

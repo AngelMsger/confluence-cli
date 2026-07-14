@@ -44,7 +44,17 @@ type CLIError struct {
 	NextSteps  []string
 	Retryable  bool
 	HTTPStatus int
+	Recovery   *Recovery
 	cause      error
+}
+
+// Recovery describes an environment change a caller can make before retrying.
+// It is separate from Retryable: retrying in the same environment may still be
+// pointless when, for example, a sandbox cannot access the user's keychain.
+type Recovery struct {
+	Action   string   `json:"action"`
+	Scope    string   `json:"scope"`
+	Requires []string `json:"requires,omitempty"`
 }
 
 // Error implements the error interface.
@@ -88,6 +98,12 @@ func (e *CLIError) WithNextSteps(steps ...string) *CLIError { e.NextSteps = step
 // WithHTTPStatus records the originating HTTP status code.
 func (e *CLIError) WithHTTPStatus(status int) *CLIError { e.HTTPStatus = status; return e }
 
+// WithRecovery records a structured recovery action for agent hosts.
+func (e *CLIError) WithRecovery(recovery Recovery) *CLIError {
+	e.Recovery = &recovery
+	return e
+}
+
 // WithCause attaches an underlying cause.
 func (e *CLIError) WithCause(cause error) *CLIError { e.cause = cause; return e }
 
@@ -111,13 +127,14 @@ type Payload struct {
 
 // PayloadBody is the inner object of Payload.
 type PayloadBody struct {
-	Category   Category `json:"category"`
-	Code       string   `json:"code"`
-	Message    string   `json:"message"`
-	Hint       string   `json:"hint,omitempty"`
-	NextSteps  []string `json:"next_steps,omitempty"`
-	Retryable  bool     `json:"retryable"`
-	HTTPStatus int      `json:"http_status,omitempty"`
+	Category   Category  `json:"category"`
+	Code       string    `json:"code"`
+	Message    string    `json:"message"`
+	Hint       string    `json:"hint,omitempty"`
+	NextSteps  []string  `json:"next_steps,omitempty"`
+	Retryable  bool      `json:"retryable"`
+	HTTPStatus int       `json:"http_status,omitempty"`
+	Recovery   *Recovery `json:"recovery,omitempty"`
 }
 
 // Payload renders the error as its JSON-encodable form.
@@ -130,6 +147,7 @@ func (e *CLIError) Payload() Payload {
 		NextSteps:  e.NextSteps,
 		Retryable:  e.Retryable,
 		HTTPStatus: e.HTTPStatus,
+		Recovery:   e.Recovery,
 	}}
 }
 

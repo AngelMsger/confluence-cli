@@ -19,9 +19,11 @@ const updateCheckTimeout = 5 * time.Second
 
 // doctorCheck is a single diagnostic result.
 type doctorCheck struct {
-	Name   string `json:"name"`
-	OK     bool   `json:"ok"`
-	Detail string `json:"detail"`
+	Name          string `json:"name"`
+	OK            bool   `json:"ok"`
+	Status        string `json:"status"`
+	Detail        string `json:"detail"`
+	RecoveryScope string `json:"recovery_scope,omitempty"`
 }
 
 // doctorReport is the result shape for `doctor`.
@@ -44,10 +46,19 @@ func newDoctorCmd(s *appState) *cobra.Command {
 				return err
 			}
 			if !report.Healthy {
-				return cerrors.New(cerrors.CategoryConfig, "DOCTOR_UNHEALTHY",
+				err := cerrors.New(cerrors.CategoryConfig, "DOCTOR_UNHEALTHY",
 					"one or more diagnostic checks failed").
-					WithNextSteps("Review the failing checks above.",
-						"confluence-cli config init")
+					WithNextSteps(
+						"Review the failing checks and their status/recovery_scope fields above.",
+						"When recovery_scope is host, retry `confluence-cli doctor` with access to the host user environment.",
+						"Only configure credentials if the host retry also reports them missing.")
+				if reportNeedsHostRetry(report) {
+					err.WithRecovery(cerrors.Recovery{
+						Action: "retry_current_command", Scope: "host",
+						Requires: []string{"user_home", "os_keychain"},
+					})
+				}
+				return err
 			}
 			return nil
 		},
@@ -64,7 +75,7 @@ func runDoctor(s *appState, skipUpdate bool) doctorReport {
 	// 1. Configuration.
 	cfgOK := cfg.BaseURL != ""
 	checks = append(checks, doctorCheck{
-		Name: "configuration", OK: cfgOK,
+		Name: "configuration", OK: cfgOK, Status: pick(cfgOK, "ok", "missing"),
 		Detail: pick(cfgOK, "server URL = "+cfg.BaseURL, "no server URL configured"),
 	})
 
@@ -73,6 +84,7 @@ func runDoctor(s *appState, skipUpdate bool) doctorReport {
 	credOK := credErr == nil
 	checks = append(checks, doctorCheck{
 		Name: "credentials", OK: credOK,
+		Status: diagnosticStatus(credErr), RecoveryScope: diagnosticRecoveryScope(credErr),
 		Detail: pick(credOK, "scheme = "+cred.Scheme, detailOf(credErr)),
 	})
 
@@ -96,19 +108,19 @@ func runDoctor(s *appState, skipUpdate bool) doctorReport {
 		})
 		if err != nil {
 			client = nil
-			checks = append(checks, doctorCheck{Name: "connectivity", OK: false, Detail: detailOf(err)})
+			checks = append(checks, doctorCheck{Name: "connectivity", OK: false, Status: diagnosticStatus(err), Detail: detailOf(err)})
 		} else {
 			info, pingErr := client.Ping(ctx)
 			reachable = pingErr == nil
 			checks = append(checks, doctorCheck{
-				Name: "connectivity", OK: reachable,
+				Name: "connectivity", OK: reachable, Status: diagnosticStatus(pingErr),
 				Detail: pick(reachable,
 					"reachable, flavor = "+string(info.Flavor), detailOf(pingErr)),
 			})
 		}
 	} else {
 		checks = append(checks, doctorCheck{
-			Name: "connectivity", OK: false,
+			Name: "connectivity", OK: false, Status: "skipped",
 			Detail: "skipped: fix configuration and credentials first",
 		})
 	}
@@ -127,7 +139,7 @@ func runDoctor(s *appState, skipUpdate bool) doctorReport {
 	if client != nil && reachable {
 		user, userErr := client.CurrentUser(doctorCtx)
 		checks = append(checks, doctorCheck{
-			Name: "current-user", OK: userErr == nil,
+			Name: "current-user", OK: userErr == nil, Status: diagnosticStatus(userErr),
 			Detail: pick(userErr == nil,
 				"authenticated as "+userDisplay(user), detailOf(userErr)),
 		})
@@ -144,6 +156,46 @@ func runDoctor(s *appState, skipUpdate bool) doctorReport {
 		report.Update = &st
 	}
 	return report
+}
+
+func diagnosticStatus(err error) string {
+	if err == nil {
+		return "ok"
+	}
+	ce := cerrors.AsCLIError(err)
+	switch ce.Code {
+	case "CREDENTIAL_STORE_INACCESSIBLE":
+		return "inaccessible"
+	case "CREDENTIAL_NOT_VISIBLE_OR_MISSING":
+		return "missing_or_inaccessible"
+	}
+	switch ce.Category {
+	case cerrors.CategoryAuth, cerrors.CategoryPermission:
+		return "rejected_by_server"
+	case cerrors.CategoryNetwork, cerrors.CategoryServer:
+		return "unreachable"
+	default:
+		return "invalid"
+	}
+}
+
+func diagnosticRecoveryScope(err error) string {
+	if err == nil {
+		return ""
+	}
+	if recovery := cerrors.AsCLIError(err).Recovery; recovery != nil {
+		return recovery.Scope
+	}
+	return ""
+}
+
+func reportNeedsHostRetry(report doctorReport) bool {
+	for _, check := range report.Checks {
+		if check.RecoveryScope == "host" {
+			return true
+		}
+	}
+	return false
 }
 
 // updateContext bounds the release-update lookup by updateCheckTimeout, or the

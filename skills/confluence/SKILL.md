@@ -1,6 +1,6 @@
 ---
 name: confluence
-version: 1.8.0
+version: 1.8.1
 description: "Use a Confluence wiki as an external knowledge base. Search, read and summarise pages, browse spaces and page trees, create/update/delete/move/copy pages, view history and restore versions, read and post/edit/delete comments, manage attachments and page labels, and watch pages. Every mutating command accepts --dry-run, and a session read-only posture (defaults.read_only / CONFLUENCE_CLI_READ_ONLY=1, overridable via --allow-writes) blocks writes before they leave the CLI. Use this skill when the user gives a Confluence page URL or ID or mentions a Confluence/wiki page; asks to find, read, summarise or extract a page; browse a space or list child pages; create/update/delete/move/copy a page; view history or restore a version; read or post/edit/delete a comment; upload/replace/delete an attachment; add/remove labels; watch/unwatch a page; check which Confluence user they are; or wants a dry-run / read-only / safe-mode session. Works with both Confluence Cloud and Data Center / Server."
 metadata:
   requires:
@@ -178,10 +178,10 @@ config and credentials** from `~/.angelmsger/confluence/config.yaml` + the OS ke
 human-only flag for the interactive TUI / colorized JSON; it errors without a TTY and
 agents never need it).
 
-If you run inside a **sandbox** that cannot read the user's home or keychain you'll
-see a `config` (3) or `auth` (4) error from `doctor` / `auth status`. **Request
-elevated permissions / re-run with access to the user's real environment, then retry
-— do not give up, and do not re-initialize config inside the sandbox.** Never launch
+If a failure has code `CREDENTIAL_STORE_INACCESSIBLE` or
+`CREDENTIAL_NOT_VISIBLE_OR_MISSING`, or its `recovery.scope` is `host`, **request
+elevated permissions / re-run the same command with access to the user's real
+environment, then retry once — do not re-initialize config inside the sandbox.** Never launch
 interactive `config init` / `auth login` yourself (no TTY → they fail fast, and
 historically could hang); if credentials are truly missing, ask the user to run
 `config init` in their own terminal or to export `CONFLUENCE_*` env vars. See

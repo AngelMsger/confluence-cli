@@ -152,6 +152,13 @@ inside the resolved config directory (file 0600, dir 0700) —
 location. Runtime secrets supplied via env / `.env` / flag are used
 transiently and not persisted.
 
+Credential reads distinguish "not found" from "store inaccessible". When a
+sandbox cannot inspect the host keychain/file, resolution returns
+`CREDENTIAL_STORE_INACCESSIBLE`; an ambiguous absence returns
+`CREDENTIAL_NOT_VISIBLE_OR_MISSING`. Both carry an optional structured
+`recovery` action requesting one retry in host scope, without marking the error
+normally retryable or allowing the CLI to elevate itself.
+
 ### 4.4 The `init` wizard
 
 Enter base URL → detect and confirm the flavor → pick auth scheme and
@@ -228,10 +235,19 @@ body source (storage XHTML or view HTML) as a lossless escape.
 Errors are JSON on **stderr**:
 
 ```json
-{"error":{"category":"auth","code":"AUTH_INVALID_CREDENTIALS",
-  "message":"...","hint":"...","next_steps":["..."],
-  "retryable":false,"http_status":401}}
+{"error":{"category":"config","code":"CREDENTIAL_STORE_INACCESSIBLE",
+  "message":"stored Confluence credentials cannot be read in this execution environment",
+  "hint":"The configured credential store is inaccessible from the current process.",
+  "next_steps":["Retry the same command with access to the host user environment."],
+  "retryable":false,
+  "recovery":{"action":"retry_current_command","scope":"host",
+    "requires":["user_home","os_keychain"]}}}
 ```
+
+`recovery` is optional and describes an environment change; `retryable` still
+means the same invocation may succeed in the current environment. `doctor`
+mirrors this distinction with per-check `status` and optional
+`recovery_scope` fields.
 
 Categories: `usage config auth not_found permission conflict rate_limit
 network server parse internal`.

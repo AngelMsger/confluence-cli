@@ -104,8 +104,14 @@ func TestRetryableFlag(t *testing.T) {
 
 func TestPayloadShape(t *testing.T) {
 	t.Parallel()
-	p := New(CategoryNotFound, "NF", "missing").WithHTTPStatus(404).Payload()
+	p := New(CategoryNotFound, "NF", "missing").
+		WithHTTPStatus(404).
+		WithRecovery(Recovery{Action: "retry_current_command", Scope: "host", Requires: []string{"os_keychain"}}).
+		Payload()
 	if p.Error.Category != CategoryNotFound || p.Error.HTTPStatus != 404 {
 		t.Errorf("unexpected payload: %+v", p)
+	}
+	if p.Error.Recovery == nil || p.Error.Recovery.Scope != "host" {
+		t.Errorf("payload missing recovery: %+v", p)
 	}
 }

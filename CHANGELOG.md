@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Credential-resolution failures now include an optional machine-readable
+  `recovery` action for Agent hosts. When the user's home or OS keychain is not
+  visible, the CLI requests one retry in host scope; `doctor` also reports a
+  per-check `status` and `recovery_scope`.
+
+### Fixed
+
+- Keychain access failures are no longer collapsed into `AUTH_NO_TOKEN` and no
+  longer steer sandboxed agents toward re-running `config init`. The CLI now
+  distinguishes an inaccessible store from a credential that is missing or not
+  visible in the current environment.
+
 ## [0.12.0] - 2026-06-29
 
 ### Added
