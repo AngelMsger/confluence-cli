@@ -222,6 +222,7 @@ const htmlTemplate = `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>confluence-cli — CLI reference</title>
+<link rel="icon" type="image/png" href="../favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -285,6 +286,7 @@ const htmlTemplate = `<!doctype html>
 <footer class="footer">
   <div class="wrap">
     <span class="brand-foot">confluence-cli — MIT License</span>
+    <span>Developer: <a href="https://angelmsger.github.io/">AngelMsger</a></span>
     <span><a href="https://github.com/angelmsger/confluence-cli">github.com/angelmsger/confluence-cli</a></span>
   </div>
 </footer>
