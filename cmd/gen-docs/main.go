@@ -286,8 +286,7 @@ const htmlTemplate = `<!doctype html>
 <footer class="footer">
   <div class="wrap">
     <span class="brand-foot">confluence-cli — MIT License</span>
-    <span>Developer: <a href="https://angelmsger.github.io/">AngelMsger</a></span>
-    <span><a href="https://github.com/angelmsger/confluence-cli">github.com/angelmsger/confluence-cli</a></span>
+    <span>Developer: <a href="https://angelmsger.github.io/">AngelMsger</a> · <a href="https://github.com/angelmsger/confluence-cli">GitHub</a></span>
   </div>
 </footer>
 </body>
