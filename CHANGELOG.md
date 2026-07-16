@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Installation documentation now includes native PowerShell setup, checksum,
   `PATH`, environment-variable and persistent completion examples.
+- README and the docs-site footer now list all five sibling CLIs, including
+  the new [jira-cli](https://github.com/AngelMsger/jira-cli).
+- README now follows the family-canonical section order and gained an
+  "Errors and exit codes" section; the npm package README follows the
+  family-canonical rich form.
 
 ## [0.13.0] - 2026-07-14
 
