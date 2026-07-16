@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-07-16
+
 ### Added
 
 - Windows is now exercised on a native CI runner, including the Go test suite,
@@ -554,7 +556,8 @@ Initial release.
 - Distribution via npm (`@angelmsger/confluence-cli`), `go install`, prebuilt
   release binaries and `make install`.
 
-[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/angelmsger/confluence-cli/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/angelmsger/confluence-cli/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/angelmsger/confluence-cli/compare/v0.11.1...v0.12.0
 [0.11.1]: https://github.com/angelmsger/confluence-cli/compare/v0.11.0...v0.11.1
