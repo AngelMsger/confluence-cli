@@ -42,3 +42,44 @@ jobs:
 
       - name: end-to-end tests (mock server)
         run: ./scripts/e2e.sh
+
+  windows:
+    name: Windows runtime and npm launcher
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: unit tests on Windows
+        run: go test ./...
+
+      - name: npm installer mapping tests
+        working-directory: build/npm
+        run: npm test
+
+      - name: PowerShell and npm launcher smoke
+        shell: pwsh
+        run: |
+          $binary = Join-Path $env:RUNNER_TEMP 'confluence-cli.exe'
+          go build -o $binary ./cmd/confluence-cli
+          & $binary version
+          if ($LASTEXITCODE -ne 0) { throw 'native Windows binary failed' }
+
+          $completion = & $binary completion powershell | Out-String
+          if ($LASTEXITCODE -ne 0 -or $completion -notmatch 'confluence-cli') {
+            throw 'PowerShell completion generation failed'
+          }
+
+          $npmBinaryDir = Join-Path $PWD 'build/npm/binary'
+          New-Item -ItemType Directory -Force $npmBinaryDir | Out-Null
+          Copy-Item $binary (Join-Path $npmBinaryDir 'confluence-cli.exe') -Force
+          node build/npm/bin/confluence-cli.js version
+          if ($LASTEXITCODE -ne 0) { throw 'npm launcher failed' }

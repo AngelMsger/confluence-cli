@@ -89,7 +89,7 @@
       <div class="card feat">
         <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div>
         <h3>Secure credentials</h3>
-        <p>Tokens live in the OS keychain, with a <code>0600</code> file fallback — never in the config file.</p>
+        <p>Tokens live in the OS keychain, with a per-user DPAPI fallback on Windows and a <code>0600</code> fallback on macOS/Linux — never in the config file.</p>
       </div>
       <div class="card feat">
         <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a4 4 0 0 1 0-8 6 6 0 0 1 11.5-1.5A3.5 3.5 0 0 1 18 18z"/></svg></div>

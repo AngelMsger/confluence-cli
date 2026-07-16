@@ -54,7 +54,8 @@ scripts, dotfiles bootstrap, and non-TTY environments where the TUI
 cannot render. `--pretty` is **human-only** (interactive TUI + colorized JSON) and
 errors without a TTY — agents should never pass it. Both forms ask for the server URL, detect the flavor,
 collect a credential, validate it live, and store the secret in the OS
-keychain (falling back to a `0600` file). Non-secret settings go to
+keychain (falling back to per-user DPAPI on Windows or a `0600` file on
+macOS/Linux). Non-secret settings go to
 `~/.angelmsger/confluence/config.yaml` (the legacy `~/.confluence/config.yaml`
 is still read when only that exists); secrets are never written there.
 

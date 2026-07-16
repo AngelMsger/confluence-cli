@@ -454,6 +454,7 @@ func TestCmdSkillInstallAgent(t *testing.T) {
 	srv := mockConfluence(t)
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	out, err := runCLI(t, srv, "skill", "install", "--agent", "codex")
 	if err != nil {
 		t.Fatal(err)
@@ -471,6 +472,7 @@ func TestCmdSkillInstallDetect(t *testing.T) {
 	srv := mockConfluence(t)
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	for _, m := range []string{".claude", ".codex"} {
 		if err := os.Mkdir(filepath.Join(home, m), 0o755); err != nil {
 			t.Fatal(err)
@@ -497,7 +499,9 @@ func TestCmdSkillInstallDetect(t *testing.T) {
 
 func TestCmdSkillInstallNoAgent(t *testing.T) {
 	srv := mockConfluence(t)
-	t.Setenv("HOME", t.TempDir())
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	_, err := runCLI(t, srv, "skill", "install")
 	if err == nil {
 		t.Fatal("expected an error when no agent is detected")

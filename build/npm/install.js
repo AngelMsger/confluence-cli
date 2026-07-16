@@ -17,12 +17,12 @@ const goosByPlatform = { darwin: 'darwin', linux: 'linux', win32: 'windows' };
 const goarchByArch = { x64: 'amd64', arm64: 'arm64' };
 
 // assetName returns the release asset file name for the current platform.
-function assetName() {
-  const goos = goosByPlatform[process.platform];
-  const goarch = goarchByArch[process.arch];
+function assetName(platform = process.platform, arch = process.arch) {
+  const goos = goosByPlatform[platform];
+  const goarch = goarchByArch[arch];
   if (!goos || !goarch) {
     throw new Error(
-      `unsupported platform ${process.platform}/${process.arch}; ` +
+      `unsupported platform ${platform}/${arch}; ` +
         `build from source instead (see https://github.com/${REPO})`
     );
   }
@@ -30,9 +30,9 @@ function assetName() {
 }
 
 // binPath returns the directory and file path for the installed binary.
-function binPath() {
+function binPath(platform = process.platform) {
   const dir = path.join(__dirname, 'binary');
-  const exe = process.platform === 'win32' ? 'confluence-cli.exe' : 'confluence-cli';
+  const exe = platform === 'win32' ? 'confluence-cli.exe' : 'confluence-cli';
   return { dir, file: path.join(dir, exe) };
 }
 
@@ -127,7 +127,7 @@ function welcomeText() {
   ].join('\n');
 }
 
-module.exports = { install, binPath, assetName, REPO };
+module.exports = { install, binPath, assetName, welcomeText, REPO };
 
 // When run directly as the npm postinstall script, download best-effort: a
 // failure here is not fatal because the bin shim retries lazily on first run.

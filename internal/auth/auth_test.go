@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"os"
+	"runtime"
 	"testing"
 
 	"github.com/angelmsger/confluence-cli/internal/config"
@@ -118,7 +119,7 @@ func TestStoreFileFallback(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if perm := info.Mode().Perm(); perm != 0o600 {
+	if perm := info.Mode().Perm(); runtime.GOOS != "windows" && perm != 0o600 {
 		t.Errorf("credentials file perm = %o, want 600", perm)
 	}
 	got, err := s.fileLoad("acct")

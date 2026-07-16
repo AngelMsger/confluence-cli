@@ -41,11 +41,31 @@ Installs into `go env GOBIN` (or `$GOPATH/bin`). Requires Go 1.24+.
 
 Download the binary for your platform from the
 [Releases page](https://github.com/angelmsger/confluence-cli/releases), verify
-it against `checksums.txt`, then put it on your `PATH`:
+it against `checksums.txt`, then put it on your `PATH`.
+
+On macOS/Linux:
 
 ```bash
 chmod +x confluence-cli-* && mv confluence-cli-* /usr/local/bin/confluence-cli
 ```
+
+On Windows PowerShell, download `confluence-cli-windows-amd64.exe` (or
+`windows-arm64.exe`) together with `checksums.txt`, then:
+
+```powershell
+$asset = "confluence-cli-windows-amd64.exe"
+$checksumLine = Get-Content .\checksums.txt | Where-Object { $_ -match "\s+$([regex]::Escape($asset))$" } | Select-Object -First 1
+if (-not $checksumLine) { throw "No checksum found for $asset" }
+$expected = ($checksumLine -split '\s+')[0].ToLowerInvariant()
+$actual = (Get-FileHash ".\$asset" -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($actual -ne $expected) { throw "SHA-256 mismatch for $asset" }
+$binDir = Join-Path $HOME "bin"
+New-Item -ItemType Directory -Force $binDir | Out-Null
+Move-Item ".\$asset" (Join-Path $binDir "confluence-cli.exe")
+[Environment]::SetEnvironmentVariable("Path", ([Environment]::GetEnvironmentVariable("Path", "User") + ";$binDir"), "User")
+```
+
+Open a new PowerShell window after changing `PATH`.
 
 #### From source
 
@@ -69,6 +89,15 @@ into `./dist/`).
 ```bash
 confluence-cli config init --pretty   # interactive TUI: server URL, flavor, credentials
 confluence-cli doctor                 # verify configuration and connectivity
+```
+
+For headless setup in PowerShell, environment variables use `$env:` syntax:
+
+```powershell
+$env:CONFLUENCE_SERVER = "https://example.atlassian.net"
+$env:CONFLUENCE_USERNAME = "alice@example.com"
+$env:CONFLUENCE_API_TOKEN = "<api-token>"
+confluence-cli doctor
 ```
 
 The `--pretty` flag opts into a `huh`-based TUI with arrow-key selection,

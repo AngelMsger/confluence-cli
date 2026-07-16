@@ -113,7 +113,9 @@ variables (`CONFLUENCE_*`) → `.env` → `~/.angelmsger/confluence/config.yaml`
 (legacy fallback `~/.confluence/config.yaml`) → defaults.
 See `.env.example` and
 [docs/installation.md](docs/installation.md). Secrets are stored in the OS
-keychain (with a `0600` file fallback) and never written to the config file.
+keychain. If Windows Credential Manager is unavailable, the fallback is
+encrypted with per-user DPAPI; macOS/Linux retain the `0600` fallback. Secrets
+are never written to the config file.
 
 ## Commands
 

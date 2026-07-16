@@ -47,8 +47,9 @@ func (systemKeyring) Delete(service, account string) error {
 }
 
 // Store persists secrets. It prefers the OS keychain and transparently falls
-// back to a 0600 file under the config directory when the keychain is
-// unavailable (headless Linux, CI, locked keychain).
+// back to a protected file under the config directory when the keychain is
+// unavailable. Windows encrypts the fallback with per-user DPAPI; other
+// platforms retain the existing 0600 file behavior.
 type Store struct {
 	dir     string // config directory for the file fallback
 	keyring keyringBackend
@@ -128,7 +129,11 @@ func (s *Store) fileReadAll() (map[string]string, error) {
 	}
 	m := map[string]string{}
 	if len(raw) > 0 {
-		if err := json.Unmarshal(raw, &m); err != nil {
+		decoded, err := decodeCredentialFile(raw)
+		if err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(decoded, &m); err != nil {
 			return nil, err
 		}
 	}
@@ -143,7 +148,11 @@ func (s *Store) fileWriteAll(m map[string]string) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(s.credentialsPath(), out, 0o600)
+	encoded, err := encodeCredentialFile(out)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(s.credentialsPath(), encoded, 0o600)
 }
 
 func (s *Store) fileSave(account, secret string) error {

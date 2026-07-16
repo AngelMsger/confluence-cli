@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Windows is now exercised on a native CI runner, including the Go test suite,
+  PowerShell completion generation, npm platform mapping and the npm launcher.
+- Windows credential-file fallback is encrypted with per-user DPAPI. Existing
+  plaintext fallback files remain readable and migrate on the next write.
+
+### Changed
+
+- Installation documentation now includes native PowerShell setup, checksum,
+  `PATH`, environment-variable and persistent completion examples.
+
 ## [0.13.0] - 2026-07-14
 
 ### Added
