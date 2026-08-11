@@ -850,7 +850,7 @@ or build one from filter flags (--text, --author, --space, ...).</p>
     
     <section class="cmd" id="confluence-cli-skill">
       <h2>confluence-cli skill</h2>
-      <p class="short">Install the companion Skill for coding agents (Claude Code, Codex, Grok Build)</p>
+      <p class="short">Install the companion Skill for coding agents (Claude Code, Codex, Grok Build, Pi)</p>
       <pre>confluence-cli skill</pre>
       
       
@@ -863,16 +863,16 @@ or build one from filter flags (--text, --author, --space, ...).</p>
       <pre>confluence-cli skill install [flags]</pre>
       <p class="long">Write the companion `confluence` Skill — bundled inside this binary —
 into a coding agent&#39;s skills directory. With no flags it probes for
-installed agents (Claude Code, Codex, Grok Build) and installs into each one found.
+installed agents (Claude Code, Codex, Grok Build, Pi) and installs into each one found.
 Re-run it after upgrading the CLI to refresh the Skill to the matching
 version.</p>
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
-        <tr><td><code>--agent</code></td><td><code>[]</code></td><td>target agents instead of auto-detecting (claude-code, codex, grok)</td></tr>
+        <tr><td><code>--agent</code></td><td><code>[]</code></td><td>target agents instead of auto-detecting (claude-code, codex, grok, pi)</td></tr>
         <tr><td><code>--dir</code></td><td></td><td>explicit skills base directory; installs into &lt;dir&gt;/confluence</td></tr>
-        <tr><td><code>--project</code></td><td><code>false</code></td><td>install into the project (./.claude/skills, ./.agents/skills, ./.grok/skills) instead of $HOME</td></tr>
+        <tr><td><code>--project</code></td><td><code>false</code></td><td>install into the project (./.claude/skills, ./.agents/skills, ./.grok/skills, ./.pi/skills) instead of $HOME</td></tr>
         </tbody>
       </table>
       
@@ -887,7 +887,7 @@ version.</p>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
-        <tr><td><code>--agent</code></td><td><code>[]</code></td><td>limit to specific agents (claude-code, codex, grok)</td></tr>
+        <tr><td><code>--agent</code></td><td><code>[]</code></td><td>limit to specific agents (claude-code, codex, grok, pi)</td></tr>
         <tr><td><code>--dir</code></td><td></td><td>explicit skills base directory</td></tr>
         <tr><td><code>--project</code></td><td><code>false</code></td><td>use the project skills directories instead of $HOME</td></tr>
         </tbody>
@@ -913,7 +913,7 @@ version.</p>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
-        <tr><td><code>--project</code></td><td><code>false</code></td><td>check the project skills dirs (./.claude/skills, ./.agents/skills, ./.grok/skills) instead of $HOME</td></tr>
+        <tr><td><code>--project</code></td><td><code>false</code></td><td>check the project skills dirs (./.claude/skills, ./.agents/skills, ./.grok/skills, ./.pi/skills) instead of $HOME</td></tr>
         </tbody>
       </table>
       
@@ -924,15 +924,15 @@ version.</p>
       <p class="short">Remove the companion Skill from a coding agent&#39;s skills directory</p>
       <pre>confluence-cli skill uninstall [flags]</pre>
       <p class="long">Delete a previously installed `confluence` Skill. With no flags it
-probes for installed agents (Claude Code, Codex, Grok Build) and removes the Skill
+probes for installed agents (Claude Code, Codex, Grok Build, Pi) and removes the Skill
 from each one found.</p>
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
-        <tr><td><code>--agent</code></td><td><code>[]</code></td><td>target agents instead of auto-detecting (claude-code, codex, grok)</td></tr>
+        <tr><td><code>--agent</code></td><td><code>[]</code></td><td>target agents instead of auto-detecting (claude-code, codex, grok, pi)</td></tr>
         <tr><td><code>--dir</code></td><td></td><td>explicit skills base directory; removes &lt;dir&gt;/confluence</td></tr>
-        <tr><td><code>--project</code></td><td><code>false</code></td><td>remove from the project (./.claude/skills, ./.agents/skills, ./.grok/skills) instead of $HOME</td></tr>
+        <tr><td><code>--project</code></td><td><code>false</code></td><td>remove from the project (./.claude/skills, ./.agents/skills, ./.grok/skills, ./.pi/skills) instead of $HOME</td></tr>
         </tbody>
       </table>
       

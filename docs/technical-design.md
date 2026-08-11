@@ -355,13 +355,13 @@ trigger-word description, `metadata.requires.bins`,
 
 Core golden rule: resolve URLs / names into IDs before acting.
 
-The same `SKILL.md` ships to **Claude Code**, **Codex**, and **Grok Build**
+The same `SKILL.md` ships to **Claude Code**, **Codex**, **Grok Build**, and **Pi**
 (all three only require frontmatter `name` + `description`). `skill install`
 uses an agent path table (`agentSpecs` in `internal/app/skill.go`)
 mapping each agent to its global / project skills directory and probe
 markers: Claude Code uses `~/.claude/skills` and `./.claude/skills`; Codex uses
-`~/.codex/skills` and `./.agents/skills`; Grok Build uses `~/.grok/skills` and
-`./.grok/skills`. With no flag it
+`~/.codex/skills` and `./.agents/skills`; Grok Build uses `~/.grok/skills` and `./.grok/skills`; Pi uses
+`~/.pi/agent/skills` and `./.pi/skills`. With no flag it
 probes which directories exist and installs / removes for each hit;
 `--agent` selects explicitly; `--dir` is the agent-agnostic explicit
 path.

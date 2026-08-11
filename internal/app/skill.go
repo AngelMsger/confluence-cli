@@ -27,7 +27,7 @@ type skillResult struct {
 func newSkillCmd(s *appState) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "skill",
-		Short: "Install the companion Skill for coding agents (Claude Code, Codex, Grok Build)",
+		Short: "Install the companion Skill for coding agents (Claude Code, Codex, Grok Build, Pi)",
 	}
 	cmd.AddCommand(
 		newSkillInstallCmd(s),
@@ -87,14 +87,14 @@ func newSkillStatusCmd(s *appState) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&project, "project", false,
-		"check the project skills dirs (./.claude/skills, ./.agents/skills, ./.grok/skills) instead of $HOME")
+		"check the project skills dirs (./.claude/skills, ./.agents/skills, ./.grok/skills, ./.pi/skills) instead of $HOME")
 	return cmd
 }
 
 // agentSpec describes where a coding agent loads Skills from, and how to tell
 // that the agent is in use on this machine / in this project.
 type agentSpec struct {
-	id            string   // "claude-code" / "codex" / "grok"
+	id            string   // "claude-code" / "codex" / "grok" / "pi"
 	homeSub       string   // dir under $HOME holding the global skills dir
 	homeMarkers   []string // paths under $HOME proving the agent is installed
 	projectSkills string   // skills dir relative to the project root
@@ -123,6 +123,13 @@ var agentSpecs = []agentSpec{
 		homeMarkers:   []string{".grok"},
 		projectSkills: ".grok/skills",
 		projectMarks:  []string{".grok"},
+	},
+	{
+		id:            "pi",
+		homeSub:       ".pi/agent",
+		homeMarkers:   []string{".pi"},
+		projectSkills: ".pi/skills",
+		projectMarks:  []string{".pi"},
 	},
 }
 
@@ -243,7 +250,7 @@ func newSkillInstallCmd(s *appState) *cobra.Command {
 		Short: "Deploy the embedded Skill into a coding agent's skills directory",
 		Long: "Write the companion `confluence` Skill — bundled inside this binary —\n" +
 			"into a coding agent's skills directory. With no flags it probes for\n" +
-			"installed agents (Claude Code, Codex, Grok Build) and installs into each one found.\n" +
+			"installed agents (Claude Code, Codex, Grok Build, Pi) and installs into each one found.\n" +
 			"Re-run it after upgrading the CLI to refresh the Skill to the matching\n" +
 			"version.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
@@ -266,7 +273,7 @@ func newSkillInstallCmd(s *appState) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&project, "project", false,
-		"install into the project (./.claude/skills, ./.agents/skills, ./.grok/skills) instead of $HOME")
+		"install into the project (./.claude/skills, ./.agents/skills, ./.grok/skills, ./.pi/skills) instead of $HOME")
 	cmd.Flags().StringVar(&dir, "dir", "",
 		"explicit skills base directory; installs into <dir>/confluence")
 	cmd.Flags().StringSliceVar(&agents, "agent", nil,
@@ -284,7 +291,7 @@ func newSkillUninstallCmd(s *appState) *cobra.Command {
 		Use:   "uninstall",
 		Short: "Remove the companion Skill from a coding agent's skills directory",
 		Long: "Delete a previously installed `confluence` Skill. With no flags it\n" +
-			"probes for installed agents (Claude Code, Codex, Grok Build) and removes the Skill\n" +
+			"probes for installed agents (Claude Code, Codex, Grok Build, Pi) and removes the Skill\n" +
 			"from each one found.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			dests, err := resolveTargets(agents, project, dir)
@@ -311,7 +318,7 @@ func newSkillUninstallCmd(s *appState) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&project, "project", false,
-		"remove from the project (./.claude/skills, ./.agents/skills, ./.grok/skills) instead of $HOME")
+		"remove from the project (./.claude/skills, ./.agents/skills, ./.grok/skills, ./.pi/skills) instead of $HOME")
 	cmd.Flags().StringVar(&dir, "dir", "",
 		"explicit skills base directory; removes <dir>/confluence")
 	cmd.Flags().StringSliceVar(&agents, "agent", nil,

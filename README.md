@@ -68,7 +68,7 @@ Or download a prebuilt binary from the
 ### 2. Deploy the companion Skill
 
 The `confluence` Skill is embedded in the binary; it teaches your coding agent
-(**Claude Code**, **Codex**, **Grok Build**) how to drive the CLI. `skill install` probes for
+(**Claude Code**, **Codex**, **Grok Build**, **Pi**) how to drive the CLI. `skill install` probes for
 installed agents and installs into each one found:
 
 ```bash
@@ -133,7 +133,7 @@ are never written to the config file.
 | `label list` / `add` / `remove` | manage page labels |
 | `whoami` | print the user the credentials authenticate as |
 | `user search` / `user get` / `user me` | discover Confluence users — the values `--author` / `--contributor` accept (Cloud: `--query` required; DC: optional) |
-| `skill install` / `skill uninstall` | deploy or remove the embedded companion Skill (Claude Code, Codex, Grok Build) |
+| `skill install` / `skill uninstall` | deploy or remove the embedded companion Skill (Claude Code, Codex, Grok Build, Pi, Pi) |
 | `config get-contexts` / `use-context` / `delete-context` | manage multiple named servers |
 | `config` / `auth` / `doctor` / `version` | setup and diagnostics |
 
