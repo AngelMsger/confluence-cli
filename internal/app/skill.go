@@ -27,7 +27,7 @@ type skillResult struct {
 func newSkillCmd(s *appState) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "skill",
-		Short: "Install the companion Skill for coding agents (Claude Code, Codex, Grok Build, Pi)",
+		Short: "Install the companion Skill for coding agents",
 	}
 	cmd.AddCommand(
 		newSkillInstallCmd(s),
@@ -87,21 +87,23 @@ func newSkillStatusCmd(s *appState) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&project, "project", false,
-		"check the project skills dirs (./.claude/skills, ./.agents/skills, ./.grok/skills, ./.pi/skills) instead of $HOME")
+		"check each agent's project skills directory instead of $HOME")
 	return cmd
 }
 
 // agentSpec describes where a coding agent loads Skills from, and how to tell
 // that the agent is in use on this machine / in this project.
 type agentSpec struct {
-	id            string   // "claude-code" / "codex" / "grok" / "pi"
-	homeSub       string   // dir under $HOME holding the global skills dir
+	id            string   // stable --agent id
+	homeSub       string   // dir under $HOME; global dest is $HOME/<homeSub>/skills/<name>
 	homeMarkers   []string // paths under $HOME proving the agent is installed
 	projectSkills string   // skills dir relative to the project root
 	projectMarks  []string // paths under the cwd proving the agent is used here
 }
 
 // agentSpecs lists every coding agent the Skill can be installed for.
+// Paths follow the Agent Skills ecosystem (vercel-labs/skills) and each
+// product's documented native directory.
 var agentSpecs = []agentSpec{
 	{
 		id:            "claude-code",
@@ -118,6 +120,57 @@ var agentSpecs = []agentSpec{
 		projectMarks:  []string{".agents", "AGENTS.md"},
 	},
 	{
+		id:            "cursor",
+		homeSub:       ".cursor",
+		homeMarkers:   []string{".cursor"},
+		projectSkills: ".cursor/skills",
+		projectMarks:  []string{".cursor"},
+	},
+	{
+		// Shared open-standard tree read by Cursor, Cline, Gemini, Copilot,
+		// OpenCode, Amp, and many others (in addition to their native paths).
+		id:            "agents",
+		homeSub:       ".agents",
+		homeMarkers:   []string{".agents"},
+		projectSkills: ".agents/skills",
+		projectMarks:  []string{".agents", "AGENTS.md"},
+	},
+	{
+		id:            "gemini",
+		homeSub:       ".gemini",
+		homeMarkers:   []string{".gemini"},
+		projectSkills: ".gemini/skills",
+		projectMarks:  []string{".gemini"},
+	},
+	{
+		id:            "github-copilot",
+		homeSub:       ".copilot",
+		homeMarkers:   []string{".copilot"},
+		projectSkills: ".agents/skills",
+		projectMarks:  []string{".github", ".agents"},
+	},
+	{
+		id:            "opencode",
+		homeSub:       ".config/opencode",
+		homeMarkers:   []string{".config/opencode"},
+		projectSkills: ".opencode/skills",
+		projectMarks:  []string{".opencode"},
+	},
+	{
+		id:            "continue",
+		homeSub:       ".continue",
+		homeMarkers:   []string{".continue"},
+		projectSkills: ".continue/skills",
+		projectMarks:  []string{".continue"},
+	},
+	{
+		id:            "windsurf",
+		homeSub:       ".codeium/windsurf",
+		homeMarkers:   []string{".codeium/windsurf"},
+		projectSkills: ".windsurf/skills",
+		projectMarks:  []string{".windsurf", ".codeium"},
+	},
+	{
 		id:            "grok",
 		homeSub:       ".grok",
 		homeMarkers:   []string{".grok"},
@@ -130,6 +183,20 @@ var agentSpecs = []agentSpec{
 		homeMarkers:   []string{".pi"},
 		projectSkills: ".pi/skills",
 		projectMarks:  []string{".pi"},
+	},
+	{
+		id:            "kilo",
+		homeSub:       ".kilocode",
+		homeMarkers:   []string{".kilocode"},
+		projectSkills: ".kilocode/skills",
+		projectMarks:  []string{".kilocode"},
+	},
+	{
+		id:            "roo",
+		homeSub:       ".roo",
+		homeMarkers:   []string{".roo"},
+		projectSkills: ".roo/skills",
+		projectMarks:  []string{".roo"},
 	},
 }
 
@@ -250,9 +317,9 @@ func newSkillInstallCmd(s *appState) *cobra.Command {
 		Short: "Deploy the embedded Skill into a coding agent's skills directory",
 		Long: "Write the companion `confluence` Skill — bundled inside this binary —\n" +
 			"into a coding agent's skills directory. With no flags it probes for\n" +
-			"installed agents (Claude Code, Codex, Grok Build, Pi) and installs into each one found.\n" +
-			"Re-run it after upgrading the CLI to refresh the Skill to the matching\n" +
-			"version.",
+			"installed agents (" + strings.Join(agentIDs(), ", ") + ") and installs\n" +
+			"into each one found. Re-run it after upgrading the CLI to refresh the\n" +
+			"Skill to the matching version.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			dests, err := resolveTargets(agents, project, dir)
 			if err != nil {
@@ -273,7 +340,7 @@ func newSkillInstallCmd(s *appState) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&project, "project", false,
-		"install into the project (./.claude/skills, ./.agents/skills, ./.grok/skills, ./.pi/skills) instead of $HOME")
+		"install into each agent's project skills directory instead of $HOME")
 	cmd.Flags().StringVar(&dir, "dir", "",
 		"explicit skills base directory; installs into <dir>/confluence")
 	cmd.Flags().StringSliceVar(&agents, "agent", nil,
@@ -291,8 +358,8 @@ func newSkillUninstallCmd(s *appState) *cobra.Command {
 		Use:   "uninstall",
 		Short: "Remove the companion Skill from a coding agent's skills directory",
 		Long: "Delete a previously installed `confluence` Skill. With no flags it\n" +
-			"probes for installed agents (Claude Code, Codex, Grok Build, Pi) and removes the Skill\n" +
-			"from each one found.",
+			"probes for installed agents (" + strings.Join(agentIDs(), ", ") + ")\n" +
+			"and removes the Skill from each one found.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			dests, err := resolveTargets(agents, project, dir)
 			if err != nil {
@@ -318,7 +385,7 @@ func newSkillUninstallCmd(s *appState) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&project, "project", false,
-		"remove from the project (./.claude/skills, ./.agents/skills, ./.grok/skills, ./.pi/skills) instead of $HOME")
+		"remove from each agent's project skills directory instead of $HOME")
 	cmd.Flags().StringVar(&dir, "dir", "",
 		"explicit skills base directory; removes <dir>/confluence")
 	cmd.Flags().StringSliceVar(&agents, "agent", nil,

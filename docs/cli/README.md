@@ -90,7 +90,7 @@ is published at <https://angelmsger.github.io/confluence-cli/cli/>.
 
 | Command | Description |
 | --- | --- |
-| [`confluence-cli skill`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-skill) | Install the companion Skill for coding agents (Claude Code, Codex, Grok Build, Pi) |
+| [`confluence-cli skill`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-skill) | Install the companion Skill for coding agents |
 | [`confluence-cli skill install`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-skill-install) | Deploy the embedded Skill into a coding agent's skills directory |
 | [`confluence-cli skill path`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-skill-path) | Print where the Skill would be installed, and whether it is |
 | [`confluence-cli skill show`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-skill-show) | Print the embedded SKILL.md to stdout |

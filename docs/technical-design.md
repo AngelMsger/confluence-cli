@@ -355,13 +355,11 @@ trigger-word description, `metadata.requires.bins`,
 
 Core golden rule: resolve URLs / names into IDs before acting.
 
-The same `SKILL.md` ships to **Claude Code**, **Codex**, **Grok Build**, and **Pi**
-(all three only require frontmatter `name` + `description`). `skill install`
+The same `SKILL.md` ships to every supported coding agent listed in `agentSpecs`
+(all only require frontmatter `name` + `description`). `skill install`
 uses an agent path table (`agentSpecs` in `internal/app/skill.go`)
 mapping each agent to its global / project skills directory and probe
-markers: Claude Code uses `~/.claude/skills` and `./.claude/skills`; Codex uses
-`~/.codex/skills` and `./.agents/skills`; Grok Build uses `~/.grok/skills` and `./.grok/skills`; Pi uses
-`~/.pi/agent/skills` and `./.pi/skills`. With no flag it
+markers: Claude Code uses `~/.claude/skills` and `./.claude/skills`; Codex uses `~/.codex/skills` and `./.agents/skills`; Cursor uses `~/.cursor/skills` and `./.cursor/skills`; the shared Agents tree uses `~/.agents/skills` and `./.agents/skills`; Gemini CLI uses `~/.gemini/skills` and `./.gemini/skills`; GitHub Copilot uses `~/.copilot/skills` and `./.agents/skills`; OpenCode uses `~/.config/opencode/skills` and `./.opencode/skills`; Continue uses `~/.continue/skills` and `./.continue/skills`; Windsurf uses `~/.codeium/windsurf/skills` and `./.windsurf/skills`; Grok Build uses `~/.grok/skills` and `./.grok/skills`; Pi uses `~/.pi/agent/skills` and `./.pi/skills`; Kilo Code uses `~/.kilocode/skills` and `./.kilocode/skills`; Roo Code uses `~/.roo/skills` and `./.roo/skills`. With no flag it
 probes which directories exist and installs / removes for each hit;
 `--agent` selects explicitly; `--dir` is the agent-agnostic explicit
 path.

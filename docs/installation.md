@@ -183,7 +183,7 @@ completion, `confluence-cli space get <TAB>` queries the configured server
 
 ## 3. Install the companion Skill
 
-The `confluence` Skill teaches a coding agent — **Claude Code**, **Codex**, **Grok Build**, and **Pi** —
+The `confluence` Skill teaches a coding agent — **Claude Code**, **Codex**, **Cursor**, **Agents** (shared), **Gemini CLI**, **GitHub Copilot**, **OpenCode**, **Continue**, **Windsurf**, **Grok Build**, **Pi**, **Kilo Code**, and **Roo Code** —
 how to drive this CLI. It is **embedded in the `confluence-cli` binary**, so
 whichever way you installed the CLI — npm, `go install`, a prebuilt binary —
 you already have a version-matched copy of the Skill.
@@ -196,7 +196,7 @@ Skill into every one it finds:
 ```bash
 confluence-cli skill install              # auto-detect; install for each agent found
 confluence-cli skill install --agent codex          # only Codex
-confluence-cli skill install --agent claude-code,codex,grok,pi
+confluence-cli skill install --agent cursor,agents,gemini
 confluence-cli skill install --project    # project dirs instead of $HOME
 confluence-cli skill install --dir <path> # explicit base -> <path>/confluence
 
@@ -210,12 +210,19 @@ Install locations per agent:
 |-------|------------------|-----------------------|
 | Claude Code | `~/.claude/skills/confluence` | `./.claude/skills/confluence` |
 | Codex | `~/.codex/skills/confluence` | `./.agents/skills/confluence` |
+| Cursor | `~/.cursor/skills/confluence` | `./.cursor/skills/confluence` |
+| Agents (shared) | `~/.agents/skills/confluence` | `./.agents/skills/confluence` |
+| Gemini CLI | `~/.gemini/skills/confluence` | `./.gemini/skills/confluence` |
+| GitHub Copilot | `~/.copilot/skills/confluence` | `./.agents/skills/confluence` |
+| OpenCode | `~/.config/opencode/skills/confluence` | `./.opencode/skills/confluence` |
+| Continue | `~/.continue/skills/confluence` | `./.continue/skills/confluence` |
+| Windsurf | `~/.codeium/windsurf/skills/confluence` | `./.windsurf/skills/confluence` |
 | Grok Build | `~/.grok/skills/confluence` | `./.grok/skills/confluence` |
 | Pi | `~/.pi/agent/skills/confluence` | `./.pi/skills/confluence` |
+| Kilo Code | `~/.kilocode/skills/confluence` | `./.kilocode/skills/confluence` |
+| Roo Code | `~/.roo/skills/confluence` | `./.roo/skills/confluence` |
 
-Auto-detection looks for `~/.claude` / `~/.codex` / `~/.grok` / `~/.pi` (global) or `./.claude` /
-`./.agents` / `./AGENTS.md` / `./.grok` / `./.pi` (project). If nothing is detected, pass `--agent`
-or `--dir` explicitly.
+Auto-detection looks for each agent's home or project marker (`~/.claude`, `~/.codex`, `~/.cursor`, `~/.agents`, `~/.gemini`, `~/.copilot`, `~/.config/opencode`, `~/.continue`, `~/.codeium/windsurf`, `~/.grok`, `~/.pi`, `~/.kilocode`, `~/.roo`, and the matching project dirs). If nothing is detected, pass `--agent` or `--dir` explicitly.
 
 Because the Skill ships inside the binary, **updating is automatic**: upgrade
 the CLI (`npm update -g @angelmsger/confluence-cli`, `go install ...@latest`,
