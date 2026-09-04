@@ -2,10 +2,13 @@ package app
 
 import (
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 )
 
 // writeTempFile writes content to a temp file and returns its path.
@@ -161,6 +164,64 @@ func TestCmdPageHistory(t *testing.T) {
 	got := decodeList(t, out)
 	if len(got) != 2 || got[0]["number"].(float64) != 2 {
 		t.Errorf("versions = %v", got)
+	}
+}
+
+func TestCmdPageHistoryBatchFilter(t *testing.T) {
+	srv := mockConfluence(t)
+	out, err := runCLI(t, srv, "page", "history", "123", "456",
+		"--actor", "me", "--from", "2025-02-01", "--to", "2025-02-03")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := decodeList(t, out)
+	if len(got) != 2 || got[0]["page"].(map[string]any)["id"] != "456" {
+		t.Fatalf("versions = %v", got)
+	}
+	if got[1]["actor"].(map[string]any)["user_key"] != "ab12" {
+		t.Fatalf("actor = %v", got[1]["actor"])
+	}
+}
+
+func TestCmdPageHistoryBatchGuards(t *testing.T) {
+	srv := mockConfluence(t)
+	if _, err := runCLI(t, srv, "page", "history", "123", "456"); err == nil {
+		t.Fatal("expected an unbounded batch query to fail")
+	}
+	if _, err := runCLI(t, srv, "page", "history", "123", "456", "--since", "24h", "--cursor", "25"); err == nil {
+		t.Fatal("expected a batch cursor to fail")
+	}
+	_, err := runCLIWithInput(t, srv, strings.NewReader("123\n"), "page", "history", "-", "--since", "24h", "--cursor", "25")
+	if got := cerrors.AsCLIError(err).Code; got != "HISTORY_BATCH_CURSOR" {
+		t.Fatalf("stdin cursor error = %q", got)
+	}
+}
+
+func TestCmdPageHistoryCoverageNoticeUsesStderr(t *testing.T) {
+	srv := mockConfluence(t)
+	oldStderr := os.Stderr
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stderr = w
+	out, runErr := runCLI(t, srv, "page", "history", "123", "--actor", "me",
+		"--from", "2025-01-01", "--to", "2025-01-02")
+	w.Close()
+	os.Stderr = oldStderr
+	stderr, readErr := io.ReadAll(r)
+	r.Close()
+	if runErr != nil {
+		t.Fatal(runErr)
+	}
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if strings.Contains(out, "HISTORY_ACTOR_COVERAGE") {
+		t.Fatalf("notice leaked to stdout: %s", out)
+	}
+	if !strings.Contains(string(stderr), "HISTORY_ACTOR_COVERAGE") {
+		t.Fatalf("stderr missing coverage notice: %s", stderr)
 	}
 }
 

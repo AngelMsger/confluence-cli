@@ -23,7 +23,7 @@ func TestCurrentUserDataCenter(t *testing.T) {
 	if gotPath != "/rest/api/user/current" {
 		t.Errorf("path = %q", gotPath)
 	}
-	if u.Username != "jdoe" || u.DisplayName != "Jane Doe" {
+	if u.Username != "jdoe" || u.UserKey != "ff01" || u.DisplayName != "Jane Doe" {
 		t.Errorf("user = %+v", u)
 	}
 }
@@ -57,7 +57,7 @@ func TestCurrentUserUserKeyFallback(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if u.Username != "ff01" {
-		t.Errorf("username fallback = %q, want ff01", u.Username)
+	if u.Username != "ff01" || u.UserKey != "ff01" {
+		t.Errorf("user key fallback = %+v", u)
 	}
 }

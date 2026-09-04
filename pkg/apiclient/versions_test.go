@@ -3,8 +3,11 @@ package apiclient
 import (
 	"context"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/angelmsger/confluence-cli/pkg/transport"
 )
 
 func TestListPageVersions(t *testing.T) {
@@ -15,8 +18,8 @@ func TestListPageVersions(t *testing.T) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"results":[
 			{"number":3,"when":"2025-03-01T00:00:00Z","message":"latest","minorEdit":false,
-			 "by":{"displayName":"Alice"}},
-			{"number":2,"when":"2025-02-01T00:00:00Z","by":{"displayName":"Bob"}}],
+			 "by":{"username":"alice","userKey":"a1","displayName":"Alice"}},
+			{"number":2,"when":"2025-02-01T00:00:00Z","by":{"username":"bob","displayName":"Bob"}}],
 			"size":2,"limit":25}`))
 	}))
 
@@ -32,6 +35,36 @@ func TestListPageVersions(t *testing.T) {
 	}
 	if res.Items[0].Number != 3 || res.Items[0].By != "Alice" || res.Items[0].Message != "latest" {
 		t.Errorf("version[0] = %+v", res.Items[0])
+	}
+	if res.Items[0].Actor == nil || res.Items[0].Actor.Username != "alice" || res.Items[0].Actor.UserKey != "a1" {
+		t.Errorf("version actor = %+v", res.Items[0].Actor)
+	}
+	if res.Items[0].Page == nil || res.Items[0].Page.ID != "123" {
+		t.Errorf("version page = %+v", res.Items[0].Page)
+	}
+}
+
+func TestListPageVersionsCloudActor(t *testing.T) {
+	t.Parallel()
+	var gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"results":[{"number":4,"when":"2025-04-01T00:00:00Z",
+			"by":{"accountId":"cloud-1","displayName":"Cloud User"}}],"size":1,"limit":25}`))
+	}))
+	t.Cleanup(srv.Close)
+	c := New(Config{Flavor: FlavorCloud, BaseURL: srv.URL, Transport: transport.New(transport.Options{})})
+
+	res, err := c.ListPageVersions(context.Background(), "42", ListOpts{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotPath != "/wiki/rest/api/content/42/version" {
+		t.Errorf("path = %q", gotPath)
+	}
+	if len(res.Items) != 1 || res.Items[0].Actor == nil || res.Items[0].Actor.AccountID != "cloud-1" {
+		t.Fatalf("versions = %+v", res.Items)
 	}
 }
 

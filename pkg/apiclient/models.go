@@ -89,11 +89,13 @@ type Attachment struct {
 
 // PageVersion is one entry in a page's version history.
 type PageVersion struct {
-	Number    int    `json:"number"`
-	When      string `json:"when,omitempty"`
-	By        string `json:"by,omitempty"`
-	Message   string `json:"message,omitempty"`
-	MinorEdit bool   `json:"minor_edit,omitempty"`
+	Number    int      `json:"number"`
+	When      string   `json:"when,omitempty"`
+	By        string   `json:"by,omitempty"`
+	Actor     *User    `json:"actor,omitempty"`
+	Page      *PageRef `json:"page,omitempty"`
+	Message   string   `json:"message,omitempty"`
+	MinorEdit bool     `json:"minor_edit,omitempty"`
 }
 
 // Label is a normalized Confluence content label.
@@ -108,6 +110,7 @@ type Label struct {
 type User struct {
 	AccountID   string `json:"account_id,omitempty"`
 	Username    string `json:"username,omitempty"`
+	UserKey     string `json:"user_key,omitempty"`
 	DisplayName string `json:"display_name,omitempty"`
 	Email       string `json:"email,omitempty"`
 	Type        string `json:"type,omitempty"`

@@ -1,11 +1,11 @@
 ---
 name: confluence
-version: 1.8.1
-description: "Use a Confluence wiki as an external knowledge base. Search, read and summarise pages, browse spaces and page trees, create/update/delete/move/copy pages, view history and restore versions, read and post/edit/delete comments, manage attachments and page labels, and watch pages. Every mutating command accepts --dry-run, and a session read-only posture (defaults.read_only / CONFLUENCE_CLI_READ_ONLY=1, overridable via --allow-writes) blocks writes before they leave the CLI. Use this skill when the user gives a Confluence page URL or ID or mentions a Confluence/wiki page; asks to find, read, summarise or extract a page; browse a space or list child pages; create/update/delete/move/copy a page; view history or restore a version; read or post/edit/delete a comment; upload/replace/delete an attachment; add/remove labels; watch/unwatch a page; check which Confluence user they are; or wants a dry-run / read-only / safe-mode session. Works with both Confluence Cloud and Data Center / Server."
+version: 1.9.0
+description: "Use a Confluence wiki as an external knowledge base. Search, read and summarise pages; browse spaces and page trees; create/update/delete/move/copy pages; find edits by actor and time; view or restore versions; manage comments, attachments, labels and watches. Every write accepts --dry-run; session read-only mode blocks writes unless --allow-writes is set. Use when the user gives a Confluence URL or ID, mentions a Confluence/wiki page, asks to find or edit content, find their edits for a worklog, inspect history, manage page resources, check their identity, or use dry-run/read-only mode. Works with Confluence Cloud and Data Center / Server."
 metadata:
   requires:
     bins: ["confluence-cli"]
-  cliHelp: "confluence-cli --help; confluence-cli page get --help; confluence-cli search --help"
+  cliHelp: "confluence-cli --help; confluence-cli page get --help; confluence-cli page history --help; confluence-cli search --help"
 ---
 
 # confluence
@@ -33,6 +33,10 @@ guess an ID — run `confluence-cli search` first, then act on the ID from the h
 - User wants a page's **version history**, or to **roll back** a page →
   `page history` / `page restore --version N` (see
   [writing-pages.md](references/writing-pages.md)).
+- User wants pages they **edited during a time range** → find candidates with
+  `search --contributor me --after <lower-bound>`, then pipe their IDs to
+  `page history - --actor me --since ...` or `--from ... --to ...` (see
+  [searching-cql.md](references/searching-cql.md)).
 - User wants to **watch / unwatch** a page, or check if they watch it →
   `page watch` / `page unwatch` / `page watch-status`.
 - User wants the **comments** on a page → `comment list`; to post one →
@@ -60,7 +64,7 @@ confluence-cli page update <id|url>       # edit a page's title / body
 confluence-cli page delete <id|url>...    # trash one or more pages (needs --yes)
 confluence-cli page move <id|url>         # reparent / move to another space
 confluence-cli page copy <id|url>         # shallow-copy a page
-confluence-cli page history <id|url>      # list a page's version history
+confluence-cli page history <id|url>...   # list/filter versions; '-' reads page refs from stdin
 confluence-cli page restore <id|url>      # restore an old version (--version N)
 confluence-cli page watch <id|url>        # watch / unwatch / check watch status
 confluence-cli search [cql]               # CQL search, or use --text/--author/...
@@ -116,6 +120,14 @@ pass `--cursor` with the `next` value to read the following page. Use `--all` to
 fetch every page in one call (it resumes from `--cursor` when both are set), or
 `--limit N` to size each request. For very large outputs use `--format ndjson`
 (one JSON object per line, items only).
+
+Batch `page history` queries require `--since` or `--from`. Filter by the
+authenticated user with `--actor me`; use `--to` for an optional exclusive
+upper bound after `--from`. Time-bounded queries read newest-first and stop
+after crossing the lower bound; an actor-only single-page filter may traverse
+the full history. `--cursor` is limited to a direct single-page query. See
+[searching-cql.md](references/searching-cql.md) for the exact candidate-search
+workflow and its CQL limitation.
 
 ## Batch deletes
 

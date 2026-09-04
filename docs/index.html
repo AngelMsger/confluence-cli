@@ -69,7 +69,7 @@
       <div class="card feat">
         <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/></svg></div>
         <h3>CQL search</h3>
-        <p>Query with raw CQL, or build one from filter flags: text, author, space, label, type and date ranges.</p>
+        <p>Query with raw CQL, or build one from filter flags. Resolve <code>me</code> to the current user, then filter page history by actor and time.</p>
       </div>
       <div class="card feat">
         <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-4 4z"/><path d="M8 9h8M8 12h5"/></svg></div>
@@ -151,6 +151,12 @@ npm install -g @angelmsger/confluence-cli</pre>
 <span class="p">$</span> confluence-cli page get &lt;id|url&gt; --scope outline
 <span class="p">$</span> confluence-cli page get &lt;id|url&gt; --scope section --section sec-2
 
+<span class="c"># find pages I edited during a local calendar day</span>
+<span class="p">$</span> confluence-cli search --type page --contributor me --after 2026-09-03 --all --fields id \
+  | jq -r '.items[].id' \
+  | confluence-cli page history - --actor me \
+      --from 2026-09-03T00:00:00+08:00 --to 2026-09-04T00:00:00+08:00
+
 <span class="c"># create a page from Markdown, preview before sending</span>
 <span class="p">$</span> confluence-cli page create --space ENG --title "Release Notes" \
     --format markdown --body-file notes.md --dry-run</pre>
@@ -168,7 +174,7 @@ npm install -g @angelmsger/confluence-cli</pre>
     <div class="grid grid-3">
       <a class="card cmd-group" href="cli/#confluence-cli-page">
         <span class="cg-name">page</span>
-        <p>Read, create, update, delete, move and copy pages; walk the tree.</p>
+        <p>Read, create, update, delete, move and copy pages; walk the tree and query edit history.</p>
       </a>
       <a class="card cmd-group" href="cli/#confluence-cli-search">
         <span class="cg-name">search</span>

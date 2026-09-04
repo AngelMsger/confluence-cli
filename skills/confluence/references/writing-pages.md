@@ -125,13 +125,25 @@ it duplicates the title and body only — not child pages or attachments.
 # list a page's versions (newest first)
 confluence-cli page history 12345
 
+# exact version events from several pages (or pass '-' to read IDs from stdin)
+confluence-cli page history 12345 67890 --actor me --since 24h
+
 # restore the page to an earlier version
 confluence-cli page history 12345                       # find the version number
 confluence-cli page restore 12345 --version 3
 confluence-cli page restore 12345 --version 3 --message "roll back bad edit"
 ```
 
-Each history entry has `number`, `when`, `by`, `message` and `minor_edit`.
+Each history entry has `number`, `when`, `by`, `actor`, `page`, `message` and
+`minor_edit`. `actor` carries the stable Cloud account ID or Data Center
+username/user key when available; `page` identifies the source in batch output.
+`--actor` accepts `me` or a selector found with `user search`. Filtering
+supports `--actor`, `--since`, or `--from` / `--to`. Time-bounded queries read
+newest-first and stop after crossing their lower bound; actor-only single-page
+filtering may scan the full history. Batch/stdin queries reject `--cursor`. See
+[searching-cql.md](searching-cql.md) for time semantics and the exact edit
+discovery workflow.
+
 `restore` is **non-destructive**: it republishes the chosen version's body as a
 new version, so the history is never lost. Use `--dry-run` to preview it.
 

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-09-04
+
+### Added
+
+- **Time-bounded page edit history for worklog automation.** `search --author`
+  and `--contributor` accept `me`, resolved to the authenticated user's stable
+  Cloud account ID or Data Center username/user key. `page history` accepts
+  multiple page refs or newline-delimited refs from stdin and filters versions
+  with `--actor`, `--since`, or `--from` / `--to`; batch queries require a time
+  bound and stop paging after reaching older versions. Version records keep
+  `by` for compatibility and add structured actor and page context.
+
 ## [0.15.2] - 2026-08-12
 
 ### Added
@@ -590,7 +602,8 @@ Initial release.
 - Distribution via npm (`@angelmsger/confluence-cli`), `go install`, prebuilt
   release binaries and `make install`.
 
-[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.15.2...HEAD
+[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/angelmsger/confluence-cli/compare/v0.15.2...v0.16.0
 [0.15.2]: https://github.com/angelmsger/confluence-cli/compare/v0.15.1...v0.15.2
 [0.15.1]: https://github.com/angelmsger/confluence-cli/compare/v0.15.0...v0.15.1
 [0.15.0]: https://github.com/angelmsger/confluence-cli/compare/v0.14.0...v0.15.0

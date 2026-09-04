@@ -694,20 +694,28 @@ Use --as raw to get the untouched source body instead.</p>
     
     <section class="cmd" id="confluence-cli-page-history">
       <h2>confluence-cli page history</h2>
-      <p class="short">List a page&#39;s version history</p>
-      <pre>confluence-cli page history &lt;id|url&gt; [flags]</pre>
-      
+      <p class="short">List and filter the version history of one or more pages</p>
+      <pre>confluence-cli page history &lt;id|url&gt;... [flags]</pre>
+      <p class="long">List page version history. Pass several page references, or a single &#39;-&#39; to
+read newline-separated references from stdin. Batch mode requires --since or
+--from so automation cannot accidentally scan unbounded history.</p>
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
+        <tr><td><code>--actor</code></td><td></td><td>only versions by this user selector; use &#39;me&#39; for the authenticated user</td></tr>
         <tr><td><code>--all</code></td><td><code>false</code></td><td>fetch every page of results</td></tr>
         <tr><td><code>--cursor</code></td><td></td><td>start from this pagination cursor (the &#39;next&#39; of a prior page)</td></tr>
+        <tr><td><code>--from</code></td><td></td><td>versions at or after this RFC3339 timestamp or UTC date</td></tr>
         <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
+        <tr><td><code>--since</code></td><td></td><td>only versions within this recent duration, such as 24h or 7d</td></tr>
+        <tr><td><code>--to</code></td><td></td><td>versions before this RFC3339 timestamp or UTC date (defaults to now)</td></tr>
         </tbody>
       </table>
       <h3>Examples</h3><pre>  confluence-cli page history 123456
-  confluence-cli page history 123456 --all --format table</pre>
+  confluence-cli page history 123456 --all --format table
+  confluence-cli page history 123456 --actor me --since 24h
+  confluence-cli search --type page --contributor me --after 2026-09-03 --all --fields id | jq -r &#39;.items[].id&#39; | confluence-cli page history - --actor me --from 2026-09-03T00:00:00+08:00 --to 2026-09-04T00:00:00+08:00</pre>
     </section>
     
     <section class="cmd" id="confluence-cli-page-move">

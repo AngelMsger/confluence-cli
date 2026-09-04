@@ -30,6 +30,8 @@ use it. Write commands support `--dry-run`, and destructive ones require `--yes`
 - **Read & write** — fetch pages and browse trees, CQL search; create, edit,
   move, delete and restore pages; manage attachments, labels, comments and page
   watches. Every write supports `--dry-run`; destructive commands need `--yes`.
+- **Time-bounded edit history** — find pages the current user contributed to,
+  then filter their version history by actor and an exact time window.
 - **Flexible configuration** — CLI flags, environment variables, a `.env` file,
   a YAML config file, or an interactive wizard; secrets stored in the OS
   keychain.
@@ -124,7 +126,7 @@ are never written to the config file.
 | `page get` | fetch a page; render body with `--scope`/`--detail`/`--as` |
 | `page children` / `page descendants` | browse the page tree |
 | `page create` / `update` / `delete` / `move` / `copy` | write pages; `--dry-run` previews, `delete` needs `--yes` |
-| `page history` / `page restore` | list versions; roll a page back to an earlier one |
+| `page history` / `page restore` | list or filter one or more pages' versions; roll a page back to an earlier one |
 | `page watch` / `unwatch` / `watch-status` | subscribe to or check page notifications |
 | `search` | CQL search, raw or built from `--text`/`--author`/`--space`/... |
 | `space list` / `space get` | inspect spaces |
@@ -141,6 +143,28 @@ In the default JSON output, list commands return a `{items, next, has_more}`
 envelope; pass `--cursor` with a prior page's `next` to read the following page,
 or `--all` to fetch every page. `--format ndjson` instead streams the items
 themselves, one JSON object per line.
+
+### Find pages I edited in a time range
+
+Confluence CQL indexes `contributor` and `lastmodified` as independent
+page-level properties. Use search only to find candidates, then inspect the
+version events for an exact actor and time match:
+
+```bash
+confluence-cli search --type page --contributor me --after 2026-09-03 \
+  --all --fields id \
+  | jq -r '.items[].id' \
+  | confluence-cli page history - --actor me \
+      --from 2026-09-03T00:00:00+08:00 \
+      --to 2026-09-04T00:00:00+08:00
+```
+
+Do not add `search --before` to this candidate query: another person's later
+edit would move the page's `lastmodified` value past that upper bound. The
+history window is `[from,to)`; date-only values mean UTC, so use RFC 3339 with
+an explicit offset for a local calendar day. Batch history queries require
+`--since` or `--from`; they read newest-first and stop once versions are older
+than that lower bound.
 
 ### Multiple servers (contexts)
 

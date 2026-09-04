@@ -72,7 +72,7 @@ is published at <https://angelmsger.github.io/confluence-cli/cli/>.
 | [`confluence-cli page delete`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-page-delete) | Delete one or more pages (move them to the trash) |
 | [`confluence-cli page descendants`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-page-descendants) | List all descendant pages of a page |
 | [`confluence-cli page get`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-page-get) | Fetch a page and render its body |
-| [`confluence-cli page history`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-page-history) | List a page's version history |
+| [`confluence-cli page history`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-page-history) | List and filter the version history of one or more pages |
 | [`confluence-cli page move`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-page-move) | Move a page under a new parent and/or space |
 | [`confluence-cli page restore`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-page-restore) | Restore a page to an earlier version |
 | [`confluence-cli page unwatch`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-page-unwatch) | Stop watching a page |

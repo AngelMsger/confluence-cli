@@ -19,6 +19,7 @@ func mapUser(r rawUser) *User {
 	u := &User{
 		AccountID:   r.AccountID,
 		Username:    r.Username,
+		UserKey:     r.UserKey,
 		DisplayName: r.DisplayName,
 		Type:        r.Type,
 	}

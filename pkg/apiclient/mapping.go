@@ -43,13 +43,11 @@ type rawBody struct {
 }
 
 type rawVersion struct {
-	Number    int    `json:"number"`
-	When      string `json:"when"`
-	Message   string `json:"message"`
-	MinorEdit bool   `json:"minorEdit"`
-	By        struct {
-		DisplayName string `json:"displayName"`
-	} `json:"by"`
+	Number    int     `json:"number"`
+	When      string  `json:"when"`
+	Message   string  `json:"message"`
+	MinorEdit bool    `json:"minorEdit"`
+	By        rawUser `json:"by"`
 }
 
 type rawVersionList struct {
@@ -164,10 +162,15 @@ func versionOf(v *rawVersion) *Version {
 
 // pageVersionOf normalizes a raw version-history entry into a PageVersion.
 func pageVersionOf(r rawVersion) PageVersion {
+	actor := mapUser(r.By)
+	if *actor == (User{}) {
+		actor = nil
+	}
 	return PageVersion{
 		Number:    r.Number,
 		When:      r.When,
 		By:        r.By.DisplayName,
+		Actor:     actor,
 		Message:   r.Message,
 		MinorEdit: r.MinorEdit,
 	}

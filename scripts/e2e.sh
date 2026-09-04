@@ -105,6 +105,17 @@ assert_contains  "page children"          "Child One"      "${CLI[@]}" page chil
 assert_contains  "page descendants"       "Child One"      "${CLI[@]}" page descendants 123
 assert_contains  "search by text"         "Welcome"        "${CLI[@]}" search --text welcome
 assert_contains  "search raw cql"         "Welcome"        "${CLI[@]}" search 'type = page'
+assert_contains  "search contributor me"  "Welcome"        "${CLI[@]}" search --contributor me --type page
+assert_contains  "page history"            '"page"'         "${CLI[@]}" page history 123
+assert_exit      "page history batch needs time -> 2" 2     "${CLI[@]}" page history 123 456
+PIPELINE_OUT="$("${CLI[@]}" search --type page --contributor me --after 2026-09-03 --all --fields id 2>/dev/null |
+  jq -r '.items[].id' |
+  "${CLI[@]}" page history - --actor me --from 2026-09-03T00:00:00Z --to 2026-09-04T00:00:00Z 2>/dev/null)"
+if [[ "$PIPELINE_OUT" == *'"user_key": "ab12"'* && "$PIPELINE_OUT" == *'"id": "123"'* ]]; then
+  pass "search-to-history worklog pipeline"
+else
+  fail "search-to-history worklog pipeline"
+fi
 assert_contains  "space list"             "ENG"            "${CLI[@]}" space list
 assert_contains  "space list table"       "ENG"            "${CLI[@]}" space list --format table
 assert_contains  "space get"              "Engineering"    "${CLI[@]}" space get ENG

@@ -25,7 +25,9 @@ func (c *apiClient) ListPageVersions(ctx context.Context, id string, opt ListOpt
 	}
 	res := ListResult[PageVersion]{Next: nextOffsetToken(opt.Cursor, limit, len(raw.Results))}
 	for _, r := range raw.Results {
-		res.Items = append(res.Items, pageVersionOf(r))
+		version := pageVersionOf(r)
+		version.Page = &PageRef{ID: id}
+		res.Items = append(res.Items, version)
 	}
 	return res, nil
 }

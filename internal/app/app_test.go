@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/angelmsger/confluence-cli/pkg/apiclient"
 	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 	"github.com/zalando/go-keyring"
 )
@@ -62,9 +63,14 @@ func mockConfluence(t *testing.T) *httptest.Server {
 	})
 	mux.HandleFunc("/rest/api/content/123/version", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"results":[
-			{"number":2,"when":"2025-02-01T00:00:00Z","message":"edit","by":{"displayName":"Bob"}},
+			{"number":2,"when":"2025-02-01T00:00:00Z","message":"edit","by":{"userKey":"ab12","displayName":"Test User"}},
 			{"number":1,"when":"2025-01-01T00:00:00Z","by":{"displayName":"Alice"}}],
 			"size":2,"limit":25}`))
+	})
+	mux.HandleFunc("/rest/api/content/456/version", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"results":[
+			{"number":4,"when":"2025-02-02T00:00:00Z","by":{"username":"tester","displayName":"Test User"}}],
+			"size":1,"limit":25}`))
 	})
 	mux.HandleFunc("/rest/api/content/123/version/1", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"number":1,"content":{"id":"123","type":"page","title":"Welcome",
@@ -111,6 +117,10 @@ func mockConfluence(t *testing.T) *httptest.Server {
 // runCLI executes the command tree with args against srv, returning stdout and
 // the resulting error.
 func runCLI(t *testing.T, srv *httptest.Server, args ...string) (string, error) {
+	return runCLIWithInput(t, srv, nil, args...)
+}
+
+func runCLIWithInput(t *testing.T, srv *httptest.Server, input io.Reader, args ...string) (string, error) {
 	t.Helper()
 	dir := t.TempDir()
 	t.Setenv("CONFLUENCE_SERVER", srv.URL)
@@ -122,6 +132,9 @@ func runCLI(t *testing.T, srv *httptest.Server, args ...string) (string, error) 
 	full := append([]string{"--config", dir}, args...)
 	root := newRootCmd()
 	root.SetArgs(full)
+	if input != nil {
+		root.SetIn(input)
+	}
 
 	old := os.Stdout
 	r, w, _ := os.Pipe()
@@ -278,6 +291,79 @@ func TestCmdSearch(t *testing.T) {
 	got := decodeList(t, out)
 	if len(got) != 1 || got[0]["id"] != "123" {
 		t.Errorf("search results = %v", got)
+	}
+}
+
+func TestCmdSearchContributorMe(t *testing.T) {
+	var gotCQL string
+	mux := http.NewServeMux()
+	mux.HandleFunc("/rest/api/user/current", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"username":"tester","displayName":"Test User"}`))
+	})
+	mux.HandleFunc("/rest/api/search", func(w http.ResponseWriter, r *http.Request) {
+		gotCQL = r.URL.Query().Get("cql")
+		w.Write([]byte(`{"results":[],"size":0,"limit":25}`))
+	})
+	mux.HandleFunc("/releases/latest", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"tag_name":"v99.0.0"}`))
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	if _, err := runCLI(t, srv, "search", "--contributor", "me", "--type", "page"); err != nil {
+		t.Fatal(err)
+	}
+	if gotCQL != `contributor = "tester" AND type = page` {
+		t.Fatalf("cql = %q", gotCQL)
+	}
+}
+
+func TestCmdSearchMeRequiresStableIdentity(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/rest/api/user/current", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"displayName":"Test User"}`))
+	})
+	mux.HandleFunc("/releases/latest", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"tag_name":"v99.0.0"}`))
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	_, err := runCLI(t, srv, "search", "--author", "me")
+	if got := cerrors.AsCLIError(err).Code; got != "AUTH_IDENTITY_UNAVAILABLE" {
+		t.Fatalf("error code = %q", got)
+	}
+}
+
+func TestCmdSearchValidatesBeforeCreatingClient(t *testing.T) {
+	t.Setenv("CONFLUENCE_SERVER", "")
+	t.Setenv("CONFLUENCE_PERSONAL_ACCESS_TOKEN", "")
+	root := newRootCmd()
+	root.SetArgs([]string{"--config", t.TempDir(), "search"})
+	err := root.Execute()
+	if got := cerrors.AsCLIError(err).Code; got != "CQL_EMPTY" {
+		t.Fatalf("error code = %q", got)
+	}
+}
+
+func TestCmdSearchMeValidatesTypeBeforeCreatingClient(t *testing.T) {
+	t.Setenv("CONFLUENCE_SERVER", "")
+	t.Setenv("CONFLUENCE_PERSONAL_ACCESS_TOKEN", "")
+	root := newRootCmd()
+	root.SetArgs([]string{"--config", t.TempDir(), "search", "--author", "me", "--type", "invalid"})
+	err := root.Execute()
+	if got := cerrors.AsCLIError(err).Code; got != "CQL_BAD_TYPE" {
+		t.Fatalf("error code = %q", got)
+	}
+}
+
+func TestStableUserID(t *testing.T) {
+	user := &apiclient.User{AccountID: "cloud-id", Username: "dc-user"}
+	if got := stableUserID(apiclient.FlavorCloud, user); got != "cloud-id" {
+		t.Fatalf("cloud ID = %q", got)
+	}
+	if got := stableUserID(apiclient.FlavorDataCenter, user); got != "dc-user" {
+		t.Fatalf("DC ID = %q", got)
 	}
 }
 

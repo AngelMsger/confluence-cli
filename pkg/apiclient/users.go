@@ -70,6 +70,7 @@ func (c *apiClient) SearchUsers(ctx context.Context, opt UserSearchOpts) (ListRe
 		Values []struct {
 			Name         string `json:"name"`
 			Slug         string `json:"slug"`
+			UserKey      string `json:"userKey"`
 			EmailAddress string `json:"emailAddress"`
 			DisplayName  string `json:"displayName"`
 			Active       bool   `json:"active"`
@@ -90,6 +91,7 @@ func (c *apiClient) SearchUsers(ctx context.Context, opt UserSearchOpts) (ListRe
 	for _, u := range raw.Values {
 		res.Items = append(res.Items, User{
 			Username:    u.Name,
+			UserKey:     u.UserKey,
 			DisplayName: u.DisplayName,
 			Email:       u.EmailAddress,
 			Type:        u.Type,
@@ -129,6 +131,7 @@ func (c *apiClient) GetUser(ctx context.Context, selector string) (*User, error)
 	var raw struct {
 		Name         string `json:"name"`
 		Slug         string `json:"slug"`
+		UserKey      string `json:"userKey"`
 		EmailAddress string `json:"emailAddress"`
 		DisplayName  string `json:"displayName"`
 		Type         string `json:"type"`
@@ -138,6 +141,7 @@ func (c *apiClient) GetUser(ctx context.Context, selector string) (*User, error)
 	}
 	return &User{
 		Username:    raw.Name,
+		UserKey:     raw.UserKey,
 		DisplayName: raw.DisplayName,
 		Email:       raw.EmailAddress,
 		Type:        raw.Type,

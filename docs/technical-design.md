@@ -81,6 +81,8 @@ Page       { ID, Type, Title, SpaceKey, Status, Version, URL,
 PageRef    { ID, Title }
 Body       { Representation, Value }                // Representation is always "storage"
 Version    { Number, When, By }                     // By is the author display name
+PageVersion { Number, When, By, Actor User, Page PageRef,
+              Message, MinorEdit }
 Comment    { ID, PageID, ParentID, Body *Body, Version, URL }
 Attachment { ID, Title, MediaType, FileSize, DownloadURL, Version }
 SearchHit  { ID, Type, Title, SpaceKey, URL, Excerpt, LastModified }
@@ -196,6 +198,13 @@ Commands group by resource: `page`, `search`, `space`, `comment`,
   `page create/update` accept `storage|wiki|markdown` (markdown is
   client-side converted to storage); `comment add/update` accept
   `storage|wiki`.
+- **Time windows**: event filters use `--since` or `--from` / `--to` and
+  half-open `[from,to)` intervals. Date-only values are UTC; RFC 3339 values
+  retain their explicit offset. Multi-page `page history` calls require a
+  lower time bound and accept either several page refs or newline-delimited
+  refs from stdin. Time-bounded queries read newest-first and stop after
+  crossing the lower bound; an actor-only single-page query may traverse the
+  full history. Batch/stdin queries reject the resource-specific `--cursor`.
 
 The full command / flag / example reference is auto-generated from the
 command tree — see [docs/cli/](cli/) (`make docs` produces it, CI
@@ -308,7 +317,17 @@ flags (`pkg/apiclient/cql.go`):
 
 Fragments join with `AND`; string values have inner quotes escaped. If
 a positional `<cql>` argument is supplied it is passed through
-verbatim.
+verbatim. For the two user filters, `me` is resolved before CQL construction to
+the authenticated user's Cloud account ID or Data Center username/user key.
+
+`contributor` and `lastmodified` remain independent page-level index fields: a
+hit does not prove that the named contributor made the edit in the requested
+date range. Exact attribution uses `page history --actor` with `--since` or
+`--from` / `--to`. History output retains the display-name `by` field and adds
+structured actor identity plus page context so a batch result is attributable
+without another lookup. If an in-window version lacks the stable identity
+needed by `--actor`, it is excluded and a structured `HISTORY_ACTOR_COVERAGE`
+stderr notice reports the count; display names are never identity evidence.
 
 ## 9. Safety modes
 

@@ -1,7 +1,11 @@
 package app
 
 import (
+	"context"
+	"strings"
+
 	"github.com/angelmsger/confluence-cli/pkg/apiclient"
+	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -32,6 +36,50 @@ func runWhoami(s *appState) func(*cobra.Command, []string) error {
 		}
 		return s.emit(user)
 	}
+}
+
+func resolveUserSelector(ctx context.Context, client apiclient.Client, selector string) (*apiclient.User, error) {
+	var (
+		user *apiclient.User
+		err  error
+	)
+	if strings.EqualFold(selector, "me") {
+		user, err = client.CurrentUser(ctx)
+	} else {
+		user, err = client.GetUser(ctx, selector)
+	}
+	if err != nil {
+		return nil, err
+	}
+	if !hasStableUserID(client.Flavor(), user) {
+		return nil, cerrors.New(cerrors.CategoryAuth, "AUTH_IDENTITY_UNAVAILABLE",
+			"Confluence did not return a stable identifier for the selected user").
+			WithHint("Cloud requires account_id; Data Center requires username or user_key.")
+	}
+	return user, nil
+}
+
+func stableUserID(flavor apiclient.Flavor, user *apiclient.User) string {
+	if user == nil {
+		return ""
+	}
+	if flavor == apiclient.FlavorCloud {
+		return user.AccountID
+	}
+	if user.Username == "" {
+		return user.UserKey
+	}
+	return user.Username
+}
+
+func hasStableUserID(flavor apiclient.Flavor, user *apiclient.User) bool {
+	if user == nil {
+		return false
+	}
+	if flavor == apiclient.FlavorCloud {
+		return user.AccountID != ""
+	}
+	return user.Username != "" || user.UserKey != ""
 }
 
 // newUserCmd is the discovery entry point for the user identifiers that the

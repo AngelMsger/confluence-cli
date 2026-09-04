@@ -1,6 +1,8 @@
 package app
 
 import (
+	"strings"
+
 	"github.com/angelmsger/confluence-cli/pkg/apiclient"
 	"github.com/spf13/cobra"
 )
@@ -23,6 +25,9 @@ func newSearchCmd(s *appState) *cobra.Command {
 			"  confluence-cli search 'creator = \"jdoe\" AND created >= \"2025-01-01\"' --all",
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx, cancel := cmdContext(s)
+			defer cancel()
+			var client apiclient.Client
 			var cql string
 			if len(args) == 1 && args[0] != "" {
 				cql = args[0]
@@ -32,12 +37,34 @@ func newSearchCmd(s *appState) *cobra.Command {
 					return err
 				}
 				cql = built
+				if strings.EqualFold(params.Author, "me") || strings.EqualFold(params.Contributor, "me") {
+					client, err = s.newClient(ctx)
+					if err != nil {
+						return err
+					}
+					user, err := resolveUserSelector(ctx, client, "me")
+					if err != nil {
+						return err
+					}
+					selector := stableUserID(client.Flavor(), user)
+					if strings.EqualFold(params.Author, "me") {
+						params.Author = selector
+					}
+					if strings.EqualFold(params.Contributor, "me") {
+						params.Contributor = selector
+					}
+					cql, err = apiclient.BuildCQL(params)
+					if err != nil {
+						return err
+					}
+				}
 			}
-			ctx, cancel := cmdContext(s)
-			defer cancel()
-			client, err := s.newClient(ctx)
-			if err != nil {
-				return err
+			if client == nil {
+				var err error
+				client, err = s.newClient(ctx)
+				if err != nil {
+					return err
+				}
 			}
 			items, info, err := collectPage(func(cursor string) (apiclient.ListResult[apiclient.SearchHit], error) {
 				return client.Search(ctx, cql, apiclient.ListOpts{Limit: limit, Cursor: cursor})

@@ -64,6 +64,21 @@ func routes() http.Handler {
 			"size":    1, "limit": 25,
 		})
 	})
+	mux.HandleFunc("GET /rest/api/content/{id}/version", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, map[string]any{
+			"results": []any{
+				map[string]any{
+					"number": 2, "when": "2026-09-03T03:00:00Z", "message": "reviewed",
+					"by": map[string]any{"userKey": "ab12", "displayName": "Test User"},
+				},
+				map[string]any{
+					"number": 1, "when": "2026-09-02T03:00:00Z",
+					"by": map[string]any{"username": "alice", "displayName": "Alice Example"},
+				},
+			},
+			"size": 2, "limit": 25,
+		})
+	})
 	mux.HandleFunc("GET /rest/api/content/{id}/child/comment", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]any{
 			"results": []any{comment("c1", "<p>First comment</p>")},
@@ -133,6 +148,11 @@ func routes() http.Handler {
 				},
 			},
 			"size": 1, "limit": 25, "start": 0, "isLastPage": true,
+		})
+	})
+	mux.HandleFunc("GET /rest/api/user/current", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, map[string]any{
+			"type": "known", "username": "tester", "userKey": "ab12", "displayName": "Test User",
 		})
 	})
 	mux.HandleFunc("GET /rest/api/1.0/users/{slug}", func(w http.ResponseWriter, r *http.Request) {
