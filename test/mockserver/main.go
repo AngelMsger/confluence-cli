@@ -65,6 +65,10 @@ func routes() http.Handler {
 		})
 	})
 	mux.HandleFunc("GET /rest/api/content/{id}/version", func(w http.ResponseWriter, r *http.Request) {
+		if r.PathValue("id") == "404" {
+			http.Error(w, `{"message":"No content found"}`, http.StatusNotFound)
+			return
+		}
 		writeJSON(w, map[string]any{
 			"results": []any{
 				map[string]any{
@@ -92,6 +96,15 @@ func routes() http.Handler {
 		})
 	})
 	mux.HandleFunc("GET /rest/api/search", func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Query().Get("cql"), "user") {
+			writeJSON(w, map[string]any{
+				"results": []any{map[string]any{"user": map[string]any{
+					"username": "alice", "userKey": "a1", "displayName": "Alice Example",
+				}}},
+				"size": 1, "limit": 25,
+			})
+			return
+		}
 		writeJSON(w, map[string]any{
 			"results": []any{map[string]any{
 				"content": page("123", "Welcome"),
@@ -137,17 +150,15 @@ func routes() http.Handler {
 		w.Write([]byte("attachment payload\n"))
 	})
 
-	// User discovery (DC's shared /rest/api/1.0/users directory, distinct from
-	// /rest/api/user that serves Confluence content-tree user lookups).
-	mux.HandleFunc("GET /rest/api/1.0/users", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /rest/api/user/list", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]any{
-			"values": []any{
+			"results": []any{
 				map[string]any{
-					"name": "alice", "slug": "alice", "displayName": "Alice Example",
-					"emailAddress": "alice@example.com", "active": true, "type": "NORMAL",
+					"username": "alice", "userKey": "a1", "displayName": "Alice Example",
+					"email": "alice@example.com", "type": "known",
 				},
 			},
-			"size": 1, "limit": 25, "start": 0, "isLastPage": true,
+			"size": 1, "limit": 25, "start": 0,
 		})
 	})
 	mux.HandleFunc("GET /rest/api/user/current", func(w http.ResponseWriter, r *http.Request) {
@@ -155,11 +166,14 @@ func routes() http.Handler {
 			"type": "known", "username": "tester", "userKey": "ab12", "displayName": "Test User",
 		})
 	})
-	mux.HandleFunc("GET /rest/api/1.0/users/{slug}", func(w http.ResponseWriter, r *http.Request) {
-		slug := r.PathValue("slug")
+	mux.HandleFunc("GET /rest/api/user", func(w http.ResponseWriter, r *http.Request) {
+		selector := r.URL.Query().Get("username")
+		if selector == "" {
+			selector = r.URL.Query().Get("key")
+		}
 		writeJSON(w, map[string]any{
-			"name": slug, "slug": slug, "displayName": "Alice Example",
-			"emailAddress": "alice@example.com", "active": true, "type": "NORMAL",
+			"username": selector, "userKey": "a1", "displayName": "Alice Example",
+			"email": "alice@example.com", "type": "known",
 		})
 	})
 

@@ -141,8 +141,8 @@ username/user key when available; `page` identifies the source in batch output.
 supports `--actor`, `--since`, or `--from` / `--to`. Time-bounded queries read
 newest-first and stop after crossing their lower bound; actor-only single-page
 filtering may scan the full history. Batch/stdin queries reject `--cursor`. See
-[searching-cql.md](searching-cql.md) for time semantics and the exact edit
-discovery workflow.
+[searching-cql.md](searching-cql.md) for time semantics, backend compatibility,
+partial-batch behavior, and the exact edit discovery workflow.
 
 `restore` is **non-destructive**: it republishes the chosen version's body as a
 new version, so the history is never lost. Use `--dry-run` to preview it.

@@ -88,7 +88,8 @@ func hasStableUserID(flavor apiclient.Flavor, user *apiclient.User) bool {
 //
 // Cloud requires --query because there is no global user-list endpoint —
 // only the CQL-driven /wiki/rest/api/search/user.
-// Data Center uses /rest/api/1.0/users and treats --query as optional.
+// Data Center uses CQL user search when --query is set and the registered-user
+// catalog (with a CQL fallback on older servers) when it is omitted.
 func newUserCmd(s *appState) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "user",
@@ -111,7 +112,7 @@ func newUserSearchCmd(s *appState) *cobra.Command {
 		Short: "Search users by display-name substring",
 		Long: "Search Confluence users.\n\n" +
 			"Cloud: --query is required (the CQL `user.fullname ~ \"...\"` search).\n" +
-			"DC:    --query is optional (omit for a paginated walk of every user).",
+			"DC:    --query is optional (omit for a paginated walk of every visible user).",
 		Aliases: []string{"list"},
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			ctx, cancel := cmdContext(s)

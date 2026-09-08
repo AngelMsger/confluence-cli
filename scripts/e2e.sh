@@ -108,6 +108,15 @@ assert_contains  "search raw cql"         "Welcome"        "${CLI[@]}" search 't
 assert_contains  "search contributor me"  "Welcome"        "${CLI[@]}" search --contributor me --type page
 assert_contains  "page history"            '"page"'         "${CLI[@]}" page history 123
 assert_exit      "page history batch needs time -> 2" 2     "${CLI[@]}" page history 123 456
+PARTIAL_ERR="$(mktemp)"
+PARTIAL_OUT="$("${CLI[@]}" page history 123 404 456 --from 2026-09-01 --to 2026-09-05 2>"$PARTIAL_ERR")"
+PARTIAL_EXIT=$?
+if [[ "$PARTIAL_EXIT" -eq 6 && "$PARTIAL_OUT" == *'"id": "456"'* ]] && grep -q 'HISTORY_SOURCE_FAILED' "$PARTIAL_ERR"; then
+  pass "page history batch isolates inaccessible pages"
+else
+  fail "page history batch did not preserve successful results and report the failed page"
+fi
+rm -f "$PARTIAL_ERR"
 PIPELINE_OUT="$("${CLI[@]}" search --type page --contributor me --after 2026-09-03 --all --fields id 2>/dev/null |
   jq -r '.items[].id' |
   "${CLI[@]}" page history - --actor me --from 2026-09-03T00:00:00Z --to 2026-09-04T00:00:00Z 2>/dev/null)"
@@ -139,7 +148,9 @@ assert_contains  "attachment download"    "attachment payload" \
                                           "${CLI[@]}" attachment download att1 --output -
 assert_contains  "fields projection"      '"id"'           "${CLI[@]}" page get 123 --fields id,title
 assert_contains  "user search (DC global)" "alice"          "${CLI[@]}" user search
+assert_contains  "user search (DC query)"  "alice"          "${CLI[@]}" user search --query Alice
 assert_contains  "user get"               "Alice Example"  "${CLI[@]}" user get alice
+assert_contains  "page history by DC actor" "Alice Example" "${CLI[@]}" page history 123 --actor alice --from 2026-09-01 --to 2026-09-04
 SKILL_DIR="$(mktemp -d)"
 assert_contains  "skill install"          '"installed"' \
                                           "${CLI[@]}" skill install --dir "$SKILL_DIR"

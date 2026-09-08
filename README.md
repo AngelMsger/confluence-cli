@@ -164,7 +164,12 @@ edit would move the page's `lastmodified` value past that upper bound. The
 history window is `[from,to)`; date-only values mean UTC, so use RFC 3339 with
 an explicit offset for a local calendar day. Batch history queries require
 `--since` or `--from`; they read newest-first and stop once versions are older
-than that lower bound.
+than that lower bound. Data Center installations without the version-list API
+are handled through versioned historical-content reads. If one page is
+inaccessible, the batch continues: successful versions remain on stdout, a
+`HISTORY_SOURCE_FAILED` notice identifies the page, and the command exits
+non-zero with `BATCH_PARTIAL_FAILURE` so incomplete coverage cannot look like a
+complete result.
 
 ### Multiple servers (contexts)
 

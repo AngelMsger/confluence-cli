@@ -1,6 +1,6 @@
 ---
 name: confluence
-version: 1.9.0
+version: 1.9.1
 description: "Use a Confluence wiki as an external knowledge base. Search, read and summarise pages; browse spaces and page trees; create/update/delete/move/copy pages; find edits by actor and time; view or restore versions; manage comments, attachments, labels and watches. Every write accepts --dry-run; session read-only mode blocks writes unless --allow-writes is set. Use when the user gives a Confluence URL or ID, mentions a Confluence/wiki page, asks to find or edit content, find their edits for a worklog, inspect history, manage page resources, check their identity, or use dry-run/read-only mode. Works with Confluence Cloud and Data Center / Server."
 metadata:
   requires:
@@ -125,7 +125,12 @@ Batch `page history` queries require `--since` or `--from`. Filter by the
 authenticated user with `--actor me`; use `--to` for an optional exclusive
 upper bound after `--from`. Time-bounded queries read newest-first and stop
 after crossing the lower bound; an actor-only single-page filter may traverse
-the full history. `--cursor` is limited to a direct single-page query. See
+the full history. Data Center automatically falls back to versioned historical
+content when its version-list endpoint is unavailable. If one page in a batch
+is inaccessible, successful versions remain on stdout, stderr identifies it
+with `HISTORY_SOURCE_FAILED`, and the command returns
+`BATCH_PARTIAL_FAILURE`; treat the result as incomplete. `--cursor` is limited
+to a direct single-page query. See
 [searching-cql.md](references/searching-cql.md) for the exact candidate-search
 workflow and its CQL limitation.
 

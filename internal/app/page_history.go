@@ -23,7 +23,8 @@ func newPageHistoryCmd(s *appState) *cobra.Command {
 		Short: "List and filter the version history of one or more pages",
 		Long: "List page version history. Pass several page references, or a single '-' to\n" +
 			"read newline-separated references from stdin. Batch mode requires --since or\n" +
-			"--from so automation cannot accidentally scan unbounded history.",
+			"--from so automation cannot accidentally scan unbounded history. Inaccessible\n" +
+			"pages are reported individually while the remaining pages are still read.",
 		Example: "  confluence-cli page history 123456\n" +
 			"  confluence-cli page history 123456 --all --format table\n" +
 			"  confluence-cli page history 123456 --actor me --since 24h\n" +
@@ -72,6 +73,8 @@ func newPageHistoryCmd(s *appState) *cobra.Command {
 			filteredMode := batchMode || window.set || targetActor != nil
 			var versions []apiclient.PageVersion
 			missingActors := 0
+			failedPages := 0
+			var lastFailure *cerrors.CLIError
 			for _, id := range ids {
 				fetch := func(c string) (apiclient.ListResult[apiclient.PageVersion], error) {
 					return client.ListPageVersions(ctx, id, apiclient.ListOpts{Limit: limit, Cursor: c})
@@ -86,7 +89,21 @@ func newPageHistoryCmd(s *appState) *cobra.Command {
 					items, info, err = collectPage(fetch, cursor, all || filteredMode)
 				}
 				if err != nil {
-					return err
+					if !batchMode {
+						return err
+					}
+					failure := cerrors.AsCLIError(err)
+					output.EmitNotice(os.Stderr, map[string]any{"_notice": map[string]any{
+						"code":    "HISTORY_SOURCE_FAILED",
+						"message": "could not read one page's version history; remaining pages will still be processed",
+						"data": map[string]any{
+							"page_id": id,
+							"error":   failure.Payload().Error,
+						},
+					}})
+					failedPages++
+					lastFailure = failure
+					continue
 				}
 				if !filteredMode {
 					return s.emitList(items, info)
@@ -103,7 +120,15 @@ func newPageHistoryCmd(s *appState) *cobra.Command {
 				}})
 			}
 			sortPageVersionsNewestFirst(versions)
-			return s.emitList(versions, pageInfo{})
+			if err := s.emitList(versions, pageInfo{}); err != nil {
+				return err
+			}
+			if failedPages > 0 {
+				return cerrors.Newf(lastFailure.Category, "BATCH_PARTIAL_FAILURE",
+					"%d of %d page history queries failed; successful versions are on stdout", failedPages, len(ids)).
+					WithHint("Inspect the HISTORY_SOURCE_FAILED notices for each inaccessible page.")
+			}
+			return nil
 		},
 	}
 	f := cmd.Flags()

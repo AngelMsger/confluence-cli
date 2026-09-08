@@ -698,7 +698,8 @@ Use --as raw to get the untouched source body instead.</p>
       <pre>confluence-cli page history &lt;id|url&gt;... [flags]</pre>
       <p class="long">List page version history. Pass several page references, or a single &#39;-&#39; to
 read newline-separated references from stdin. Batch mode requires --since or
---from so automation cannot accidentally scan unbounded history.</p>
+--from so automation cannot accidentally scan unbounded history. Inaccessible
+pages are reported individually while the remaining pages are still read.</p>
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -1016,7 +1017,7 @@ and removes the Skill from each one found.</p>
       <p class="long">Search Confluence users.
 
 Cloud: --query is required (the CQL `user.fullname ~ &#34;...&#34;` search).
-DC:    --query is optional (omit for a paginated walk of every user).</p>
+DC:    --query is optional (omit for a paginated walk of every visible user).</p>
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>

@@ -69,6 +69,13 @@ server omits one, the version is excluded and a `HISTORY_ACTOR_COVERAGE` stderr
 notice reports how many in-window versions could not be matched. Display names
 are never used as identity evidence.
 
+On Data Center, user resolution uses the core CQL user search and stable user
+lookup APIs. Page history automatically uses versioned historical-content
+reads when the server does not expose the version-list endpoint. For a batch,
+an inaccessible candidate emits `HISTORY_SOURCE_FAILED` and processing
+continues; successful versions are still written to stdout, but the final
+`BATCH_PARTIAL_FAILURE` means the evidence set is incomplete.
+
 ## Results
 
 Each hit has `id`, `type`, `title`, `space_key`, `url`, `excerpt` and

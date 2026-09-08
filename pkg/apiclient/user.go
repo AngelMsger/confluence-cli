@@ -11,16 +11,20 @@ type rawUser struct {
 	Type        string `json:"type"`
 	AccountID   string `json:"accountId"`
 	Username    string `json:"username"`
+	Name        string `json:"name"`
 	UserKey     string `json:"userKey"`
 	DisplayName string `json:"displayName"`
+	Email       string `json:"email"`
+	EmailAddr   string `json:"emailAddress"`
 }
 
 func mapUser(r rawUser) *User {
 	u := &User{
 		AccountID:   r.AccountID,
-		Username:    r.Username,
+		Username:    firstNonEmpty(r.Username, r.Name),
 		UserKey:     r.UserKey,
 		DisplayName: r.DisplayName,
+		Email:       firstNonEmpty(r.Email, r.EmailAddr),
 		Type:        r.Type,
 	}
 	if u.Username == "" {

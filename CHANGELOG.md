@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.1] - 2026-09-08
+
+### Fixed
+
+- Data Center user discovery now uses the core CQL user search and user lookup
+  endpoints instead of the non-portable `/rest/api/1.0/users` plugin route.
+  Query-less listing uses the registered-user catalog when available and falls
+  back to CQL on older servers.
+- Page history now falls back to versioned historical-content reads on Data
+  Center servers that do not expose the content-version collection endpoint.
+  Fallback cursors retain the initial version anchor, so concurrent edits cannot
+  shift later pages; existing numeric cursors remain accepted.
+  Batch history isolates inaccessible pages, preserves successful versions on
+  stdout, reports each failed page with `HISTORY_SOURCE_FAILED`, and exits
+  non-zero with `BATCH_PARTIAL_FAILURE` when coverage is incomplete.
+
 ## [0.16.0] - 2026-09-04
 
 ### Added
@@ -602,7 +618,8 @@ Initial release.
 - Distribution via npm (`@angelmsger/confluence-cli`), `go install`, prebuilt
   release binaries and `make install`.
 
-[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.16.1...HEAD
+[0.16.1]: https://github.com/angelmsger/confluence-cli/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/angelmsger/confluence-cli/compare/v0.15.2...v0.16.0
 [0.15.2]: https://github.com/angelmsger/confluence-cli/compare/v0.15.1...v0.15.2
 [0.15.1]: https://github.com/angelmsger/confluence-cli/compare/v0.15.0...v0.15.1

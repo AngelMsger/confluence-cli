@@ -12,8 +12,8 @@ import (
 //
 //	Cloud: GET /wiki/rest/api/search/user?cql=user.fullname~"..."  (CQL-driven;
 //	       Query is required because Cloud has no global user-list endpoint)
-//	DC:    GET /rest/api/1.0/users?filter=...                       (DC-wide
-//	       user catalog under the /rest/api/1.0 namespace; Query is optional)
+//	DC:    GET /rest/api/search?cql=user.fullname~"..."            (CQL user
+//	       search), or GET /rest/api/user/list without a query
 func (c *apiClient) SearchUsers(ctx context.Context, opt UserSearchOpts) (ListResult[User], error) {
 	limit := c.limitOf(opt.ListOpts)
 	if c.flavor == FlavorCloud {
@@ -62,40 +62,53 @@ func (c *apiClient) SearchUsers(ctx context.Context, opt UserSearchOpts) (ListRe
 		}
 		return res, nil
 	}
-	q := offsetQuery(opt.Cursor, limit)
 	if opt.Query != "" {
-		q.Set("filter", opt.Query)
+		return c.searchDataCenterUsers(ctx, opt.ListOpts, `user.fullname ~ "`+escapeQuotes(opt.Query)+`"`)
 	}
+	return c.listDataCenterUsers(ctx, opt.ListOpts)
+}
+
+func (c *apiClient) searchDataCenterUsers(ctx context.Context, opt ListOpts, cql string) (ListResult[User], error) {
+	limit := c.limitOf(opt)
+	q := offsetQuery(opt.Cursor, limit)
+	q.Set("cql", cql)
 	var raw struct {
-		Values []struct {
-			Name         string `json:"name"`
-			Slug         string `json:"slug"`
-			UserKey      string `json:"userKey"`
-			EmailAddress string `json:"emailAddress"`
-			DisplayName  string `json:"displayName"`
-			Active       bool   `json:"active"`
-			Type         string `json:"type"`
-		} `json:"values"`
-		Size       int  `json:"size"`
-		Limit      int  `json:"limit"`
-		Start      int  `json:"start"`
-		IsLastPage bool `json:"isLastPage"`
+		Results []struct {
+			User rawUser `json:"user"`
+		} `json:"results"`
+		Start int `json:"start"`
+		Limit int `json:"limit"`
+		Size  int `json:"size"`
 	}
-	if err := c.getJSON(ctx, "/rest/api/1.0/users", q, &raw); err != nil {
+	if err := c.getJSON(ctx, "/rest/api/search", q, &raw); err != nil {
 		return ListResult[User]{}, err
 	}
-	res := ListResult[User]{}
-	if !raw.IsLastPage && len(raw.Values) == limit {
-		res.Next = itoaUser(raw.Start + raw.Limit)
+	res := ListResult[User]{Next: nextOffsetToken(opt.Cursor, limit, len(raw.Results))}
+	for _, result := range raw.Results {
+		res.Items = append(res.Items, *mapUser(result.User))
 	}
-	for _, u := range raw.Values {
-		res.Items = append(res.Items, User{
-			Username:    u.Name,
-			UserKey:     u.UserKey,
-			DisplayName: u.DisplayName,
-			Email:       u.EmailAddress,
-			Type:        u.Type,
-		})
+	return res, nil
+}
+
+func (c *apiClient) listDataCenterUsers(ctx context.Context, opt ListOpts) (ListResult[User], error) {
+	limit := c.limitOf(opt)
+	q := offsetQuery(opt.Cursor, limit)
+	var raw struct {
+		Results []rawUser `json:"results"`
+		Size    int       `json:"size"`
+		Limit   int       `json:"limit"`
+		Start   int       `json:"start"`
+		Links   rawLinks  `json:"_links"`
+	}
+	if err := c.getJSON(ctx, "/rest/api/user/list", q, &raw); err != nil {
+		if isHTTPNotFound(err) {
+			return c.searchDataCenterUsers(ctx, opt, "type = user")
+		}
+		return ListResult[User]{}, err
+	}
+	res := ListResult[User]{Next: nextOffsetToken(opt.Cursor, limit, len(raw.Results))}
+	for _, user := range raw.Results {
+		res.Items = append(res.Items, *mapUser(user))
 	}
 	return res, nil
 }
@@ -103,7 +116,7 @@ func (c *apiClient) SearchUsers(ctx context.Context, opt UserSearchOpts) (ListRe
 // GetUser fetches a single user by selector.
 //
 //	Cloud: GET /wiki/rest/api/user?accountId={selector}
-//	DC:    GET /rest/api/1.0/users/{slug}
+//	DC:    GET /rest/api/user?username={selector}, then ?key= as a fallback
 func (c *apiClient) GetUser(ctx context.Context, selector string) (*User, error) {
 	if selector == "" {
 		return nil, cerrors.New(cerrors.CategoryUsage, "USER_NO_SELECTOR",
@@ -128,24 +141,20 @@ func (c *apiClient) GetUser(ctx context.Context, selector string) (*User, error)
 			Type:        raw.Type,
 		}, nil
 	}
-	var raw struct {
-		Name         string `json:"name"`
-		Slug         string `json:"slug"`
-		UserKey      string `json:"userKey"`
-		EmailAddress string `json:"emailAddress"`
-		DisplayName  string `json:"displayName"`
-		Type         string `json:"type"`
+	q := url.Values{}
+	q.Set("username", selector)
+	var raw rawUser
+	if err := c.getJSON(ctx, "/rest/api/user", q, &raw); err != nil {
+		if !isHTTPNotFound(err) {
+			return nil, err
+		}
+		q.Del("username")
+		q.Set("key", selector)
+		if err := c.getJSON(ctx, "/rest/api/user", q, &raw); err != nil {
+			return nil, err
+		}
 	}
-	if err := c.getJSON(ctx, "/rest/api/1.0/users/"+url.PathEscape(selector), nil, &raw); err != nil {
-		return nil, err
-	}
-	return &User{
-		Username:    raw.Name,
-		UserKey:     raw.UserKey,
-		DisplayName: raw.DisplayName,
-		Email:       raw.EmailAddress,
-		Type:        raw.Type,
-	}, nil
+	return mapUser(raw), nil
 }
 
 func itoaUser(n int) string {

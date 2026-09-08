@@ -23,15 +23,21 @@ func (c *apiClient) v1Base() string {
 // The cursor, when present, carries the numeric start index.
 func offsetQuery(cursor string, limit int) url.Values {
 	q := url.Values{}
-	start := 0
-	if cursor != "" {
-		if n, err := strconv.Atoi(cursor); err == nil {
-			start = n
-		}
-	}
+	start := offsetOf(cursor)
 	q.Set("start", strconv.Itoa(start))
 	q.Set("limit", strconv.Itoa(limit))
 	return q
+}
+
+func offsetOf(cursor string) int {
+	if cursor == "" {
+		return 0
+	}
+	offset, err := strconv.Atoi(cursor)
+	if err != nil || offset < 0 {
+		return 0
+	}
+	return offset
 }
 
 // nextOffsetToken returns the cursor for the following offset page, or "" when
@@ -40,11 +46,5 @@ func nextOffsetToken(cursor string, limit, size int) string {
 	if limit <= 0 || size < limit {
 		return ""
 	}
-	start := 0
-	if cursor != "" {
-		if n, err := strconv.Atoi(cursor); err == nil {
-			start = n
-		}
-	}
-	return strconv.Itoa(start + limit)
+	return strconv.Itoa(offsetOf(cursor) + limit)
 }

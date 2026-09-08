@@ -183,6 +183,35 @@ func TestCmdPageHistoryBatchFilter(t *testing.T) {
 	}
 }
 
+func TestCmdPageHistoryBatchContinuesAfterSourceFailure(t *testing.T) {
+	srv := mockConfluence(t)
+	oldStderr := os.Stderr
+	r, w, pipeErr := os.Pipe()
+	if pipeErr != nil {
+		t.Fatal(pipeErr)
+	}
+	os.Stderr = w
+	out, runErr := runCLI(t, srv, "page", "history", "123", "404", "456",
+		"--from", "2025-02-01", "--to", "2025-02-03")
+	w.Close()
+	os.Stderr = oldStderr
+	stderr, readErr := io.ReadAll(r)
+	r.Close()
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if got := cerrors.AsCLIError(runErr).Code; got != "BATCH_PARTIAL_FAILURE" {
+		t.Fatalf("error code = %q", got)
+	}
+	got := decodeList(t, out)
+	if len(got) != 2 || got[0]["page"].(map[string]any)["id"] != "456" {
+		t.Fatalf("versions = %v", got)
+	}
+	if !strings.Contains(string(stderr), "HISTORY_SOURCE_FAILED") || !strings.Contains(string(stderr), `"page_id":"404"`) {
+		t.Fatalf("stderr missing per-page failure: %s", stderr)
+	}
+}
+
 func TestCmdPageHistoryBatchGuards(t *testing.T) {
 	srv := mockConfluence(t)
 	if _, err := runCLI(t, srv, "page", "history", "123", "456"); err == nil {

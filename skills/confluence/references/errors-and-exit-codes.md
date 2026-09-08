@@ -1,8 +1,12 @@
 # Errors and exit codes
 
 On failure `confluence-cli` writes a JSON object to **stderr** and exits with a
-category-specific code. stdout stays empty, so a successful pipeline never has
-to parse errors.
+category-specific code. stdout normally stays empty. Partial batch operations
+are the exception and return `BATCH_PARTIAL_FAILURE`: page history preserves
+successful versions on stdout and reports failed pages through
+`HISTORY_SOURCE_FAILED` stderr notices, while batch writes retain their
+per-item result/error report on stdout. Callers must check the exit code before
+treating either form as complete.
 
 ## Error shape
 
@@ -63,3 +67,8 @@ changes such as a host retry use the optional `recovery` object instead.
   retry, and prefer a narrower query over `--all`.
 - **conflict (11)** → `page update` lost a race; the page changed since it was
   read. Re-run `page get <id> --no-body` for the current version, then retry.
+- **`BATCH_PARTIAL_FAILURE`** → some batch items failed after others succeeded.
+  For `page history`, preserve the successful stdout versions and inspect
+  `HISTORY_SOURCE_FAILED` notices on stderr. For batch writes, inspect the
+  per-item stdout errors. Retry only failed references after fixing access or
+  identifiers.

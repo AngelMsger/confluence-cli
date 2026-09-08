@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
+	"strings"
 
 	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 )
@@ -16,11 +17,19 @@ import (
 
 // ListPageVersions lists a page's version history, newest first.
 func (c *apiClient) ListPageVersions(ctx context.Context, id string, opt ListOpts) (ListResult[PageVersion], error) {
+	if c.flavor == FlavorDataCenter {
+		if _, _, anchored := parseDataCenterHistoryCursor(opt.Cursor); anchored {
+			return c.listDataCenterPageVersions(ctx, id, opt)
+		}
+	}
 	limit := c.limitOf(opt)
 	q := offsetQuery(opt.Cursor, limit)
 	path := c.v1Base() + "/content/" + url.PathEscape(id) + "/version"
 	var raw rawVersionList
 	if err := c.getJSON(ctx, path, q, &raw); err != nil {
+		if c.flavor == FlavorDataCenter && isHTTPNotFound(err) {
+			return c.listDataCenterPageVersions(ctx, id, opt)
+		}
 		return ListResult[PageVersion]{}, err
 	}
 	res := ListResult[PageVersion]{Next: nextOffsetToken(opt.Cursor, limit, len(raw.Results))}
@@ -30,6 +39,82 @@ func (c *apiClient) ListPageVersions(ctx context.Context, id string, opt ListOpt
 		res.Items = append(res.Items, version)
 	}
 	return res, nil
+}
+
+func (c *apiClient) listDataCenterPageVersions(ctx context.Context, id string, opt ListOpts) (ListResult[PageVersion], error) {
+	limit := c.limitOf(opt)
+	q := url.Values{}
+	q.Set("expand", "version")
+	var current rawContent
+	if err := c.getJSON(ctx, c.v1Base()+"/content/"+url.PathEscape(id), q, &current); err != nil {
+		return ListResult[PageVersion]{}, err
+	}
+	if current.Version == nil {
+		return ListResult[PageVersion]{}, nil
+	}
+	anchor, start, anchored := parseDataCenterHistoryCursor(opt.Cursor)
+	if !anchored {
+		anchor = current.Version.Number
+		start = offsetOf(opt.Cursor)
+	}
+	if anchor <= start {
+		return ListResult[PageVersion]{}, nil
+	}
+
+	res := ListResult[PageVersion]{}
+	for number := anchor - start; number > 0 && len(res.Items) < limit; number-- {
+		var version *rawVersion
+		if number == current.Version.Number {
+			version = current.Version
+		} else {
+			query := url.Values{}
+			query.Set("status", "historical")
+			query.Set("version", strconv.Itoa(number))
+			query.Set("expand", "version")
+			var historical rawContent
+			if err := c.getJSON(ctx, c.v1Base()+"/content/"+url.PathEscape(id), query, &historical); err != nil {
+				return ListResult[PageVersion]{}, err
+			}
+			version = historical.Version
+		}
+		if version == nil {
+			return ListResult[PageVersion]{}, cerrors.Newf(cerrors.CategoryParse, "VERSION_METADATA_MISSING",
+				"version %d of page %s has no version metadata", number, id)
+		}
+		item := pageVersionOf(*version)
+		item.Page = &PageRef{ID: id, Title: current.Title}
+		res.Items = append(res.Items, item)
+	}
+	if anchor-start-len(res.Items) > 0 {
+		res.Next = formatDataCenterHistoryCursor(anchor, start+len(res.Items))
+	}
+	return res, nil
+}
+
+const dataCenterHistoryCursorPrefix = "dc-history:"
+
+func parseDataCenterHistoryCursor(cursor string) (anchor, offset int, ok bool) {
+	if !strings.HasPrefix(cursor, dataCenterHistoryCursorPrefix) {
+		return 0, 0, false
+	}
+	parts := strings.Split(strings.TrimPrefix(cursor, dataCenterHistoryCursorPrefix), ":")
+	if len(parts) != 2 {
+		return 0, 0, false
+	}
+	anchor, anchorErr := strconv.Atoi(parts[0])
+	offset, offsetErr := strconv.Atoi(parts[1])
+	if anchorErr != nil || offsetErr != nil || anchor <= 0 || offset < 0 {
+		return 0, 0, false
+	}
+	return anchor, offset, true
+}
+
+func formatDataCenterHistoryCursor(anchor, offset int) string {
+	return dataCenterHistoryCursorPrefix + strconv.Itoa(anchor) + ":" + strconv.Itoa(offset)
+}
+
+func isHTTPNotFound(err error) bool {
+	return cerrors.AsCLIError(err).HTTPStatus == 404
 }
 
 // getPageVersionBody fetches the storage-format body of a historical version.

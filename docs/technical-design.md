@@ -45,6 +45,8 @@ Per-operation endpoint / pagination / body-parameter differences
 | Child pages | `GET {base}/wiki/api/v2/pages/{id}/children` (cursor) | `GET {base}/rest/api/content/{id}/child/page?expand=...&start&limit` |
 | Descendant pages | `GET {base}/wiki/api/v2/pages/{id}/descendants` (cursor) | `GET {base}/rest/api/content/{id}/descendant/page?start&limit` |
 | CQL search | `GET {base}/wiki/rest/api/content/search?cql=&start&limit` (v1) | `GET {base}/rest/api/content/search?cql=&start&limit` |
+| User search | `GET {base}/wiki/rest/api/search/user?cql=user.fullname~...` | `GET {base}/rest/api/search?cql=user.fullname~...`; query-less listing uses `/rest/api/user/list`, with a `type=user` CQL fallback |
+| List page versions | `GET {base}/wiki/rest/api/content/{id}/version` | `GET {base}/rest/api/content/{id}/version`; when unavailable, enumerate `/rest/api/content/{id}?status=historical&version=N&expand=version` |
 | List spaces | `GET {base}/wiki/api/v2/spaces` (cursor) | `GET {base}/rest/api/space?start&limit` |
 | Get space | `GET {base}/wiki/api/v2/spaces?keys={key}` | `GET {base}/rest/api/space/{key}` |
 | List comments | `GET {base}/wiki/api/v2/pages/{id}/footer-comments` (cursor) | `GET {base}/rest/api/content/{id}/child/comment?expand=body.storage,version&depth=all` |
@@ -58,6 +60,12 @@ Per-operation endpoint / pagination / body-parameter differences
 (`start` / `limit`, terminated by `_links.next` being absent or
 `size < limit`). The `PaginationKind` enum (`Offset` / `Cursor`)
 abstracts both.
+
+The Data Center historical-content fallback carries both the initial current
+version and the offset in its opaque cursor. Later pages therefore stay pinned
+to the same history snapshot if a new version is published between requests.
+Legacy numeric cursors are accepted and upgraded to anchored cursors in the
+next response.
 
 **Body format**: datacenter / cloud-v1 use `expand=body.storage`;
 cloud-v2 uses `body-format=storage`. After normalization everything
@@ -205,6 +213,9 @@ Commands group by resource: `page`, `search`, `space`, `comment`,
   refs from stdin. Time-bounded queries read newest-first and stop after
   crossing the lower bound; an actor-only single-page query may traverse the
   full history. Batch/stdin queries reject the resource-specific `--cursor`.
+  An inaccessible page does not abort the remaining batch: successful versions
+  are emitted, each failed page produces a `HISTORY_SOURCE_FAILED` notice, and
+  the command returns `BATCH_PARTIAL_FAILURE`.
 
 The full command / flag / example reference is auto-generated from the
 command tree — see [docs/cli/](cli/) (`make docs` produces it, CI
@@ -230,6 +241,10 @@ raw-output exceptions:
 - `attachment download --output -` writes the attachment's raw bytes to
   stdout (for piping).
 - `skill show` prints the embedded `SKILL.md` verbatim.
+
+Partial batch operations may emit successful per-item data before returning
+`BATCH_PARTIAL_FAILURE`; callers must use the exit code and structured stderr
+diagnostics to determine whether coverage is complete.
 
 Prompts from interactive wizards (`config init`, `auth login`) and all
 errors go to stderr.

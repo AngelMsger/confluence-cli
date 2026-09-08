@@ -68,6 +68,84 @@ func TestListPageVersionsCloudActor(t *testing.T) {
 	}
 }
 
+func TestListPageVersionsDataCenterFallsBackToHistoricalContent(t *testing.T) {
+	t.Parallel()
+	var paths []string
+	currentReads := 0
+	c, _ := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		paths = append(paths, r.URL.RequestURI())
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.URL.Path == "/rest/api/content/123/version":
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte(`{"message":"not available"}`))
+		case r.URL.Path == "/rest/api/content/123" && r.URL.Query().Get("version") == "":
+			currentReads++
+			if currentReads == 1 {
+				w.Write([]byte(`{"id":"123","title":"Doc","version":{"number":3,"when":"2025-03-01T00:00:00Z","by":{"username":"alice","userKey":"a1","displayName":"Alice"}}}`))
+				return
+			}
+			w.Write([]byte(`{"id":"123","title":"Doc","version":{"number":4,"when":"2025-04-01T00:00:00Z","by":{"username":"dave","userKey":"d1","displayName":"Dave"}}}`))
+		case r.URL.Path == "/rest/api/content/123" && r.URL.Query().Get("version") == "2":
+			w.Write([]byte(`{"id":"123","title":"Doc","version":{"number":2,"when":"2025-02-01T00:00:00Z","by":{"username":"bob","userKey":"b1","displayName":"Bob"}}}`))
+		case r.URL.Path == "/rest/api/content/123" && r.URL.Query().Get("version") == "1":
+			w.Write([]byte(`{"id":"123","title":"Doc","version":{"number":1,"when":"2025-01-01T00:00:00Z","by":{"username":"carol","userKey":"c1","displayName":"Carol"}}}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+
+	res, err := c.ListPageVersions(context.Background(), "123", ListOpts{Limit: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Items) != 2 || res.Items[0].Number != 3 || res.Items[1].Number != 2 {
+		t.Fatalf("versions = %+v", res.Items)
+	}
+	if res.Next != "dc-history:3:2" {
+		t.Fatalf("next = %q", res.Next)
+	}
+	if len(paths) != 3 {
+		t.Fatalf("requests = %v", paths)
+	}
+
+	next, err := c.ListPageVersions(context.Background(), "123", ListOpts{Limit: 2, Cursor: res.Next})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(next.Items) != 1 || next.Items[0].Number != 1 || next.Next != "" {
+		t.Fatalf("next page = %+v", next)
+	}
+	if len(paths) != 5 {
+		t.Fatalf("anchored continuation should bypass the unavailable collection endpoint: %v", paths)
+	}
+}
+
+func TestListPageVersionsDataCenterAcceptsLegacyNumericCursor(t *testing.T) {
+	t.Parallel()
+	c, _ := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.URL.Path == "/rest/api/content/123/version":
+			w.WriteHeader(http.StatusNotFound)
+		case r.URL.Query().Get("version") == "":
+			w.Write([]byte(`{"id":"123","title":"Doc","version":{"number":4}}`))
+		case r.URL.Query().Get("version") == "2":
+			w.Write([]byte(`{"id":"123","title":"Doc","version":{"number":2}}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+
+	res, err := c.ListPageVersions(context.Background(), "123", ListOpts{Limit: 1, Cursor: "2"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Items) != 1 || res.Items[0].Number != 2 || res.Next != "dc-history:4:3" {
+		t.Fatalf("versions = %+v", res)
+	}
+}
+
 // restoreServer is a Confluence stand-in covering the three GETs and one PUT a
 // restore performs.
 func restoreServer(t *testing.T, putBody *[]byte) http.Handler {
