@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-09-09
+
+### Skill
+
+- **Keep a person in the loop when replying to a comment.** The Skill now requires
+  an agent to classify who wrote a comment before drafting a reply (the `[AI]`
+  attribution link means a machine wrote it, `version.by` names the writer, and
+  Confluence exposes no bot flag, so anything unrecognizable is a person), and to
+  gate human-authored comments behind a per-comment confirmation: state the reason
+  once per session, then quote what was asked, show the reasoning, and hand over a
+  labeled draft for the user to approve or rewrite. One approval covers one
+  comment; a reply the human writes is posted verbatim without the `[AI]` marker.
+  New `references/replying-to-people.md`, wired into `SKILL.md` and
+  `references/comments.md`. Mirrors the same contract in `bitbucket-cli`. Skill
+  bumped to `1.10.0`.
+
 ## [0.16.1] - 2026-09-08
 
 ### Fixed
@@ -618,7 +634,8 @@ Initial release.
 - Distribution via npm (`@angelmsger/confluence-cli`), `go install`, prebuilt
   release binaries and `make install`.
 
-[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.16.1...HEAD
+[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/angelmsger/confluence-cli/compare/v0.16.1...v0.17.0
 [0.16.1]: https://github.com/angelmsger/confluence-cli/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/angelmsger/confluence-cli/compare/v0.15.2...v0.16.0
 [0.15.2]: https://github.com/angelmsger/confluence-cli/compare/v0.15.1...v0.15.2

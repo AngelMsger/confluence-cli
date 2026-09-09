@@ -1,6 +1,6 @@
 ---
 name: confluence
-version: 1.9.1
+version: 1.10.0
 description: "Use a Confluence wiki as an external knowledge base. Search, read and summarise pages; browse spaces and page trees; create/update/delete/move/copy pages; find edits by actor and time; view or restore versions; manage comments, attachments, labels and watches. Every write accepts --dry-run; session read-only mode blocks writes unless --allow-writes is set. Use when the user gives a Confluence URL or ID, mentions a Confluence/wiki page, asks to find or edit content, find their edits for a worklog, inspect history, manage page resources, check their identity, or use dry-run/read-only mode. Works with Confluence Cloud and Data Center / Server."
 metadata:
   requires:
@@ -167,12 +167,32 @@ to the whole batch.
   it is a real flag; each fix is echoed as a `{"_notice":{"corrections":[…]}}`
   line on stderr. Prefer the canonical `--kebab-case value` form regardless.
 
+## Replying to people, not to bots
+
+A comment someone wrote is one half of a conversation. When you answer it on the
+user's behalf, both sides lose that exchange — so **help the user answer, do not
+answer for them.**
+
+- **Classify the writer first** — the `[AI]` link in the body means a machine wrote
+  it; `version.by` names who did. Confluence comments carry no bot flag, so anything
+  you cannot recognize as automation is a person.
+- **For a human-authored comment:** state the reason once per session, then go one
+  comment at a time — quote what they asked, show your reasoning, and hand over a
+  labeled *draft* for the user to approve or rewrite. One approval covers one
+  comment. If the user knowingly asks for bulk replies anyway, comply and keep the
+  `[AI]` marker on every one.
+- **Bot or agent counterparts** do not need the per-comment gate — confirm the first
+  write and keep attribution.
+
+Full protocol: [replying-to-people.md](references/replying-to-people.md).
+
 ## AI attribution (agent writes)
 
 When you, as an AI agent, write to Confluence on the user's behalf, mark the content
 as AI-authored with a link back to the tool. This applies **only** to agent-driven
 writes — `page create` / `page update` and `comment add` — never to anything a human
-authored directly. Include the marker exactly once per page/comment.
+authored directly — including a reply the user wrote or rewrote themselves, which is
+posted verbatim and untagged. Include the marker exactly once per page/comment.
 
 - **Pages** — prepend a one-line banner at the top of the body. With `--body-format
   storage`, use an Info macro; with markdown/wiki, a leading callout line. See

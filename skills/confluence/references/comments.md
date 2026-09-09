@@ -14,7 +14,11 @@ Returns each footer comment with `id`, `page_id`, `parent_id` (set on replies),
 ## Posting a comment
 
 `comment add` writes to Confluence. Before calling it, make sure the user
-actually asked to post a comment — do not post speculatively. For page writes
+actually asked to post a comment — do not post speculatively. When you are
+**replying to a comment a person wrote**, that is not just a write: the answer goes
+out under the user's name to someone expecting a colleague's reply. Draft it, show
+them the question and your reasoning, and post only after they approve that specific
+reply — see [replying-to-people.md](replying-to-people.md). For page writes
 (create / update / delete / move / copy) see [writing-pages.md](writing-pages.md).
 
 ```bash
@@ -28,6 +32,10 @@ echo "Looks good" | confluence-cli comment add 12345 --body-file -
 # reply to an existing comment
 confluence-cli comment add 12345 --parent <comment-id> --body "Agreed."
 ```
+
+Check who wrote `<comment-id>` before replying: the `[AI]` marker in the body means
+a machine wrote it, `version.by` names the writer, and anything you cannot classify
+as automation is a person. See [replying-to-people.md](replying-to-people.md).
 
 Flags:
 
