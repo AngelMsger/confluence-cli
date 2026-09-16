@@ -29,6 +29,7 @@ func TestDoctorCredentialRecoveryStatus(t *testing.T) {
 func TestCompanionSkillDoctorCheck(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	t.Setenv(envSkillLoaded, "")
 	dir := filepath.Join(home, ".codex", "skills", "confluence")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
