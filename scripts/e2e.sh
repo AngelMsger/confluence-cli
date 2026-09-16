@@ -130,6 +130,10 @@ assert_contains  "space list table"       "ENG"            "${CLI[@]}" space lis
 assert_contains  "space get"              "Engineering"    "${CLI[@]}" space get ENG
 assert_contains  "comment list"           "First comment"  "${CLI[@]}" comment list 123
 assert_contains  "comment add"            "new-comment"    "${CLI[@]}" comment add 123 --body "looks good"
+assert_contains  "comment add dry-run (DC)" '"dry_run": true' \
+                                          "${CLI[@]}" comment add 123 --parent c1 --body "preview" --dry-run
+assert_contains  "comment add dry-run (Cloud)" '/wiki/rest/api/content' \
+                                          "${CLI[@]}" --flavor cloud comment add 123 --body "preview" --dry-run
 assert_contains  "page create"            "new-page"       "${CLI[@]}" page create --space ENG --title "Spec" --body "<p>hi</p>"
 assert_contains  "page create dry-run"    '"dry_run": true' \
                                           "${CLI[@]}" page create --space ENG --title "X" --body "<p>x</p>" --dry-run
@@ -137,6 +141,8 @@ assert_contains  "page create markdown"   "<h1>Title</h1>" \
                                           "${CLI[@]}" page create --space ENG --title "MD" --body-format markdown --body "# Title" --dry-run
 assert_contains  "page update"            '"number": 3'    "${CLI[@]}" page update 123 --title "Renamed" --version 2
 assert_exit      "page update conflict -> 11" 11           "${CLI[@]}" page update 409 --title "X"
+assert_err_contains "page conflict reads raw content" '--as raw' \
+                                          "${CLI[@]}" page update 409 --title "X"
 assert_exit      "page delete needs --yes -> 2" 2          "${CLI[@]}" page delete 123 </dev/null
 assert_contains  "page delete --yes"      "trashed"        "${CLI[@]}" page delete 123 --yes
 assert_contains  "page move dry-run"      '"dry_run": true' \
@@ -179,6 +185,8 @@ assert_contains     "--allow-writes overrides read-only"   "trashed" \
                                                      "${RO_ENV[@]}" "${CLI[@]}" --allow-writes page delete 123 --yes
 assert_err_contains "read-only blocks comment add"   "READONLY_BLOCKED" \
                                                      "${RO_ENV[@]}" "${CLI[@]}" comment add 123 --body "x"
+assert_contains     "read-only permits comment preview" '"dry_run": true' \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" comment add 123 --body "x" --dry-run
 
 echo "==> multi-context checks"
 TMPCFG2="$(mktemp -d)"

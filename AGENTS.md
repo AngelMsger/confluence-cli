@@ -121,9 +121,22 @@ When you add a new mutating method on `Client`:
 - Add a row to the wrapper's table test in
   `pkg/apiclient/readonly_test.go`.
 
-`--dry-run` must *not* be blocked by read-only mode — `DescribeWrite` sends
-no HTTP and is the right tool to inspect what a write would look like under
-a read-only session. The wrapper intentionally does not override it.
+`--dry-run` must *not* be blocked by read-only mode. `DescribeWrite` may perform
+reads needed to build the request, but never sends the mutation. The wrapper
+intentionally does not override it. Keep preview/live payload parity tests for
+both flavors, including `AddCommentReq` and threaded storage/wiki bodies.
+
+## Preserve content during write recovery
+
+- Page body edits must use the current raw storage body and its version; preserve
+  unrelated human content and rich markup. Conflict recovery must merge the
+  intended edit into newly fetched content before retrying with `--version`.
+  Metadata-only reads followed by a version bump are not safe recovery.
+- A transient or decoding error does not prove a write failed. Skill and runtime
+  guidance must verify remote state before replaying an uncertain mutation.
+- Keep the Skill's human-comment approval gate and reason-once explanation.
+  Technical previews do not introduce another approval gate for an authorized
+  change; attribution describes the actual AI contribution.
 
 ## Documentation — keep it current
 

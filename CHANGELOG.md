@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-09-16
+
+### Added
+
+- `comment add --dry-run` previews the same request used to post comments and
+  threaded replies on Cloud and Data Center, including in read-only mode.
+
+### Fixed
+
+- Version-conflict recovery now requires reading current content and merging
+  the intended edit before retrying with its version, preserving concurrent edits.
+- Error recovery guidance distinguishes retrying reads from reconciling writes
+  whose outcome is uncertain after a network, server, or decoding error.
+- Correct attachment-ID examples and the landing page's Markdown body flag.
+
+### Skill
+
+- Preserve existing page prose and storage markup, reconcile uncertain writes
+  before retrying, and identify the actual AI contribution on edited pages.
+- Reuse authorization for requested changes and technical previews while keeping
+  per-comment approval for human replies; report bounded evidence and page links.
+- Bump the companion Skill to `1.11.0`.
+
 ## [0.17.0] - 2026-09-09
 
 ### Skill
@@ -634,7 +657,8 @@ Initial release.
 - Distribution via npm (`@angelmsger/confluence-cli`), `go install`, prebuilt
   release binaries and `make install`.
 
-[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.18.0...HEAD
+[0.18.0]: https://github.com/angelmsger/confluence-cli/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/angelmsger/confluence-cli/compare/v0.16.1...v0.17.0
 [0.16.1]: https://github.com/angelmsger/confluence-cli/compare/v0.16.0...v0.16.1
 [0.16.0]: https://github.com/angelmsger/confluence-cli/compare/v0.15.2...v0.16.0

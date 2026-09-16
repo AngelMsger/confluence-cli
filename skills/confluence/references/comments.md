@@ -26,11 +26,14 @@ reply — see [replying-to-people.md](replying-to-people.md). For page writes
 confluence-cli comment add 12345 --body "Reviewed — looks good."
 
 # body from a file, or from stdin with '-'
-confluence-cli comment add 12345 --body-file ./review.md
+confluence-cli comment add 12345 --body-file ./review.xml
 echo "Looks good" | confluence-cli comment add 12345 --body-file -
 
 # reply to an existing comment
 confluence-cli comment add 12345 --parent <comment-id> --body "Agreed."
+
+# preview the prepared reply, including the parent and body
+confluence-cli comment add 12345 --parent <comment-id> --body-file ./reply.xml --dry-run
 ```
 
 Check who wrote `<comment-id>` before replying: the `[AI]` marker in the body means
@@ -45,9 +48,13 @@ Flags:
 | `--body-file` | read the body from a file (`-` = stdin) |
 | `--parent` | parent comment ID — makes this a threaded reply |
 | `--body-format` | `storage` (XHTML, default) or `wiki` (wiki markup) |
+| `--dry-run` | preview the POST without publishing, including in read-only mode |
 
 On success the created comment is returned as JSON. The command writes the
-comment exactly once — it is never retried automatically.
+comment exactly once — it is never retried automatically. If the response is
+lost or cannot be decoded, list comments to check whether it was posted before
+trying again. For multiline or XHTML bodies, prefer a file containing the exact
+prepared text and the appropriate storage or wiki markup.
 
 ### AI attribution (agent writes)
 
@@ -59,7 +66,7 @@ plain text, so put them straight inside the anchor:
 
 ```bash
 confluence-cli comment add 12345 \
-  --body '<p><a href="https://angelmsger.github.io/confluence-cli/">[AI]</a> 看起来不错。</p>'
+  --body '<p><a href="https://angelmsger.github.io/confluence-cli/">[AI]</a> The rollout checks passed.</p>'
 ```
 
 With `--body-format wiki`, use the wiki link form `[\[AI\]|https://angelmsger.github.io/confluence-cli/]`

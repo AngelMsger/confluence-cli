@@ -1,8 +1,8 @@
 # Reading pages
 
 `confluence-cli page get <id|url>` fetches a page and renders its body. The
-argument may be a bare numeric ID or any Confluence page URL — the CLI extracts
-the ID.
+argument may be a bare page ID or a Confluence URL containing that ID. For a
+title-only or unsupported URL, search for the page rather than guessing the ID.
 
 ## Core principle: read the minimum
 
@@ -23,9 +23,10 @@ Decide the scope:
 confluence-cli page get 12345 --scope outline
 ```
 
-Returns the heading tree with a stable `section_id` per heading (`sec-1`,
+Returns the heading tree with a `section_id` per heading (`sec-1`,
 `sec-2`, ...) and `outline` in the JSON. Cheap — read this first when you do not
-know the page layout.
+know the page layout. Refresh the outline after structural edits; section IDs
+describe the current heading order.
 
 ### --scope section — read one section
 

@@ -74,7 +74,7 @@
       <div class="card feat">
         <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-4 4z"/><path d="M8 9h8M8 12h5"/></svg></div>
         <h3>Comments &amp; threads</h3>
-        <p>Read footer comments and post replies, threaded under any parent comment.</p>
+        <p>Read footer comments and post threaded replies. Preview the parent and body with <code>--dry-run</code>, including in read-only mode.</p>
       </div>
       <div class="card feat">
         <div class="feat-ico"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4-8 4-8-4z"/><path d="M4 12l8 4 8-4"/><path d="M4 17l8 4 8-4"/></svg></div>
@@ -159,7 +159,7 @@ npm install -g @angelmsger/confluence-cli</pre>
 
 <span class="c"># create a page from Markdown, preview before sending</span>
 <span class="p">$</span> confluence-cli page create --space ENG --title "Release Notes" \
-    --format markdown --body-file notes.md --dry-run</pre>
+    --body-format markdown --body-file notes.md --dry-run</pre>
     </div>
   </div>
 </section>

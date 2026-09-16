@@ -289,8 +289,11 @@ network server parse internal`.
 | 5 | permission | 11 | conflict |
 
 `conflict` (HTTP 409, exit 11) is reserved for version conflicts on
-write operations (`page update` / `comment update`) — re-read the
-target to obtain the current version, then retry.
+write operations (`page update` / `comment update`). Read the current content
+and version, merge the intended edit while preserving concurrent changes, then
+retry with that version. Page edits use raw storage XHTML, not a rendered or
+scoped body. Transient and decoding errors after writes require checking the
+remote outcome before replay; `retryable` does not establish write replay safety.
 
 `hints.go` maps each category to `next_steps`, guiding agents to
 self-correct.
@@ -352,7 +355,9 @@ Two orthogonal write-protections, layered on top of `--yes`:
    operation via `Client.DescribeWrite(ctx, op)` and emits the resulting
    `WriteRequestPlan{Method, URL, Payload}` instead of sending the
    request. The build helper is shared with the live write, so the
-   preview cannot drift from the actual HTTP call.
+   preview cannot drift from the actual HTTP call. This includes comment
+   creation and threaded replies in storage/wiki format on both flavors;
+   planning may perform prerequisite reads but never the mutation.
 2. **Read-only mode** is session-level. `defaults.read_only: true` in
    `config.yaml` or `CONFLUENCE_CLI_READ_ONLY=1` in the environment
    makes `appState.newClient()` wrap the client in
@@ -380,8 +385,10 @@ trigger-word description, `metadata.requires.bins`,
   before section, full only when needed.
 - `searching-cql.md` — the CQL parameter table and flag mapping;
   pagination for large result sets.
-- `comments.md` — reading and writing comments, the only write that
-  needs confirmation.
+- `comments.md` — comment reads, previews, and writes; human-authored replies
+  follow the per-comment approval protocol in `replying-to-people.md`.
+- `writing-pages.md` — page creation and edits that preserve existing storage
+  content, version checks, and scoped AI attribution.
 - `attachments.md` — list-then-download flow.
 - `safety-modes.md` — `--dry-run` and read-only mode for agents.
 - `errors-and-exit-codes.md` — exit-code table + per-category recovery

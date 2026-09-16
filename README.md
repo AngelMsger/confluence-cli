@@ -130,7 +130,7 @@ are never written to the config file.
 | `page watch` / `unwatch` / `watch-status` | subscribe to or check page notifications |
 | `search` | CQL search, raw or built from `--text`/`--author`/`--space`/... |
 | `space list` / `space get` | inspect spaces |
-| `comment list` / `add` / `update` / `delete` | read, post, edit and remove comments |
+| `comment list` / `add` / `update` / `delete` | read, post, edit and remove comments; preview writes with `--dry-run` |
 | `attachment list` / `download` / `upload` / `update` / `delete` | inspect, fetch and manage attachments |
 | `label list` / `add` / `remove` | manage page labels |
 | `whoami` | print the user the credentials authenticate as |

@@ -318,6 +318,8 @@ func (c *apiClient) DescribeWrite(ctx context.Context, op any) (WriteRequestPlan
 		method, path, payload, err = c.buildRestorePage(ctx, v)
 	case WatchReq:
 		method, path, err = c.buildSetWatch(v)
+	case AddCommentReq:
+		method, path, payload, err = c.buildAddComment(v)
 	case UpdateCommentReq:
 		method, path, payload, err = c.buildUpdateComment(ctx, v)
 	case DeleteCommentReq:

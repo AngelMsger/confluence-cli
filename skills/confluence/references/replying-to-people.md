@@ -1,13 +1,7 @@
 # Replying to people, not to bots
 
-A comment someone wrote on a page is one half of a conversation. When an agent
-answers it on the user's behalf, both halves stop being a conversation: the user
-never engages with a question they did not read, and the person who asked gets an
-answer nobody stands behind.
-
-So the rule is not "never reply". It is: **help the user answer, do not answer for
-them.** Do the reading, find the facts, draft the words — then hand the draft back
-and let the person decide what goes out under their name.
+A reply is posted under the user's name. Prepare the relevant facts and a draft
+so the user can decide what to say to the person who asked.
 
 ## Classify the counterpart before you draft
 
@@ -49,13 +43,13 @@ every reply you post, so the reader can see what they are talking to.
 ## AI-authored counterparts
 
 When the comment was written by another agent or a bot, the per-comment ritual is
-unnecessary; nobody is being answered in a person's place. Still confirm before the
-first write of the session, keep the `[AI]` attribution on what you post, and
-surface anything the user should know rather than quietly closing it out.
+unnecessary. Use the user's existing authorization to reply, keep the `[AI]`
+attribution on what you post, and surface anything the user should know rather
+than quietly closing it out.
 
 ## This composes with the existing gates
 
 The confirmation gate is about *who is being answered*. It sits on top of, not
-instead of, `--dry-run` and read-only mode — see [safety-modes.md](safety-modes.md). In a read-only
-session you cannot post at all: give the user the draft and let them post it
-themselves.
+instead of, `--dry-run` and read-only mode — see [safety-modes.md](safety-modes.md).
+In a read-only task do not post: give the user the draft. If the user later
+authorizes posting, the per-call override in the safety reference applies.

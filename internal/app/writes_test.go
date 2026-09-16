@@ -3,6 +3,8 @@ package app
 import (
 	"encoding/json"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -341,6 +343,47 @@ func TestCmdCommentUpdate(t *testing.T) {
 	json.Unmarshal([]byte(out), &got)
 	if got["id"] != "c1" {
 		t.Errorf("updated comment = %v", got)
+	}
+}
+
+func TestCmdCommentAddDryRun(t *testing.T) {
+	for _, flavor := range []string{"cloud", "datacenter"} {
+		t.Run(flavor, func(t *testing.T) {
+			t.Setenv("CONFLUENCE_CLI_READ_ONLY", "1")
+			t.Setenv("CONFLUENCE_CLI_NO_UPDATE_NOTIFIER", "1")
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				t.Errorf("comment preview sent HTTP: %s %s", r.Method, r.URL.Path)
+			}))
+			t.Cleanup(srv.Close)
+			body := "First line\nSecond line with [a link|https://example.com]."
+			file := writeTempFile(t, "reply.wiki", body)
+			out, err := runCLI(t, srv, "--flavor", flavor, "comment", "add", "123",
+				"--parent", "c1", "--body-file", file, "--body-format", "wiki", "--dry-run")
+			if err != nil {
+				t.Fatal(err)
+			}
+			var got struct {
+				DryRun  bool   `json:"dry_run"`
+				Method  string `json:"method"`
+				URL     string `json:"url"`
+				Payload struct {
+					Ancestors []struct{ ID string }
+					Body      map[string]struct{ Value, Representation string }
+				}
+			}
+			if err := json.Unmarshal([]byte(out), &got); err != nil {
+				t.Fatal(err)
+			}
+			path := "/rest/api/content"
+			if flavor == "cloud" {
+				path = "/wiki" + path
+			}
+			if !got.DryRun || got.Method != "POST" || got.URL != srv.URL+path ||
+				len(got.Payload.Ancestors) != 1 || got.Payload.Ancestors[0].ID != "c1" ||
+				got.Payload.Body["wiki"].Value != body || got.Payload.Body["wiki"].Representation != "wiki" {
+				t.Fatalf("preview lost reply fields: %s", out)
+			}
+		})
 	}
 }
 

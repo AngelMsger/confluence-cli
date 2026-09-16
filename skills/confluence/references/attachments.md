@@ -54,16 +54,17 @@ version of that attachment rather than creating a duplicate.
 
 ```bash
 # upload new content for an existing attachment (creates a new version)
-confluence-cli attachment update <attachment-id|url> --file ./diagram-v2.png
+confluence-cli attachment update <attachment-id> --file ./diagram-v2.png
 ```
 
-`update` takes the **attachment** ID (run `attachment list` to find it). The
-attachment keeps its name unless `--name` is given.
+`update` takes the **attachment** ID (run `attachment list` to find it); attachment
+URLs are not accepted by download, update, or delete. The attachment keeps its
+name unless `--name` is given.
 
 ## Delete an attachment
 
 ```bash
-confluence-cli attachment delete <attachment-id|url> --yes
+confluence-cli attachment delete <attachment-id> --yes
 ```
 
 Deletion requires `--yes` (or an interactive confirmation when stdin is a

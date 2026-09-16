@@ -138,6 +138,11 @@ func TestUpdatePageConflict(t *testing.T) {
 	if cerrors.ExitCode(err) != cerrors.ExitConflict {
 		t.Errorf("exit code = %d, want %d", cerrors.ExitCode(err), cerrors.ExitConflict)
 	}
+	steps := strings.Join(ce.NextSteps, " ")
+	if strings.Contains(steps, "--no-body") || !strings.Contains(steps, "--as raw") ||
+		!strings.Contains(steps, "--version") || !strings.Contains(steps, "Merge") {
+		t.Errorf("conflict recovery must preserve concurrent body changes: %v", ce.NextSteps)
+	}
 }
 
 func TestDeletePage(t *testing.T) {

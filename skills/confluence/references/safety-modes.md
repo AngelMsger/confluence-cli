@@ -62,8 +62,9 @@ Exit code: 5 (`permission`).
 
 ### Per-call override: `--allow-writes`
 
-When you genuinely need to write under a read-only posture, add the
-root-level `--allow-writes` flag:
+When the user has authorized the write and the active task permits changes,
+add the root-level `--allow-writes` flag. Do not use it to bypass the user's
+read-only instruction:
 
 ```bash
 CONFLUENCE_CLI_READ_ONLY=1 confluence-cli --allow-writes page delete 123 --yes
@@ -92,7 +93,9 @@ When you receive a task that involves any mutation:
 1. **Always run the operation with `--dry-run` first**, especially if the
    target resource (page ID, attachment ID, label name) was inferred and
    not pasted in literally. Confirm the URL ends with the expected
-   resource.
+   resource. This is a technical preview, not a new human approval gate. Once
+   the target and content match the authorized change, proceed within that
+   authorization; replies to human comments still use their per-comment gate.
 2. If the user mentioned "read-only", "don't change anything", or "just
    summarize" — set `CONFLUENCE_CLI_READ_ONLY=1` for the rest of the
    session. Then every read-and-summarize command works as normal, and

@@ -99,6 +99,7 @@ func newCommentAddCmd(s *appState) *cobra.Command {
 		bodyFile string
 		parent   string
 		format   string
+		dryRun   bool
 	)
 	cmd := &cobra.Command{
 		Use:   "add <id|url>",
@@ -124,9 +125,13 @@ func newCommentAddCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			created, err := client.AddComment(ctx, apiclient.AddCommentReq{
+			req := apiclient.AddCommentReq{
 				PageID: id, ParentID: parent, Body: text, Format: format,
-			})
+			}
+			if dryRun {
+				return emitDryRun(s, client, ctx, req)
+			}
+			created, err := client.AddComment(ctx, req)
 			if err != nil {
 				return err
 			}
@@ -137,6 +142,7 @@ func newCommentAddCmd(s *appState) *cobra.Command {
 	cmd.Flags().StringVar(&bodyFile, "body-file", "", "read body from a file ('-' for stdin)")
 	cmd.Flags().StringVar(&parent, "parent", "", "parent comment ID, to post a reply")
 	cmd.Flags().StringVar(&format, "body-format", "storage", "body format: storage or wiki")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "print the request without sending it")
 	enumComplete(cmd, "body-format", "storage", "wiki")
 	return cmd
 }

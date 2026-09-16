@@ -22,19 +22,19 @@ func defaultGuidance(cat Category) (hint string, steps []string) {
 			[]string{"confluence-cli search --text \"<keywords>\"", "Double-check the ID or URL."}
 	case CategoryConflict:
 		return "The resource changed since it was last read (version conflict).",
-			[]string{"Re-fetch the resource to get its current version, then retry."}
+			[]string{"Read the current content and version, merge the intended changes, then retry with that version."}
 	case CategoryRateLimit:
-		return "The server is rate limiting requests. Retry after a short wait.",
-			[]string{"Wait and retry; reduce --limit or avoid --all for large queries."}
+		return "The server is rate limiting requests.",
+			[]string{"Wait before retrying reads; narrow large queries.", "Before retrying a write, verify that the previous attempt did not apply."}
 	case CategoryNetwork:
-		return "The server could not be reached (DNS, TLS or timeout).",
-			[]string{"confluence-cli doctor", "Check --base-url and network connectivity."}
+		return "The request failed because of a network error (DNS, TLS or timeout).",
+			[]string{"confluence-cli doctor", "Check --base-url and network connectivity.", "After a write timeout, verify the remote result before retrying; the change may already have applied."}
 	case CategoryServer:
 		return "The Confluence server returned an internal error.",
-			[]string{"Retry later.", "confluence-cli doctor"}
+			[]string{"Retry reads later; verify the remote result before retrying writes.", "confluence-cli doctor"}
 	case CategoryParse:
 		return "A response could not be parsed or rendered.",
-			[]string{"Retry with --format json and --scope full to inspect raw content."}
+			[]string{"Inspect the error code; for page rendering failures, use page get <id> --as raw.", "After a write, verify the remote result before retrying; the change may already have applied."}
 	default:
 		return "An unexpected internal error occurred.",
 			[]string{"Retry with --verbose for details."}

@@ -28,6 +28,10 @@ Use standard Go formatting; CI requires `gofmt` cleanliness and `go vet ./...`. 
 
 Use Go’s standard `testing` package. Name test files `*_test.go` and test functions `TestXxx`. Place unit tests beside the package under test, and use `test/mockserver` for CLI-level integration coverage. Before opening a PR, run `make test` and `make e2e`; run `make e2e-live` only when real Confluence credentials are available and read-only live validation is needed.
 
+For write changes, follow the [safety and content-preservation rules](AGENTS.md).
+Tests must compare previews with actual requests on both flavors and verify
+that previews work in read-only mode without sending a mutation.
+
 ## Commit & Pull Request Guidelines
 
 Recent commits use concise, imperative messages such as `Add a --version flag on the root command`. Keep commits scoped to one logical change. Pull requests should explain the behavior change, list verification commands run, link related issues when applicable, and include CLI output or screenshots only when user-facing output changes.

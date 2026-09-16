@@ -262,10 +262,12 @@ func (c *apiClient) httpError(resp *http.Response) error {
 		return cerrors.New(cat, "PAGE_VERSION_CONFLICT",
 			msg+" — the page changed since it was last read").
 			WithHTTPStatus(resp.StatusCode).
-			WithHint("Re-fetch the page to get its current version, then retry.").
+			WithHint("Read the current content and version, merge the intended changes, then retry with that version.").
 			WithNextSteps(
-				"confluence-cli page get <id> --no-body",
-				"Retry the update with --version set to the version just read.")
+				"For a page: confluence-cli page get <id> --as raw --body-format storage -o current-page.xml",
+				"For a comment: confluence-cli comment list <page> and locate the comment's current body and version.",
+				"Merge the intended edit into the current content; preserve unrelated changes and storage markup.",
+				"Retry the merged update with --version set to the version read; do not just advance the version on stale content.")
 	}
 	return cerrors.New(cat, "HTTP_"+http.StatusText(resp.StatusCode), msg).
 		WithHTTPStatus(resp.StatusCode)

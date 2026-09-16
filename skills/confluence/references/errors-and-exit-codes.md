@@ -25,8 +25,9 @@ treating either form as complete.
 ```
 
 Always read `hint` and `next_steps` — they tell you how to recover. `retryable`
-indicates whether retrying in the same environment can succeed. Environment
-changes such as a host retry use the optional `recovery` object instead.
+indicates whether retrying in the same environment can succeed, not whether a
+write is safe to replay. Environment changes such as a host retry use the
+optional `recovery` object instead.
 
 ## Exit codes
 
@@ -41,9 +42,9 @@ changes such as a host retry use the optional `recovery` object instead.
 | 6 | not_found | page/space/attachment does not exist (404); verify the ID, or `search` |
 | 7 | rate_limit | server throttling (429); wait, then retry; avoid `--all` on huge queries |
 | 8 | network | DNS/TLS/timeout; check `--base-url`, run `doctor` |
-| 9 | server | Confluence 5xx; retry later |
-| 10 | parse | a response could not be rendered; retry with `--scope full --format json` |
-| 11 | conflict | a write hit a version conflict (409); re-fetch the page, then retry |
+| 9 | server | Confluence 5xx; retry reads later, reconcile uncertain writes first |
+| 10 | parse | rendering or response decoding failed; inspect the error code and verify a write's outcome before resubmitting |
+| 11 | conflict | a write hit a version conflict (409); read current content and version, merge, then retry |
 
 ## Recovery patterns
 
@@ -63,10 +64,22 @@ changes such as a host retry use the optional `recovery` object instead.
   (`defaults.read_only` / `CONFLUENCE_CLI_READ_ONLY=1`). To send the
   blocked write anyway, add `--allow-writes`; to preview without sending,
   add `--dry-run`. See `safety-modes.md`.
-- **rate_limit (7) / server (9) / network (8)** → `retryable: true`; wait and
-  retry, and prefer a narrower query over `--all`.
+- **rate_limit (7) / server (9) / network (8)** → for reads, wait and retry
+  within the task's bounds, preferring a narrower query over `--all`. After a
+  write timeout or server error, read the target first: the change may already
+  exist. Check comments, page versions, or attachment versions as appropriate.
+  Retry only when the prior write is known not to have applied; if its outcome
+  remains uncertain, report that uncertainty instead of replaying it.
+- **parse (10), especially `DECODE` after a write** → the server may have
+  accepted the change even though its response could not be decoded. Verify
+  the result with a read; changing output flags does not repair an API response.
 - **conflict (11)** → `page update` lost a race; the page changed since it was
-  read. Re-run `page get <id> --no-body` for the current version, then retry.
+  read. Fetch `page get <id> --as raw --body-format storage -o current-page.xml`
+  and retain the returned version. Merge the intended edit into that storage
+  body, preserving unrelated changes, then update with `--version` set to the
+  version just read. Never resolve a conflict by only advancing the version on
+  stale content. For comments, re-read `comment list <page>` and reconcile the
+  current body and version before updating; its rendered body is not raw XHTML.
 - **`BATCH_PARTIAL_FAILURE`** → some batch items failed after others succeeded.
   For `page history`, preserve the successful stdout versions and inspect
   `HISTORY_SOURCE_FAILED` notices on stderr. For batch writes, inspect the

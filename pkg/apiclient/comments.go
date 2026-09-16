@@ -49,21 +49,20 @@ type rawValueBody struct {
 	Representation string `json:"representation"`
 }
 
-// AddComment creates a footer comment on a page (the only write operation).
-func (c *apiClient) AddComment(ctx context.Context, req AddCommentReq) (*Comment, error) {
+func (c *apiClient) buildAddComment(req AddCommentReq) (method, path string, payload any, err error) {
 	if req.PageID == "" {
-		return nil, cerrors.New(cerrors.CategoryUsage, "COMMENT_NO_PAGE",
+		return "", "", nil, cerrors.New(cerrors.CategoryUsage, "COMMENT_NO_PAGE",
 			"a page ID is required to add a comment")
 	}
 	if req.Body == "" {
-		return nil, cerrors.New(cerrors.CategoryUsage, "COMMENT_NO_BODY",
+		return "", "", nil, cerrors.New(cerrors.CategoryUsage, "COMMENT_NO_BODY",
 			"comment body must not be empty")
 	}
 	repr := "storage"
 	if req.Format == "wiki" {
 		repr = "wiki"
 	}
-	payload := commentRequest{
+	p := commentRequest{
 		Type:      "comment",
 		Container: commentContainer{ID: req.PageID, Type: "page"},
 		Body: map[string]rawValueBody{
@@ -71,12 +70,19 @@ func (c *apiClient) AddComment(ctx context.Context, req AddCommentReq) (*Comment
 		},
 	}
 	if req.ParentID != "" {
-		payload.Ancestors = []commentAncestor{{ID: req.ParentID}}
+		p.Ancestors = []commentAncestor{{ID: req.ParentID}}
 	}
+	return "POST", c.v1Base() + "/content", p, nil
+}
 
-	var raw rawContent
-	err := c.doJSON(ctx, "POST", c.v1Base()+"/content", nil, payload, &raw)
+// AddComment creates a footer comment on a page.
+func (c *apiClient) AddComment(ctx context.Context, req AddCommentReq) (*Comment, error) {
+	method, path, payload, err := c.buildAddComment(req)
 	if err != nil {
+		return nil, err
+	}
+	var raw rawContent
+	if err := c.doJSON(ctx, method, path, nil, payload, &raw); err != nil {
 		return nil, err
 	}
 	return c.mapComment(raw, req.PageID), nil
