@@ -15,11 +15,18 @@ import (
 
 // skillResult is the result shape for a skill install / uninstall / path entry.
 type skillResult struct {
-	Agent   string `json:"agent,omitempty"`
-	Path    string `json:"path"`
-	Status  string `json:"status"`
-	Version string `json:"version,omitempty"`
-	Files   int    `json:"files,omitempty"`
+	Agent     string `json:"agent,omitempty"`
+	Path      string `json:"path"`
+	Status    string `json:"status"`
+	Version   string `json:"version,omitempty"`
+	Alignment string `json:"alignment,omitempty"`
+	Files     int    `json:"files,omitempty"`
+}
+
+type skillLoadState struct {
+	Loaded  bool
+	Version string
+	Status  string
 }
 
 // newSkillCmd manages the companion `confluence` Skill, which is embedded in
@@ -39,50 +46,58 @@ func newSkillCmd(s *appState) *cobra.Command {
 	return cmd
 }
 
-// newSkillStatusCmd reports, in one shot, whether the companion Skill is loaded
-// into the current agent context (via the CONFLUENCE_CLI_SKILL handshake) and
-// where it is installed on disk — plus the single next action to take. It is the
-// command an agent runs to self-check after seeing the discovery nudge.
 func newSkillStatusCmd(s *appState) *cobra.Command {
 	var project bool
 	cmd := &cobra.Command{
 		Use:   "status",
-		Short: "Report whether the companion Skill is loaded and installed",
+		Short: "Report loaded, installed and embedded Skill versions",
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			loaded := os.Getenv(envSkillLoaded) != ""
-
-			installs := make([]skillResult, 0, len(agentSpecs))
-			anyInstalled := false
-			for _, spec := range agentSpecs {
-				p, err := agentDest(spec, project)
-				if err != nil {
-					return err
-				}
-				status := "not_installed"
-				if _, err := os.Stat(filepath.Join(p, "SKILL.md")); err == nil {
-					status = "installed"
-					anyInstalled = true
-				}
-				installs = append(installs, skillResult{Agent: spec.id, Path: p, Status: status})
+			load := currentSkillLoadState()
+			installs, err := inspectSkillInstalls(project)
+			if err != nil {
+				return err
 			}
-			sort.Slice(installs, func(i, j int) bool { return installs[i].Agent < installs[j].Agent })
+			anyCurrent := false
+			needsRefresh := false
+			for _, install := range installs {
+				anyCurrent = anyCurrent || install.Alignment == "current"
+				needsRefresh = needsRefresh || (install.Status == "installed" && install.Alignment != "current")
+			}
 
-			next := ""
+			nextSteps := []string{}
 			switch {
-			case loaded:
-				next = "" // nothing to do; the Skill is in context
-			case anyInstalled:
-				next = "the Skill is installed but not loaded — load it before composing commands"
+			case load.Status == "current" && needsRefresh:
+				nextSteps = []string{constants.AppName + " skill install"}
+			case load.Status == "current":
+			case load.Loaded && anyCurrent:
+				nextSteps = []string{"reload the agent context so it loads the refreshed Skill"}
+			case load.Loaded:
+				nextSteps = []string{
+					constants.AppName + " skill install",
+					"reload the agent context so it loads the refreshed Skill",
+				}
+			case anyCurrent:
+				nextSteps = []string{"reload the agent context before composing commands"}
 			default:
-				next = "run `" + constants.AppName + " skill install` then load it"
+				nextSteps = []string{
+					constants.AppName + " skill install",
+					"reload the agent context so it loads the installed Skill",
+				}
+			}
+			next := ""
+			if len(nextSteps) > 0 {
+				next = nextSteps[0]
 			}
 
 			return s.emit(map[string]any{
-				"loaded":           loaded,
+				"loaded":           load.Loaded,
 				"loaded_env":       envSkillLoaded,
+				"loaded_version":   load.Version,
+				"loaded_status":    load.Status,
 				"embedded_version": embeddedSkillVersion(),
 				"installs":         installs,
 				"next":             next,
+				"next_steps":       nextSteps,
 			})
 		},
 	}
@@ -319,7 +334,7 @@ func newSkillInstallCmd(s *appState) *cobra.Command {
 			"into a coding agent's skills directory. With no flags it probes for\n" +
 			"installed agents (" + strings.Join(agentIDs(), ", ") + ") and installs\n" +
 			"into each one found. Re-run it after upgrading the CLI to refresh the\n" +
-			"Skill to the matching version.",
+			"Skill to the matching version, then reload the agent context.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			dests, err := resolveTargets(agents, project, dir)
 			if err != nil {
@@ -333,7 +348,7 @@ func newSkillInstallCmd(s *appState) *cobra.Command {
 				}
 				results = append(results, skillResult{
 					Agent: d.agent, Path: d.path, Status: "installed",
-					Version: embeddedSkillVersion(), Files: n,
+					Version: embeddedSkillVersion(), Alignment: "current", Files: n,
 				})
 			}
 			return s.emit(results)
@@ -401,7 +416,7 @@ func newSkillPathCmd(s *appState) *cobra.Command {
 	)
 	cmd := &cobra.Command{
 		Use:   "path",
-		Short: "Print where the Skill would be installed, and whether it is",
+		Short: "Print Skill paths, installation state and version alignment",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			var dests []skillDest
 			if dir != "" || len(agents) > 0 {
@@ -423,13 +438,7 @@ func newSkillPathCmd(s *appState) *cobra.Command {
 			}
 			results := make([]skillResult, 0, len(dests))
 			for _, d := range dests {
-				status := "not_installed"
-				if _, err := os.Stat(filepath.Join(d.path, "SKILL.md")); err == nil {
-					status = "installed"
-				}
-				results = append(results, skillResult{
-					Agent: d.agent, Path: d.path, Status: status,
-				})
+				results = append(results, inspectSkillInstall(d.agent, d.path))
 			}
 			return s.emit(results)
 		},
@@ -507,10 +516,68 @@ func embeddedSkillVersion() string {
 	if err != nil {
 		return "(unknown)"
 	}
+	return skillVersion(data)
+}
+
+func skillVersion(data []byte) string {
 	for _, line := range strings.Split(string(data), "\n") {
 		if strings.HasPrefix(line, "version:") {
-			return "v" + strings.TrimSpace(strings.TrimPrefix(line, "version:"))
+			version := strings.TrimSpace(strings.TrimPrefix(line, "version:"))
+			if version != "" {
+				return "v" + version
+			}
 		}
 	}
 	return "(unknown)"
+}
+
+func skillVersionsEqual(left, right string) bool {
+	normalize := func(value string) string {
+		return strings.TrimPrefix(strings.TrimSpace(value), "v")
+	}
+	return normalize(left) != "" && normalize(left) == normalize(right)
+}
+
+func currentSkillLoadState() skillLoadState {
+	version := strings.TrimSpace(os.Getenv(envSkillLoaded))
+	if version == "" {
+		return skillLoadState{Status: "not_loaded"}
+	}
+	status := "outdated"
+	if version == "1" {
+		status = "unknown"
+	} else if skillVersionsEqual(version, embeddedSkillVersion()) {
+		status = "current"
+	}
+	return skillLoadState{Loaded: true, Version: version, Status: status}
+}
+
+func inspectSkillInstall(agent, path string) skillResult {
+	result := skillResult{Agent: agent, Path: path, Status: "not_installed"}
+	data, err := os.ReadFile(filepath.Join(path, "SKILL.md"))
+	if err != nil {
+		return result
+	}
+	result.Status = "installed"
+	result.Version = skillVersion(data)
+	result.Alignment = "outdated"
+	if result.Version == "(unknown)" {
+		result.Alignment = "unknown"
+	} else if skillVersionsEqual(result.Version, embeddedSkillVersion()) {
+		result.Alignment = "current"
+	}
+	return result
+}
+
+func inspectSkillInstalls(project bool) ([]skillResult, error) {
+	installs := make([]skillResult, 0, len(agentSpecs))
+	for _, spec := range agentSpecs {
+		path, err := agentDest(spec, project)
+		if err != nil {
+			return nil, err
+		}
+		installs = append(installs, inspectSkillInstall(spec.id, path))
+	}
+	sort.Slice(installs, func(i, j int) bool { return installs[i].Agent < installs[j].Agent })
+	return installs, nil
 }

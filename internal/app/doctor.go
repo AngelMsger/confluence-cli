@@ -144,6 +144,7 @@ func runDoctor(s *appState, skipUpdate bool) doctorReport {
 				"authenticated as "+userDisplay(user), detailOf(userErr)),
 		})
 	}
+	checks = append(checks, companionSkillDoctorCheck())
 
 	report := doctorReport{Healthy: healthy, Checks: checks}
 
@@ -156,6 +157,45 @@ func runDoctor(s *appState, skipUpdate bool) doctorReport {
 		report.Update = &st
 	}
 	return report
+}
+
+func companionSkillDoctorCheck() doctorCheck {
+	load := currentSkillLoadState()
+	installs, err := inspectSkillInstalls(false)
+	if err != nil {
+		return doctorCheck{Name: "companion-skill", Status: "invalid", Detail: err.Error()}
+	}
+	projectInstalls, err := inspectSkillInstalls(true)
+	if err != nil {
+		return doctorCheck{Name: "companion-skill", Status: "invalid", Detail: err.Error()}
+	}
+	installs = append(installs, projectInstalls...)
+	currentInstalled := false
+	installed := false
+	for _, item := range installs {
+		installed = installed || item.Status == "installed"
+		currentInstalled = currentInstalled || item.Alignment == "current"
+	}
+	switch {
+	case load.Status == "current":
+		return doctorCheck{Name: "companion-skill", OK: true, Status: "current",
+			Detail: "loaded Skill " + load.Version + " matches " + embeddedSkillVersion()}
+	case load.Loaded && currentInstalled:
+		return doctorCheck{Name: "companion-skill", Status: "reload_required",
+			Detail: "current Skill is installed; reload the agent context to load it"}
+	case load.Loaded:
+		return doctorCheck{Name: "companion-skill", Status: load.Status,
+			Detail: "run `" + constants.AppName + " skill install`, then reload the agent context"}
+	case currentInstalled:
+		return doctorCheck{Name: "companion-skill", OK: true, Status: "installed_not_loaded",
+			Detail: "current Skill is installed; reload the agent context to load it"}
+	case installed:
+		return doctorCheck{Name: "companion-skill", Status: "outdated",
+			Detail: "run `" + constants.AppName + " skill install`, then reload the agent context"}
+	default:
+		return doctorCheck{Name: "companion-skill", Status: "not_installed",
+			Detail: "run `" + constants.AppName + " skill install`, then reload the agent context"}
+	}
 }
 
 func diagnosticStatus(err error) string {

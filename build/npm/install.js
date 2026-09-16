@@ -112,10 +112,13 @@ async function install() {
 function welcomeText() {
   return [
     '',
-    'confluence-cli is ready. First-time setup:',
+    'confluence-cli is ready. After every install or upgrade:',
     '',
+    '  confluence-cli skill install          install or refresh the coding-agent Skill',
+    '  reload your agent context            load the refreshed Skill',
+    '',
+    'First-time server setup:',
     '  confluence-cli config init --pretty   configure your server + credentials (interactive)',
-    '  confluence-cli skill install          install the coding-agent Skill',
     '',
     'Everyday use:',
     '  confluence-cli search "<text>"',

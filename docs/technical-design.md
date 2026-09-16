@@ -405,6 +405,13 @@ probes which directories exist and installs / removes for each hit;
 `--agent` selects explicitly; `--dir` is the agent-agnostic explicit
 path.
 
+The Skill handshake carries its version, not a boolean. Runtime hints compare
+the loaded version with the embedded copy; `skill status` also reads deployed
+`SKILL.md` frontmatter and classifies each installation as current, outdated,
+or unknown. Update notices return ordered steps to upgrade the CLI, refresh the
+Skill, and reload the agent context. `doctor` reports Skill state as an
+informational check that does not change connectivity health.
+
 ## 11. Testing strategy
 
 - **Unit tests**: stdlib `testing`, table-driven, `t.Parallel()`.

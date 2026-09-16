@@ -1,6 +1,6 @@
 ---
 name: confluence
-version: 1.11.0
+version: 1.11.1
 description: "Use a Confluence wiki as an external knowledge base. Search, read and summarise pages; browse spaces and page trees; create/update/delete/move/copy pages; find edits by actor and time; view or restore versions; manage comments, attachments, labels and watches. Every write accepts --dry-run; session read-only mode blocks writes unless --allow-writes is set. Use when the user gives a Confluence URL or ID, mentions a Confluence/wiki page, asks to find or edit content, find their edits for a worklog, inspect history, manage page resources, check their identity, or use dry-run/read-only mode. Works with Confluence Cloud and Data Center / Server."
 metadata:
   requires:
@@ -165,16 +165,18 @@ to the whole batch.
 
 ## Agent-facing conventions
 
-- **Skill handshake — set `CONFLUENCE_CLI_SKILL=1`.** Once you have loaded this
-  Skill, export `CONFLUENCE_CLI_SKILL=1` in the environment you run the CLI from.
-  When the variable is absent the CLI assumes you may be inferring commands
-  blindly and prints a one-line `{"_notice":{"skill":{…}}}` discovery hint on
-  **stderr** (non-interactive sessions only). Setting it silences the hint;
-  `confluence-cli skill status` reports whether it is set. (To suppress the hint
-  without loading the Skill, use `CONFLUENCE_CLI_NO_SKILL_HINT=1`.)
+- **Skill handshake — set `CONFLUENCE_CLI_SKILL=1.11.1`.** Once you have
+  loaded this Skill, export that exact value in the environment used to run the
+  CLI. The CLI compares it with the embedded Skill version and emits a
+  structured stderr notice when the Skill is missing, old, or uses the legacy
+  unversioned handshake. `confluence-cli skill status` reports loaded,
+  installed, and embedded versions. To suppress the notice without loading the
+  Skill, set `CONFLUENCE_CLI_NO_SKILL_HINT=1`.
 - **Update notices on stderr.** When a newer release exists, commands print a
   one-line `{"_notice":{"update":{…}}}` to **stderr** (never stdout, so parsing
-  the data is unaffected). `doctor` reports it too. Silence with
+  the data is unaffected). Follow every `next_steps` entry: upgrade the CLI,
+  run `confluence-cli skill install`, then reload the agent context. `doctor`
+  reports CLI and Skill status too. Silence update notices with
   `CONFLUENCE_CLI_NO_UPDATE_NOTIFIER=1`.
 - **Forgiving flags.** camelCase/snake_case flag names (`--spaceKey`) and a flag
   stuck to its value (`--limit100`) are auto-corrected to the canonical form when

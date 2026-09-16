@@ -19,6 +19,11 @@ test('rejects unsupported Windows architectures', () => {
   assert.throws(() => assetName('win32', 'ia32'), /unsupported platform win32\/ia32/);
 });
 
+test('welcome text explains Skill refresh', () => {
+  assert.match(welcomeText(), /confluence-cli skill install/);
+  assert.match(welcomeText(), /reload your agent context/);
+});
+
 test('welcome text recommends valid Confluence commands', () => {
   assert.match(welcomeText(), /confluence-cli search/);
   assert.match(welcomeText(), /confluence-cli page get/);

@@ -16,9 +16,9 @@ Installing this package downloads the prebuilt binary for your platform from the
 matching GitHub Release and verifies its SHA-256 checksum. If your npm setup
 disables install scripts, the binary is fetched on first run instead.
 
-The companion `confluence` Skill for coding agents is embedded in the binary;
-`confluence-cli skill install` deploys a copy that always matches the installed
-CLI version.
+The companion `confluence` Skill for coding agents is embedded in the binary.
+After installing or upgrading the package, run `confluence-cli skill install` and
+reload the agent context. `confluence-cli skill status` reports version alignment.
 
 See the [project README](https://github.com/AngelMsger/confluence-cli) and the
 [installation guide](https://github.com/AngelMsger/confluence-cli/blob/main/docs/installation.md)

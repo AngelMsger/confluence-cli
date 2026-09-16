@@ -9,8 +9,7 @@ import (
 )
 
 const (
-	// envSkillLoaded is the handshake the companion Skill sets when it is loaded
-	// into an agent's context. Its presence silences the discovery nudge.
+	// envSkillLoaded carries the version of the Skill loaded into the agent context.
 	envSkillLoaded = "CONFLUENCE_CLI_SKILL"
 	// envNoSkillHint opts out of the nudge entirely.
 	envNoSkillHint = "CONFLUENCE_CLI_NO_SKILL_HINT"
@@ -23,14 +22,15 @@ const (
 // It is deliberately quiet: it writes a single structured _notice to stderr
 // (stdout stays clean machine output) and stays silent when
 //   - a human is at the terminal (stderr is a TTY),
-//   - the Skill handshake env is present (already loaded), or it is opted out,
+//   - the loaded Skill version matches the embedded version, or it is opted out,
 //   - the command is a setup/meta command (skill / config / auth / completion /
 //     help) or a non-runnable command group, where the hint is just noise.
-//
-// The nudge is self-silencing: once the agent loads the Skill (which sets
-// CONFLUENCE_CLI_SKILL), it stops on the next invocation.
 func maybeSkillHint(cmd *cobra.Command) {
-	if os.Getenv(envSkillLoaded) != "" || os.Getenv(envNoSkillHint) != "" {
+	if os.Getenv(envNoSkillHint) != "" {
+		return
+	}
+	load := currentSkillLoadState()
+	if load.Status == "current" {
 		return
 	}
 	if fi, err := os.Stderr.Stat(); err == nil && fi.Mode()&os.ModeCharDevice != 0 {
@@ -39,14 +39,33 @@ func maybeSkillHint(cmd *cobra.Command) {
 	if !cmd.Runnable() || skillHintSkip(cmd) {
 		return
 	}
+	message := "The companion Skill 'confluence' is the source of truth for driving this CLI " +
+		"(usage recipes, safety modes, env setup). If you are an agent, load it before composing commands."
+	var nextSteps []string
+	if load.Loaded {
+		message = "The loaded companion Skill 'confluence' does not match this CLI. Refresh it before composing commands."
+		nextSteps = []string{
+			constants.AppName + " skill install",
+			"reload the agent context so it loads the refreshed Skill",
+		}
+	} else {
+		nextSteps = []string{
+			constants.AppName + " skill status",
+			constants.AppName + " skill install",
+			"reload the agent context so it loads the installed Skill",
+		}
+	}
 	output.EmitNotice(os.Stderr, map[string]any{"_notice": map[string]any{
 		"skill": map[string]any{
-			"name": "confluence",
-			"message": "The companion Skill 'confluence' is the source of truth for driving this CLI " +
-				"(usage recipes, safety modes, env setup). If you are an agent, load it before composing commands.",
-			"check":   constants.AppName + " skill status",
-			"install": constants.AppName + " skill install",
-			"silence": "set " + envNoSkillHint + "=1 to suppress",
+			"name":             "confluence",
+			"status":           load.Status,
+			"loaded_version":   load.Version,
+			"embedded_version": embeddedSkillVersion(),
+			"message":          message,
+			"check":            constants.AppName + " skill status",
+			"install":          constants.AppName + " skill install",
+			"next_steps":       nextSteps,
+			"silence":          "set " + envNoSkillHint + "=1 to suppress",
 		},
 	}})
 }

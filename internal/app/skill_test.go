@@ -1,6 +1,7 @@
 package app
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -24,6 +25,44 @@ func TestAgentIDs(t *testing.T) {
 		if !got[id] {
 			t.Errorf("missing agent id %q", id)
 		}
+	}
+}
+
+func TestSkillVersionAlignment(t *testing.T) {
+	dir := t.TempDir()
+	write := func(version string) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte("---\nversion: "+version+"\n---\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	embedded := strings.TrimPrefix(embeddedSkillVersion(), "v")
+	write(embedded)
+	if got := inspectSkillInstall("test", dir); got.Alignment != "current" || got.Version == "" {
+		t.Fatalf("current install = %+v", got)
+	}
+	write("0.0.0")
+	if got := inspectSkillInstall("test", dir); got.Alignment != "outdated" {
+		t.Fatalf("outdated install = %+v", got)
+	}
+	write("")
+	if got := inspectSkillInstall("test", dir); got.Alignment != "unknown" {
+		t.Fatalf("unversioned install = %+v", got)
+	}
+}
+
+func TestCurrentSkillLoadState(t *testing.T) {
+	t.Setenv(envSkillLoaded, strings.TrimPrefix(embeddedSkillVersion(), "v"))
+	if got := currentSkillLoadState(); got.Status != "current" || !got.Loaded {
+		t.Fatalf("current load = %+v", got)
+	}
+	t.Setenv(envSkillLoaded, "1")
+	if got := currentSkillLoadState(); got.Status != "unknown" {
+		t.Fatalf("legacy load = %+v", got)
+	}
+	t.Setenv(envSkillLoaded, "0.0.0")
+	if got := currentSkillLoadState(); got.Status != "outdated" {
+		t.Fatalf("outdated load = %+v", got)
 	}
 }
 

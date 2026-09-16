@@ -71,6 +71,11 @@ func maybeNotifyUpdate(s *appState, cmd *cobra.Command) {
 				"latest":  st.Latest,
 				"command": updateCommandHint,
 				"detail":  st.Detail,
+				"next_steps": []string{
+					updateCommandHint,
+					constants.AppName + " skill install",
+					"reload the agent context so it loads the refreshed Skill",
+				},
 			},
 		},
 	})

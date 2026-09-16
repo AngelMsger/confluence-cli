@@ -86,7 +86,8 @@ func newRootCmdWithState() (*cobra.Command, *appState) {
 			"AGENT NOTE: a companion Skill (\"confluence\") carries the canonical usage,\n" +
 			"safety modes, and env setup and is the source of truth for driving this CLI.\n" +
 			"If you are an agent, load that Skill before composing commands. Check status\n" +
-			"with `confluence-cli skill status`; install it with `confluence-cli skill install`.",
+			"with `confluence-cli skill status`; install it with `confluence-cli skill install`.\n" +
+			"After a CLI upgrade, refresh the Skill and reload the agent context.",
 		Version:       versionString(),
 		SilenceErrors: true,
 		SilenceUsage:  true,

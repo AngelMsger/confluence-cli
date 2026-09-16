@@ -224,10 +224,11 @@ Install locations per agent:
 
 Auto-detection looks for each agent's home or project marker (`~/.claude`, `~/.codex`, `~/.cursor`, `~/.agents`, `~/.gemini`, `~/.copilot`, `~/.config/opencode`, `~/.continue`, `~/.codeium/windsurf`, `~/.grok`, `~/.pi`, `~/.kilocode`, `~/.roo`, and the matching project dirs). If nothing is detected, pass `--agent` or `--dir` explicitly.
 
-Because the Skill ships inside the binary, **updating is automatic**: upgrade
-the CLI (`npm update -g @angelmsger/confluence-cli`, `go install ...@latest`,
-etc.) and re-run `confluence-cli skill install` — the deployed Skill always
-matches the CLI version.
+The matching Skill ships inside the binary, but a deployed copy is not replaced
+by the package manager. After every CLI upgrade, run `confluence-cli skill
+install`, then reload the agent context. `confluence-cli skill status`
+compares the loaded, installed, and embedded versions and reports the next
+steps when they differ.
 
 ### Alternative: the `skills` CLI
 

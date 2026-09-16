@@ -92,9 +92,9 @@ is published at <https://angelmsger.github.io/confluence-cli/cli/>.
 | --- | --- |
 | [`confluence-cli skill`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-skill) | Install the companion Skill for coding agents |
 | [`confluence-cli skill install`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-skill-install) | Deploy the embedded Skill into a coding agent's skills directory |
-| [`confluence-cli skill path`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-skill-path) | Print where the Skill would be installed, and whether it is |
+| [`confluence-cli skill path`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-skill-path) | Print Skill paths, installation state and version alignment |
 | [`confluence-cli skill show`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-skill-show) | Print the embedded SKILL.md to stdout |
-| [`confluence-cli skill status`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-skill-status) | Report whether the companion Skill is loaded and installed |
+| [`confluence-cli skill status`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-skill-status) | Report loaded, installed and embedded Skill versions |
 | [`confluence-cli skill uninstall`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-skill-uninstall) | Remove the companion Skill from a coding agent's skills directory |
 
 ## space
