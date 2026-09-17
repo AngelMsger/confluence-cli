@@ -10,7 +10,12 @@ import (
 // Resolve produces a Credential from configuration. A secret supplied via
 // flags/env/.env (carried in secrets) takes precedence; otherwise the secret
 // is loaded from the Store. The returned credential is validated.
-func Resolve(cfg config.Config, secrets config.Secrets, store *Store) (Credential, error) {
+func Resolve(cfg config.Config, secrets config.Secrets, store *Store) (credResult Credential, resultErr error) {
+	defer func() {
+		if resultErr != nil {
+			resultErr = config.WithCredentialGuide(resultErr, cfg)
+		}
+	}()
 	scheme := cfg.Auth.Scheme
 	if scheme == "" {
 		scheme = SchemePAT

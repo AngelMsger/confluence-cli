@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-09-17
+
+### Added
+
+- Add offline `config set-context` with target-specific presets, explicit conflict
+  handling, activation, and dry-run; add `--auth-scheme`, `--credential-url`, and
+  matching environment variables.
+- Add `auth guide` with display-only credential pages, navigation fallbacks, and
+  product-aware guidance shared by login, setup wizards, and missing credentials.
+
+### Fixed
+
+- Persist the personal username and authentication scheme after login; verify
+  authentication and reject a mismatched service before storing credentials.
+- Preserve credential-page metadata and replace configuration files atomically.
+- Hide secret input in terminal prompts while retaining the plain setup pipe flow.
+
+
 ## [0.19.1] - 2026-09-16
 
 ### Fixed
@@ -676,7 +694,8 @@ Initial release.
 - Distribution via npm (`@angelmsger/confluence-cli`), `go install`, prebuilt
   release binaries and `make install`.
 
-[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.19.1...HEAD
+[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.20.0...HEAD
+[0.20.0]: https://github.com/angelmsger/confluence-cli/compare/v0.19.1...v0.20.0
 [0.19.1]: https://github.com/angelmsger/confluence-cli/compare/v0.19.0...v0.19.1
 [0.19.0]: https://github.com/angelmsger/confluence-cli/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/angelmsger/confluence-cli/compare/v0.17.0...v0.18.0

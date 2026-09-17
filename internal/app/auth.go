@@ -1,11 +1,6 @@
 package app
 
 import (
-	"bufio"
-	"fmt"
-	"os"
-	"strings"
-
 	"github.com/angelmsger/confluence-cli/internal/auth"
 	"github.com/angelmsger/confluence-cli/internal/config"
 	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
@@ -17,7 +12,7 @@ func newAuthCmd(s *appState) *cobra.Command {
 		Use:   "auth",
 		Short: "Inspect and manage stored credentials",
 	}
-	cmd.AddCommand(newAuthStatusCmd(s), newAuthLoginCmd(s), newAuthLogoutCmd(s))
+	cmd.AddCommand(newAuthGuideCmd(s), newAuthStatusCmd(s), newAuthLoginCmd(s), newAuthLogoutCmd(s))
 	return cmd
 }
 
@@ -56,49 +51,37 @@ func newAuthStatusCmd(s *appState) *cobra.Command {
 }
 
 func newAuthLoginCmd(s *appState) *cobra.Command {
-	return &cobra.Command{
-		Use:   "login",
-		Short: "Store a credential for the configured server",
-		Long:  "Prompt for a secret and store it securely. Run `config init` first if the server URL is not set.",
-		Example: "  confluence-cli auth login\n" +
-			"  confluence-cli --use-context staging auth login",
+	return &cobra.Command{Use: "login", Short: "Verify and store personal credentials for the configured service", Args: cobra.NoArgs,
+		Long: "Reuse the configured service, show its credential acquisition page, and store a verified credential together with its username. Requires a terminal; use credential environment variables for non-interactive execution.",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg := s.cfg()
-			if cfg.BaseURL == "" {
-				return cerrors.New(cerrors.CategoryConfig, "NO_SERVER",
-					"no server URL configured").
-					WithNextSteps("confluence-cli config init")
-			}
-			// auth login is interactive: it prompts for a secret on stdin. With
-			// no terminal (a sandboxed agent, CI without a PTY) the read would
-			// block forever, so fail fast and point at the non-interactive paths.
-			if !stdinIsTTY() {
-				return cerrors.New(cerrors.CategoryConfig, "AUTH_LOGIN_NEEDS_TTY",
-					"auth login needs an interactive terminal to prompt for the secret").
-					WithHint("Run `confluence-cli auth login` yourself in a terminal, or provide credentials via environment variables (CONFLUENCE_PERSONAL_ACCESS_TOKEN, or CONFLUENCE_USERNAME + CONFLUENCE_API_TOKEN / CONFLUENCE_PASSWORD).")
-			}
-			r := bufio.NewReader(os.Stdin)
-			cred := auth.Credential{Scheme: cfg.Auth.Scheme, Username: cfg.Auth.Username}
-			if cred.Scheme == "" {
-				cred.Scheme = auth.SchemePAT
-			}
-			if cred.Scheme == auth.SchemeBasic && cred.Username == "" {
-				cred.Username = ask(r, "Username or email")
-			}
-			cred.Secret = ask(r, secretLabel(cred.Scheme))
-			if err := cred.Validate(); err != nil {
+			if _, _, err := loginFile(s, cfg, auth.Credential{Scheme: cfg.Auth.Scheme, Username: cfg.Auth.Username}); err != nil {
 				return err
 			}
-			backend, err := auth.Save(cfg.BaseURL, cred, s.store)
+			if !stdinIsTTY() {
+				return cerrors.New(cerrors.CategoryConfig, "AUTH_LOGIN_NEEDS_TTY", "auth login needs an interactive terminal").WithHint("Use the documented CONFLUENCE credential environment variables for non-interactive execution.").WithNextSteps("confluence-cli auth guide")
+			}
+			if err := printAuthGuide(cfg); err != nil {
+				return err
+			}
+			cred := auth.Credential{Scheme: cfg.Auth.Scheme, Username: cfg.Auth.Username}
+			var err error
+			if cred.Scheme == auth.SchemeBasic && cred.Username == "" {
+				cred.Username, err = promptLine("Username or email", "")
+				if err != nil {
+					return err
+				}
+				cred.Username = config.NormalizeUsername(cred.Username)
+			}
+			cred.Secret, err = promptSecret(secretLabel(cred.Scheme))
 			if err != nil {
 				return err
 			}
-			return s.emit(map[string]any{
-				"server":             cfg.BaseURL,
-				"scheme":             cred.Scheme,
-				"credential_backend": fmt.Sprint(backend),
-				"status":             "stored",
-			})
+			backend, err := completeLogin(s, cfg, cred, s.loginServices())
+			if err != nil {
+				return err
+			}
+			return s.emit(map[string]any{"server": cfg.BaseURL, "scheme": cred.Scheme, "credential_backend": backend, "status": "stored"})
 		},
 	}
 }
@@ -130,12 +113,4 @@ func secretLabel(scheme string) string {
 		return "Password or API token"
 	}
 	return "Personal Access Token"
-}
-
-func ask(r *bufio.Reader, label string) string {
-	// Prompts are human interaction — write them to stderr so stdout stays
-	// clean JSON.
-	fmt.Fprintf(os.Stderr, "%s: ", label)
-	line, _ := r.ReadString('\n')
-	return strings.TrimSpace(line)
 }

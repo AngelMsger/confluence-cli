@@ -113,3 +113,5 @@ config files keep working without change.
   the site root.
 
 Leave `--flavor` unset (or `auto`) to let the CLI probe the server and decide.
+
+For preset team services, use `config set-context` and `auth guide` before personal login; see [team setup](team-setup.md).

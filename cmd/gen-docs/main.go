@@ -171,12 +171,16 @@ func writeHTML(root *cobra.Command, mods []module) error {
 	}
 	data := htmlData{Intro: intro, GlobalFlags: globalFlags(root), Modules: mods}
 
-	f, err := os.Create(filepath.Join(outDir, "index.html"))
-	if err != nil {
+	var rendered strings.Builder
+	if err := tpl.Execute(&rendered, data); err != nil {
 		return err
 	}
-	defer f.Close()
-	return tpl.Execute(f, data)
+	// Template control lines must not introduce trailing whitespace into generated docs.
+	lines := strings.Split(rendered.String(), "\n")
+	for i, line := range lines {
+		lines[i] = strings.TrimRight(line, " \t\r")
+	}
+	return os.WriteFile(filepath.Join(outDir, "index.html"), []byte(strings.Join(lines, "\n")), 0o644)
 }
 
 // renderExample turns an Example block into HTML, dimming comment lines to

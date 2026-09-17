@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/charmbracelet/huh"
 )
@@ -90,6 +91,14 @@ func RunWizardHuh(hooks WizardHooks, inputs WizardInputs) (*WizardResult, error)
 		name = DefaultContextName
 	}
 
+	if inputs.Prefill != nil {
+		var err error
+		prefill, err = inputs.Prefill(name, prefill)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// Phase 2 — main fields, seeded based on phase 1 outcome.
 	var (
 		baseURL  string
@@ -166,7 +175,18 @@ func RunWizardHuh(hooks WizardHooks, inputs WizardInputs) (*WizardResult, error)
 		scheme = defaultSchemeForFlavor(flavor, detected)
 	}
 
-	if err := runPhase2b(&scheme, &username, &secret, secretValidator, keepHint); err != nil {
+	credentialURL := ""
+	if prefill != nil {
+		credentialURL = prefill.Auth.CredentialURL
+	}
+	guidance := func(method string) string {
+		g, err := Guide(Config{BaseURL: baseURL, Flavor: flavor, DetectedFlavor: detected, Auth: AuthConfig{Scheme: method, CredentialURL: credentialURL}}, nil)
+		if err != nil {
+			return err.Error()
+		}
+		return strings.Join(g.Lines(), "\n")
+	}
+	if err := runPhase2b(&scheme, &username, &secret, secretValidator, keepHint, guidance); err != nil {
 		return nil, err
 	}
 
@@ -175,7 +195,8 @@ func RunWizardHuh(hooks WizardHooks, inputs WizardInputs) (*WizardResult, error)
 	keepSecret := secret == "" && hasKeptSecret && prefill != nil && prefill.Auth.Scheme == scheme
 
 	picks := contextPicks{
-		Name: name, BaseURL: baseURL, Flavor: flavor, DetectedFlavor: detected,
+		CredentialURL: credentialURL,
+		Name:          name, BaseURL: baseURL, Flavor: flavor, DetectedFlavor: detected,
 		Scheme: scheme, Username: username,
 		Secret: secret, KeepSecret: keepSecret,
 	}
@@ -316,7 +337,7 @@ func runPhase2a(baseURL, flavor *string) error {
 // runPhase2b collects the auth scheme, username (basic only), and the secret.
 // The caller seeds *scheme with the flavor-aware default so the select shows
 // the right option highlighted.
-func runPhase2b(scheme, username, secret *string, secretValidator func(string) error, keepHint string) error {
+func runPhase2b(scheme, username, secret *string, secretValidator func(string) error, keepHint string, guidance func(string) string) error {
 	schemeOpts := []huh.Option[string]{
 		huh.NewOption("PAT — Personal Access Token (Data Center)", SchemePAT),
 		huh.NewOption("basic — username + Cloud API token / DC password", SchemeBasic),
@@ -342,7 +363,7 @@ func runPhase2b(scheme, username, secret *string, secretValidator func(string) e
 				}),
 			huh.NewInput().
 				Title("Password or API token").
-				Description(keepHint).
+				Description(keepHint+"\n"+guidance(SchemeBasic)).
 				EchoMode(huh.EchoModePassword).
 				Value(secret).
 				Validate(secretValidator),
@@ -350,7 +371,7 @@ func runPhase2b(scheme, username, secret *string, secretValidator func(string) e
 		huh.NewGroup(
 			huh.NewInput().
 				Title("Personal Access Token").
-				Description(keepHint).
+				Description(keepHint + "\n" + guidance(SchemePAT)).
 				EchoMode(huh.EchoModePassword).
 				Value(secret).
 				Validate(secretValidator),

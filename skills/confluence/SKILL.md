@@ -1,6 +1,6 @@
 ---
 name: confluence
-version: 1.11.1
+version: 1.11.2
 description: "Use a Confluence wiki as an external knowledge base. Search, read and summarise pages; browse spaces and page trees; create/update/delete/move/copy pages; find edits by actor and time; view or restore versions; manage comments, attachments, labels and watches. Every write accepts --dry-run; session read-only mode blocks writes unless --allow-writes is set. Use when the user gives a Confluence URL or ID, mentions a Confluence/wiki page, asks to find or edit content, find their edits for a worklog, inspect history, manage page resources, check their identity, or use dry-run/read-only mode. Works with Confluence Cloud and Data Center / Server."
 metadata:
   requires:
@@ -165,7 +165,7 @@ to the whole batch.
 
 ## Agent-facing conventions
 
-- **Skill handshake — set `CONFLUENCE_CLI_SKILL=1.11.1`.** Once you have
+- **Skill handshake — set `CONFLUENCE_CLI_SKILL=1.11.2`.** Once you have
   loaded this Skill, export that exact value in the environment used to run the
   CLI. The CLI compares it with the embedded Skill version and emits a
   structured stderr notice when the Skill is missing, old, or uses the legacy
@@ -244,3 +244,25 @@ historically could hang); if credentials are truly missing, ask the user to run
 `--format json|table|ndjson` · `--fields a,b.c` (project fields) ·
 `--base-url` · `--flavor cloud|datacenter` · `--config <dir>` ·
 `--use-context <name>` (pick a named server) · `--verbose`
+
+## Team service presets and authentication
+
+- Inspect existing configuration and reuse it. `config set-context <name>` is the
+  offline installer entrypoint; it accepts `--base-url`, `--auth-scheme`,
+  `--credential-url`, `--activate`, `--overwrite`, and `--dry-run`, plus `--flavor`.
+- `CONFLUENCE_AUTH_SCHEME` and `CONFLUENCE_CREDENTIAL_URL` complement the existing
+  service variables. Presets never copy a personal username or secret from the
+  environment. Conflicts preserve existing values unless explicitly overwritten.
+- Run `auth guide` to obtain the current instance's credential page, its source,
+  navigation steps, and limitations. Links are hints, not evidence of server
+  capabilities. Follow the returned product-specific instructions; do not invent
+  a token URL or assume ingestion credentials authorize queries.
+- Once a service is preset, direct the member to `auth login` in their terminal
+  to save their verified personal identity and secret. Do not ask for secrets in
+  chat. In non-interactive environments use transient credential variables.
+- Preserve host-keychain recovery for inaccessible credentials. A server/context
+  mismatch requires selecting or creating a matching context; a partial login
+  write error identifies what was stored and provides recovery steps.
+
+See [team setup](references/team-setup.md) for the output fields, conflict
+semantics, credential URL overrides, and failure recovery.

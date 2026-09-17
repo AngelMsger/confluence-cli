@@ -38,7 +38,7 @@ func newConfigCmd(s *appState) *cobra.Command {
 		Use:   "config",
 		Short: "Manage confluence-cli configuration",
 	}
-	cmd.AddCommand(
+	cmd.AddCommand(newConfigSetContextCmd(s),
 		newConfigInitCmd(s), newConfigShowCmd(s), newConfigPathCmd(s),
 		newConfigGetContextsCmd(s), newConfigUseContextCmd(s), newConfigDeleteContextCmd(s),
 	)
@@ -63,8 +63,20 @@ func newConfigInitCmd(s *appState) *cobra.Command {
 					"failed to read the config file")
 			}
 			inputs := config.WizardInputs{
-				Existing:   &existing,
-				LoadSecret: loadExistingSecret(s.store),
+				Existing: &existing,
+				Prefill:  s.setupPrefill,
+				LoadSecret: func(nc config.NamedContext) (config.Secrets, bool) {
+					old, ok := existing.Context(nc.Name)
+					if !ok {
+						return config.Secrets{}, false
+					}
+					oldURL, e1 := config.NormalizeServiceURL(old.BaseURL)
+					newURL, e2 := config.NormalizeServiceURL(nc.BaseURL)
+					if e1 != nil || e2 != nil || oldURL != newURL || old.Auth.Scheme != nc.Auth.Scheme {
+						return config.Secrets{}, false
+					}
+					return loadExistingSecret(s.store)(nc)
+				},
 			}
 			// runWizard chooses the right path. --pretty hands the user the
 			// huh TUI (with Shift-Tab back-nav); the Agent default keeps the
@@ -99,18 +111,20 @@ func newConfigShowCmd(s *appState) *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cfg := s.cfg()
 			view := map[string]any{
-				"server":      cfg.BaseURL,
-				"flavor":      cfg.Flavor,
-				"auth.scheme": cfg.Auth.Scheme,
-				"auth.user":   cfg.Auth.Username,
-				"format":      cfg.Defaults.Format,
-				"page_size":   cfg.Defaults.PageSize,
-				"timeout":     cfg.Defaults.Timeout.String(),
+				"server":              cfg.BaseURL,
+				"flavor":              cfg.Flavor,
+				"auth.scheme":         cfg.Auth.Scheme,
+				"auth.credential_url": cfg.Auth.CredentialURL,
+				"auth.user":           cfg.Auth.Username,
+				"format":              cfg.Defaults.Format,
+				"page_size":           cfg.Defaults.PageSize,
+				"timeout":             cfg.Defaults.Timeout.String(),
 			}
 			if explain {
 				src := s.resolved.Sources
 				view["server"] = explained(cfg.BaseURL, src, config.FieldServer)
 				view["flavor"] = explained(cfg.Flavor, src, config.FieldFlavor)
+				view["auth.credential_url"] = explained(cfg.Auth.CredentialURL, src, config.FieldCredentialURL)
 				view["auth.scheme"] = explained(cfg.Auth.Scheme, src, config.FieldAuthScheme)
 				view["auth.user"] = explained(cfg.Auth.Username, src, config.FieldAuthUser)
 				view["format"] = explained(cfg.Defaults.Format, src, config.FieldFormat)
@@ -440,24 +454,7 @@ func wizardHooks(s *appState) config.WizardHooks {
 			return string(f), err
 		},
 		Validate: func(cfg config.Config, secrets config.Secrets) error {
-			ctx, cancel := context.WithTimeout(context.Background(), s.timeout())
-			defer cancel()
-			cred := credentialFrom(cfg, secrets)
-			if err := cred.Validate(); err != nil {
-				return err
-			}
-			client, _, err := apiclient.Build(ctx, apiclient.BuildParams{
-				BaseURL:       cfg.BaseURL,
-				Flavor:        cfg.Flavor,
-				AuthDecorator: cred.Decorator(),
-				Timeout:       cfg.Defaults.Timeout,
-				MaxRetries:    cfg.Defaults.MaxRetries,
-			})
-			if err != nil {
-				return err
-			}
-			_, err = client.Ping(ctx)
-			return err
+			return verifyCredential(s, cfg, credentialFrom(cfg, secrets))
 		},
 	}
 }

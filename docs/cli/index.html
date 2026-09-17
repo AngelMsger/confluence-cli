@@ -36,6 +36,7 @@
     <div class="side-group">
       <div class="side-title">auth</div>
       <a href="#confluence-cli-auth">confluence-cli auth</a>
+      <a href="#confluence-cli-auth-guide">confluence-cli auth guide</a>
       <a href="#confluence-cli-auth-login">confluence-cli auth login</a>
       <a href="#confluence-cli-auth-logout">confluence-cli auth logout</a>
       <a href="#confluence-cli-auth-status">confluence-cli auth status</a>
@@ -55,6 +56,7 @@
       <a href="#confluence-cli-config-get-contexts">confluence-cli config get-contexts</a>
       <a href="#confluence-cli-config-init">confluence-cli config init</a>
       <a href="#confluence-cli-config-path">confluence-cli config path</a>
+      <a href="#confluence-cli-config-set-context">confluence-cli config set-context</a>
       <a href="#confluence-cli-config-show">confluence-cli config show</a>
       <a href="#confluence-cli-config-use-context">confluence-cli config use-context</a>
       </div>
@@ -120,7 +122,7 @@
       <div class="side-title">whoami</div>
       <a href="#confluence-cli-whoami">confluence-cli whoami</a>
       </div>
-    
+
   </aside>
   <main class="cli-main">
     <span class="eyebrow">Reference</span>
@@ -143,8 +145,10 @@ After a CLI upgrade, refresh the Skill and reload the agent context.</p>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
         <tr><td><code>--allow-writes</code></td><td><code>false</code></td><td>override read-only mode (defaults.read_only / CONFLUENCE_CLI_READ_ONLY) for this invocation</td></tr>
+        <tr><td><code>--auth-scheme</code></td><td></td><td>authentication scheme (overrides environment and config)</td></tr>
         <tr><td><code>--base-url</code></td><td></td><td>Confluence site URL (overrides config)</td></tr>
         <tr><td><code>--config</code></td><td></td><td>config directory (default ~/.angelmsger/confluence, falling back to ~/.confluence when only that exists)</td></tr>
+        <tr><td><code>--credential-url</code></td><td></td><td>credential acquisition page URL (display only)</td></tr>
         <tr><td><code>--fields</code></td><td></td><td>comma-separated dot-path fields to keep</td></tr>
         <tr><td><code>--flavor</code></td><td></td><td>backend flavor: cloud, datacenter or auto</td></tr>
         <tr><td><code>--format, -f</code></td><td></td><td>output format: json, table or ndjson</td></tr>
@@ -156,16 +160,16 @@ After a CLI upgrade, refresh the Skill and reload the agent context.</p>
       </table>
     </section>
 
-    
+
     <section class="cmd" id="confluence-cli-attachment">
       <h2>confluence-cli attachment</h2>
       <p class="short">Upload, list, download and delete page attachments</p>
       <pre>confluence-cli attachment</pre>
-      
-      
-      
+
+
+
     </section>
-    
+
     <section class="cmd" id="confluence-cli-attachment-delete">
       <h2>confluence-cli attachment delete</h2>
       <p class="short">Delete an attachment</p>
@@ -182,7 +186,7 @@ interactive confirmation when stdin is a terminal.</p>
       </table>
       <h3>Examples</h3><pre>  confluence-cli attachment delete att12345 --yes</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-attachment-download">
       <h2>confluence-cli attachment download</h2>
       <p class="short">Download an attachment&#39;s content</p>
@@ -198,12 +202,12 @@ interactive confirmation when stdin is a terminal.</p>
       <h3>Examples</h3><pre>  confluence-cli attachment download att12345 --output spec.pdf
   confluence-cli attachment download att12345 --output -</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-attachment-list">
       <h2>confluence-cli attachment list</h2>
       <p class="short">List the attachments of a page</p>
       <pre>confluence-cli attachment list &lt;id|url&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -215,7 +219,7 @@ interactive confirmation when stdin is a terminal.</p>
       </table>
       <h3>Examples</h3><pre>  confluence-cli attachment list 123456</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-attachment-update">
       <h2>confluence-cli attachment update</h2>
       <p class="short">Replace an attachment&#39;s content with a new version</p>
@@ -237,7 +241,7 @@ read from stdin.</p>
       <h3>Examples</h3><pre>  confluence-cli attachment update att12345 --file diagram-v2.png
   confluence-cli attachment update att12345 --file report.pdf --comment &#34;fix totals&#34;</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-attachment-upload">
       <h2>confluence-cli attachment upload</h2>
       <p class="short">Attach a file to a page</p>
@@ -260,53 +264,61 @@ same name already exists, Confluence stores the upload as a new version.</p>
   confluence-cli attachment upload 123456 --file report.pdf --comment &#34;Q3 figures&#34;
   confluence-cli attachment upload 123456 --file - --name notes.txt --dry-run</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-auth">
       <h2>confluence-cli auth</h2>
       <p class="short">Inspect and manage stored credentials</p>
       <pre>confluence-cli auth</pre>
-      
-      
-      
+
+
+
     </section>
-    
+
+    <section class="cmd" id="confluence-cli-auth-guide">
+      <h2>confluence-cli auth guide</h2>
+      <p class="short">Show offline credential acquisition guidance for this service</p>
+      <pre>confluence-cli auth guide</pre>
+
+
+
+    </section>
+
     <section class="cmd" id="confluence-cli-auth-login">
       <h2>confluence-cli auth login</h2>
-      <p class="short">Store a credential for the configured server</p>
+      <p class="short">Verify and store personal credentials for the configured service</p>
       <pre>confluence-cli auth login</pre>
-      <p class="long">Prompt for a secret and store it securely. Run `config init` first if the server URL is not set.</p>
-      
-      <h3>Examples</h3><pre>  confluence-cli auth login
-  confluence-cli --use-context staging auth login</pre>
+      <p class="long">Reuse the configured service, show its credential acquisition page, and store a verified credential together with its username. Requires a terminal; use credential environment variables for non-interactive execution.</p>
+
+
     </section>
-    
+
     <section class="cmd" id="confluence-cli-auth-logout">
       <h2>confluence-cli auth logout</h2>
       <p class="short">Remove the stored credential for the configured server</p>
       <pre>confluence-cli auth logout</pre>
-      
-      
-      
+
+
+
     </section>
-    
+
     <section class="cmd" id="confluence-cli-auth-status">
       <h2>confluence-cli auth status</h2>
       <p class="short">Show whether a usable credential is configured</p>
       <pre>confluence-cli auth status</pre>
-      
-      
-      
+
+
+
     </section>
-    
+
     <section class="cmd" id="confluence-cli-comment">
       <h2>confluence-cli comment</h2>
       <p class="short">Read and post page comments</p>
       <pre>confluence-cli comment</pre>
-      
-      
-      
+
+
+
     </section>
-    
+
     <section class="cmd" id="confluence-cli-comment-add">
       <h2>confluence-cli comment add</h2>
       <p class="short">Post a comment on a page</p>
@@ -329,7 +341,7 @@ comment.</p>
 <span class="c">  # reply to a comment, reading the body from stdin</span>
   echo &#34;Agreed.&#34; | confluence-cli comment add 123456 --parent 789 --body-file -</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-comment-delete">
       <h2>confluence-cli comment delete</h2>
       <p class="short">Delete one or more comments</p>
@@ -349,12 +361,12 @@ terminal); --yes applies to the whole batch.</p>
       <h3>Examples</h3><pre>  confluence-cli comment delete 789 --yes
   confluence-cli comment delete 789 790 --yes</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-comment-list">
       <h2>confluence-cli comment list</h2>
       <p class="short">List the footer comments of a page</p>
       <pre>confluence-cli comment list &lt;id|url&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -368,7 +380,7 @@ terminal); --yes applies to the whole batch.</p>
       <h3>Examples</h3><pre>  confluence-cli comment list 123456
   confluence-cli comment list 123456 --all --as text</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-comment-update">
       <h2>confluence-cli comment update</h2>
       <p class="short">Edit a comment&#39;s body</p>
@@ -389,36 +401,36 @@ version &#43; 1; pass --version to assert the version you last read.</p>
       <h3>Examples</h3><pre>  confluence-cli comment update 789 --body &#34;Updated: looks good.&#34;
   echo &#34;Revised.&#34; | confluence-cli comment update 789 --body-file -</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-config">
       <h2>confluence-cli config</h2>
       <p class="short">Manage confluence-cli configuration</p>
       <pre>confluence-cli config</pre>
-      
-      
-      
+
+
+
     </section>
-    
+
     <section class="cmd" id="confluence-cli-config-delete-context">
       <h2>confluence-cli config delete-context</h2>
       <p class="short">Delete a context and its stored credential</p>
       <pre>confluence-cli config delete-context &lt;name&gt;</pre>
-      
-      
+
+
       <h3>Examples</h3><pre>  confluence-cli config delete-context staging</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-config-get-contexts">
       <h2>confluence-cli config get-contexts</h2>
       <p class="short">List the configured contexts</p>
       <pre>confluence-cli config get-contexts</pre>
       <p class="long">List every context in the config file. The current context — the one
 used when --use-context is not given — is marked.</p>
-      
+
       <h3>Examples</h3><pre>  confluence-cli config get-contexts
   confluence-cli config get-contexts --format table</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-config-init">
       <h2>confluence-cli config init</h2>
       <p class="short">Interactively set up server URL and credentials</p>
@@ -426,25 +438,43 @@ used when --use-context is not given — is marked.</p>
       <p class="long">Run the interactive setup wizard. It collects a server URL, detects
 the flavor, validates a credential and stores it. The wizard can also
 configure additional named contexts for working with several servers.</p>
-      
+
       <h3>Examples</h3><pre>  confluence-cli config init --pretty   # interactive TUI (recommended)
   confluence-cli config init             # plain line-by-line wizard (scripts, non-TTY)</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-config-path">
       <h2>confluence-cli config path</h2>
       <p class="short">Print the config file path</p>
       <pre>confluence-cli config path</pre>
-      
-      
-      
+
+
+
     </section>
-    
+
+    <section class="cmd" id="confluence-cli-config-set-context">
+      <h2>confluence-cli config set-context</h2>
+      <p class="short">Configure service presets without credentials or network access</p>
+      <pre>confluence-cli config set-context &lt;name&gt; [flags]</pre>
+      <p class="long">Write service fields from flags, environment or .env over the named target context. Personal environment fields and secrets are ignored. Existing conflicting fields require --overwrite; unrelated contexts and user identities are preserved.</p>
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--activate</code></td><td><code>false</code></td><td>make this the current context</td></tr>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>preview configuration changes without writing files or credentials</td></tr>
+        <tr><td><code>--overwrite</code></td><td><code>false</code></td><td>update conflicting service fields; preserve personal identity and credentials</td></tr>
+        </tbody>
+      </table>
+      <h3>Examples</h3><pre>  confluence-cli config set-context team --base-url https://service.example.com --dry-run
+  confluence-cli config set-context team --base-url https://service.example.com --activate</pre>
+    </section>
+
     <section class="cmd" id="confluence-cli-config-show">
       <h2>confluence-cli config show</h2>
       <p class="short">Show the resolved configuration</p>
       <pre>confluence-cli config show [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -452,24 +482,24 @@ configure additional named contexts for working with several servers.</p>
         <tr><td><code>--explain</code></td><td><code>false</code></td><td>annotate each value with its source</td></tr>
         </tbody>
       </table>
-      
+
     </section>
-    
+
     <section class="cmd" id="confluence-cli-config-use-context">
       <h2>confluence-cli config use-context</h2>
       <p class="short">Switch the current context</p>
       <pre>confluence-cli config use-context &lt;name&gt;</pre>
       <p class="long">Set the current context — the server used by default. Override it for
 a single command with the global --use-context flag instead.</p>
-      
+
       <h3>Examples</h3><pre>  confluence-cli config use-context staging</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-doctor">
       <h2>confluence-cli doctor</h2>
       <p class="short">Diagnose configuration, credentials and connectivity</p>
       <pre>confluence-cli doctor [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -480,21 +510,21 @@ a single command with the global --use-context flag instead.</p>
       <h3>Examples</h3><pre>  confluence-cli doctor
   confluence-cli doctor --no-update-check</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-label">
       <h2>confluence-cli label</h2>
       <p class="short">List, add and remove page labels</p>
       <pre>confluence-cli label</pre>
-      
-      
-      
+
+
+
     </section>
-    
+
     <section class="cmd" id="confluence-cli-label-add">
       <h2>confluence-cli label add</h2>
       <p class="short">Add one or more labels to a page</p>
       <pre>confluence-cli label add &lt;page-id|url&gt; &lt;label&gt;... [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -505,12 +535,12 @@ a single command with the global --use-context flag instead.</p>
       <h3>Examples</h3><pre>  confluence-cli label add 123456 release-notes
   confluence-cli label add 123456 q3 reviewed --dry-run</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-label-list">
       <h2>confluence-cli label list</h2>
       <p class="short">List the labels on a page</p>
       <pre>confluence-cli label list &lt;page-id|url&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -522,12 +552,12 @@ a single command with the global --use-context flag instead.</p>
       </table>
       <h3>Examples</h3><pre>  confluence-cli label list 123456</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-label-remove">
       <h2>confluence-cli label remove</h2>
       <p class="short">Remove a label from a page</p>
       <pre>confluence-cli label remove &lt;page-id|url&gt; &lt;label&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -537,21 +567,21 @@ a single command with the global --use-context flag instead.</p>
       </table>
       <h3>Examples</h3><pre>  confluence-cli label remove 123456 release-notes</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-page">
       <h2>confluence-cli page</h2>
       <p class="short">Read and write Confluence pages</p>
       <pre>confluence-cli page</pre>
-      
-      
-      
+
+
+
     </section>
-    
+
     <section class="cmd" id="confluence-cli-page-children">
       <h2>confluence-cli page children</h2>
       <p class="short">List the direct child pages of a page</p>
       <pre>confluence-cli page children &lt;id|url&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -564,7 +594,7 @@ a single command with the global --use-context flag instead.</p>
       <h3>Examples</h3><pre>  confluence-cli page children 123456
   confluence-cli page children 123456 --all --format table</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-page-copy">
       <h2>confluence-cli page copy</h2>
       <p class="short">Copy a page&#39;s title and body to a new page</p>
@@ -584,7 +614,7 @@ carries the title and body only, not child pages or attachments.</p>
       <h3>Examples</h3><pre>  confluence-cli page copy 123456 --title &#34;Copy of the spec&#34;
   confluence-cli page copy 123456 --title Draft --space SANDBOX</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-page-create">
       <h2>confluence-cli page create</h2>
       <p class="short">Create a new page</p>
@@ -612,7 +642,7 @@ Markdown (--body-format markdown, converted on a best-effort basis).</p>
 <span class="c">  # preview the request without sending it</span>
   confluence-cli page create --space ENG --title Draft --body &#34;&lt;p&gt;hi&lt;/p&gt;&#34; --dry-run</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-page-delete">
       <h2>confluence-cli page delete</h2>
       <p class="short">Delete one or more pages (move them to the trash)</p>
@@ -635,12 +665,12 @@ applies to the whole batch.</p>
   confluence-cli page delete 123456 123457 --purge --yes
   confluence-cli search --text obsolete --format json | jq -r &#39;.items[].id&#39; | confluence-cli page delete - --yes</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-page-descendants">
       <h2>confluence-cli page descendants</h2>
       <p class="short">List all descendant pages of a page</p>
       <pre>confluence-cli page descendants &lt;id|url&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -652,7 +682,7 @@ applies to the whole batch.</p>
       </table>
       <h3>Examples</h3><pre>  confluence-cli page descendants 123456 --all</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-page-get">
       <h2>confluence-cli page get</h2>
       <p class="short">Fetch a page and render its body</p>
@@ -693,7 +723,7 @@ Use --as raw to get the untouched source body instead.</p>
 <span class="c">  # a page URL works in place of an ID</span>
   confluence-cli page get https://wiki.example.com/pages/viewpage.action?pageId=123456</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-page-history">
       <h2>confluence-cli page history</h2>
       <p class="short">List and filter the version history of one or more pages</p>
@@ -720,12 +750,12 @@ pages are reported individually while the remaining pages are still read.</p>
   confluence-cli page history 123456 --actor me --since 24h
   confluence-cli search --type page --contributor me --after 2026-09-03 --all --fields id | jq -r &#39;.items[].id&#39; | confluence-cli page history - --actor me --from 2026-09-03T00:00:00+08:00 --to 2026-09-04T00:00:00+08:00</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-page-move">
       <h2>confluence-cli page move</h2>
       <p class="short">Move a page under a new parent and/or space</p>
       <pre>confluence-cli page move &lt;id|url&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -741,7 +771,7 @@ pages are reported individually while the remaining pages are still read.</p>
 <span class="c">  # move a page into another space</span>
   confluence-cli page move 123456 --target-space DOCS</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-page-restore">
       <h2>confluence-cli page restore</h2>
       <p class="short">Restore a page to an earlier version</p>
@@ -761,12 +791,12 @@ first to find the version number to restore.</p>
       <h3>Examples</h3><pre>  confluence-cli page restore 123456 --version 3
   confluence-cli page restore 123456 --version 3 --message &#34;roll back bad edit&#34;</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-page-unwatch">
       <h2>confluence-cli page unwatch</h2>
       <p class="short">Stop watching a page</p>
       <pre>confluence-cli page unwatch &lt;id|url&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -776,7 +806,7 @@ first to find the version number to restore.</p>
       </table>
       <h3>Examples</h3><pre>  confluence-cli page unwatch 123456</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-page-update">
       <h2>confluence-cli page update</h2>
       <p class="short">Update a page&#39;s title and/or body</p>
@@ -804,12 +834,12 @@ version you last read (a mismatch fails with a conflict error).</p>
 <span class="c">  # replace the body from Markdown, asserting the version last read</span>
   confluence-cli page update 123456 --body-format markdown --body-file body.md --version 7</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-page-watch">
       <h2>confluence-cli page watch</h2>
       <p class="short">Watch a page (subscribe to its notifications)</p>
       <pre>confluence-cli page watch &lt;id|url&gt; [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -819,16 +849,16 @@ version you last read (a mismatch fails with a conflict error).</p>
       </table>
       <h3>Examples</h3><pre>  confluence-cli page watch 123456</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-page-watch-status">
       <h2>confluence-cli page watch-status</h2>
       <p class="short">Report whether you watch a page</p>
       <pre>confluence-cli page watch-status &lt;id|url&gt;</pre>
-      
-      
+
+
       <h3>Examples</h3><pre>  confluence-cli page watch-status 123456</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-search">
       <h2>confluence-cli search</h2>
       <p class="short">Search pages with CQL or filter flags</p>
@@ -858,16 +888,16 @@ or build one from filter flags (--text, --author, --space, ...).</p>
 <span class="c">  # or pass raw CQL directly</span>
   confluence-cli search &#39;creator = &#34;jdoe&#34; AND created &gt;= &#34;2025-01-01&#34;&#39; --all</pre>
     </section>
-    
+
     <section class="cmd" id="confluence-cli-skill">
       <h2>confluence-cli skill</h2>
       <p class="short">Install the companion Skill for coding agents</p>
       <pre>confluence-cli skill</pre>
-      
-      
-      
+
+
+
     </section>
-    
+
     <section class="cmd" id="confluence-cli-skill-install">
       <h2>confluence-cli skill install</h2>
       <p class="short">Deploy the embedded Skill into a coding agent&#39;s skills directory</p>
@@ -886,14 +916,14 @@ Skill to the matching version, then reload the agent context.</p>
         <tr><td><code>--project</code></td><td><code>false</code></td><td>install into each agent&#39;s project skills directory instead of $HOME</td></tr>
         </tbody>
       </table>
-      
+
     </section>
-    
+
     <section class="cmd" id="confluence-cli-skill-path">
       <h2>confluence-cli skill path</h2>
       <p class="short">Print Skill paths, installation state and version alignment</p>
       <pre>confluence-cli skill path [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -903,23 +933,23 @@ Skill to the matching version, then reload the agent context.</p>
         <tr><td><code>--project</code></td><td><code>false</code></td><td>use the project skills directories instead of $HOME</td></tr>
         </tbody>
       </table>
-      
+
     </section>
-    
+
     <section class="cmd" id="confluence-cli-skill-show">
       <h2>confluence-cli skill show</h2>
       <p class="short">Print the embedded SKILL.md to stdout</p>
       <pre>confluence-cli skill show</pre>
-      
-      
-      
+
+
+
     </section>
-    
+
     <section class="cmd" id="confluence-cli-skill-status">
       <h2>confluence-cli skill status</h2>
       <p class="short">Report loaded, installed and embedded Skill versions</p>
       <pre>confluence-cli skill status [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -927,9 +957,9 @@ Skill to the matching version, then reload the agent context.</p>
         <tr><td><code>--project</code></td><td><code>false</code></td><td>check each agent&#39;s project skills directory instead of $HOME</td></tr>
         </tbody>
       </table>
-      
+
     </section>
-    
+
     <section class="cmd" id="confluence-cli-skill-uninstall">
       <h2>confluence-cli skill uninstall</h2>
       <p class="short">Remove the companion Skill from a coding agent&#39;s skills directory</p>
@@ -946,32 +976,32 @@ and removes the Skill from each one found.</p>
         <tr><td><code>--project</code></td><td><code>false</code></td><td>remove from each agent&#39;s project skills directory instead of $HOME</td></tr>
         </tbody>
       </table>
-      
+
     </section>
-    
+
     <section class="cmd" id="confluence-cli-space">
       <h2>confluence-cli space</h2>
       <p class="short">List and inspect Confluence spaces</p>
       <pre>confluence-cli space</pre>
-      
-      
-      
+
+
+
     </section>
-    
+
     <section class="cmd" id="confluence-cli-space-get">
       <h2>confluence-cli space get</h2>
       <p class="short">Fetch a single space by key</p>
       <pre>confluence-cli space get &lt;key&gt;</pre>
-      
-      
-      
+
+
+
     </section>
-    
+
     <section class="cmd" id="confluence-cli-space-list">
       <h2>confluence-cli space list</h2>
       <p class="short">List spaces</p>
       <pre>confluence-cli space list [flags]</pre>
-      
+
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -982,36 +1012,36 @@ and removes the Skill from each one found.</p>
         <tr><td><code>--type</code></td><td></td><td>filter by type: global or personal</td></tr>
         </tbody>
       </table>
-      
+
     </section>
-    
+
     <section class="cmd" id="confluence-cli-user">
       <h2>confluence-cli user</h2>
       <p class="short">Discover Confluence users — the values --author / --contributor accept</p>
       <pre>confluence-cli user</pre>
-      
-      
-      
+
+
+
     </section>
-    
+
     <section class="cmd" id="confluence-cli-user-get">
       <h2>confluence-cli user get</h2>
       <p class="short">Show details of a single user (accountId on Cloud; username on DC)</p>
       <pre>confluence-cli user get &lt;selector&gt;</pre>
-      
-      
-      
+
+
+
     </section>
-    
+
     <section class="cmd" id="confluence-cli-user-me">
       <h2>confluence-cli user me</h2>
       <p class="short">Print the user the configured credentials authenticate as (alias for whoami)</p>
       <pre>confluence-cli user me</pre>
-      
-      
-      
+
+
+
     </section>
-    
+
     <section class="cmd" id="confluence-cli-user-search">
       <h2>confluence-cli user search</h2>
       <p class="short">Search users by display-name substring</p>
@@ -1030,27 +1060,27 @@ DC:    --query is optional (omit for a paginated walk of every visible user).</p
         <tr><td><code>--query</code></td><td></td><td>display-name substring (required on Cloud)</td></tr>
         </tbody>
       </table>
-      
+
     </section>
-    
+
     <section class="cmd" id="confluence-cli-version">
       <h2>confluence-cli version</h2>
       <p class="short">Print version information</p>
       <pre>confluence-cli version</pre>
-      
-      
-      
+
+
+
     </section>
-    
+
     <section class="cmd" id="confluence-cli-whoami">
       <h2>confluence-cli whoami</h2>
       <p class="short">Print the user the configured credentials authenticate as</p>
       <pre>confluence-cli whoami</pre>
-      
-      
+
+
       <h3>Examples</h3><pre>  confluence-cli whoami</pre>
     </section>
-    
+
   </main>
 </div>
 <footer class="footer">

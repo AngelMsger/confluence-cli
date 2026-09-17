@@ -12,8 +12,9 @@ import (
 // authShape / defaultsShape / contextShape are the on-disk YAML building
 // blocks. Timeout is a human-readable duration string ("30s").
 type authShape struct {
-	Scheme   string `yaml:"scheme,omitempty"`
-	Username string `yaml:"username,omitempty"`
+	CredentialURL string `yaml:"credential_url,omitempty"`
+	Scheme        string `yaml:"scheme,omitempty"`
+	Username      string `yaml:"username,omitempty"`
 }
 
 type defaultsShape struct {
@@ -158,7 +159,7 @@ func ReadFile(dir string) (File, bool, error) {
 				BaseURL:        cs.Server,
 				Flavor:         cs.Flavor,
 				DetectedFlavor: cs.DetectedFlavor,
-				Auth:           AuthConfig{Scheme: cs.Auth.Scheme, Username: cs.Auth.Username},
+				Auth:           AuthConfig{Scheme: cs.Auth.Scheme, Username: cs.Auth.Username, CredentialURL: cs.Auth.CredentialURL},
 			})
 		}
 	case fs.Server != "":
@@ -168,7 +169,7 @@ func ReadFile(dir string) (File, bool, error) {
 			BaseURL:        fs.Server,
 			Flavor:         fs.Flavor,
 			DetectedFlavor: fs.DetectedFlavor,
-			Auth:           AuthConfig{Scheme: fs.Auth.Scheme, Username: fs.Auth.Username},
+			Auth:           AuthConfig{Scheme: fs.Auth.Scheme, Username: fs.Auth.Username, CredentialURL: fs.Auth.CredentialURL},
 		}}
 		if f.CurrentContext == "" {
 			f.CurrentContext = DefaultContextName
@@ -191,7 +192,7 @@ func WriteFile(dir string, f File) error {
 			Server:         c.BaseURL,
 			Flavor:         c.Flavor,
 			DetectedFlavor: c.DetectedFlavor,
-			Auth:           authShape{Scheme: c.Auth.Scheme, Username: c.Auth.Username},
+			Auth:           authShape{Scheme: c.Auth.Scheme, Username: c.Auth.Username, CredentialURL: c.Auth.CredentialURL},
 		})
 	}
 	fs.Defaults.Format = f.Defaults.Format
@@ -206,7 +207,24 @@ func WriteFile(dir string, f File) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(ConfigFilePath(dir), out, 0o600)
+	// Replace atomically so a failed write does not truncate an existing config.
+	tmp, err := os.CreateTemp(dir, ".config-*.tmp")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(tmp.Name())
+	if err := tmp.Chmod(0o600); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if _, err := tmp.Write(out); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmp.Name(), ConfigFilePath(dir))
 }
 
 // defaultsFromShape converts the on-disk defaults block into a Defaults value.

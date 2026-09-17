@@ -20,7 +20,8 @@ is published at <https://angelmsger.github.io/confluence-cli/cli/>.
 | Command | Description |
 | --- | --- |
 | [`confluence-cli auth`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-auth) | Inspect and manage stored credentials |
-| [`confluence-cli auth login`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-auth-login) | Store a credential for the configured server |
+| [`confluence-cli auth guide`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-auth-guide) | Show offline credential acquisition guidance for this service |
+| [`confluence-cli auth login`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-auth-login) | Verify and store personal credentials for the configured service |
 | [`confluence-cli auth logout`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-auth-logout) | Remove the stored credential for the configured server |
 | [`confluence-cli auth status`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-auth-status) | Show whether a usable credential is configured |
 
@@ -43,6 +44,7 @@ is published at <https://angelmsger.github.io/confluence-cli/cli/>.
 | [`confluence-cli config get-contexts`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-config-get-contexts) | List the configured contexts |
 | [`confluence-cli config init`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-config-init) | Interactively set up server URL and credentials |
 | [`confluence-cli config path`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-config-path) | Print the config file path |
+| [`confluence-cli config set-context`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-config-set-context) | Configure service presets without credentials or network access |
 | [`confluence-cli config show`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-config-show) | Show the resolved configuration |
 | [`confluence-cli config use-context`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-config-use-context) | Switch the current context |
 

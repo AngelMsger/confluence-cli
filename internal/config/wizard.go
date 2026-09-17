@@ -3,7 +3,9 @@ package config
 import (
 	"bufio"
 	"fmt"
+	"golang.org/x/term"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/angelmsger/confluence-cli/pkg/constants"
@@ -23,6 +25,8 @@ type WizardHooks struct {
 // given context. Both fields may be nil — the wizard then runs as a pure
 // fresh-setup flow.
 type WizardInputs struct {
+	// Prefill merges team presets for the actual selected destination.
+	Prefill func(string, *NamedContext) (*NamedContext, error)
 	// Existing is the previously persisted config file. nil — or a value with
 	// no contexts — means there is nothing to edit.
 	Existing *File
@@ -95,6 +99,7 @@ const (
 // Secrets-routed result. Keeping the routing rules in one place avoids
 // "APIToken vs Password by flavor" bugs drifting between paths.
 type contextPicks struct {
+	CredentialURL  string
 	Name           string
 	BaseURL        string
 	Flavor         string
@@ -133,8 +138,9 @@ func assembleContextResult(picks contextPicks, kept Secrets) ContextResult {
 		Flavor:         picks.Flavor,
 		DetectedFlavor: picks.DetectedFlavor,
 		Auth: AuthConfig{
-			Scheme:   picks.Scheme,
-			Username: NormalizeUsername(picks.Username),
+			CredentialURL: picks.CredentialURL,
+			Scheme:        picks.Scheme,
+			Username:      NormalizeUsername(picks.Username),
 		},
 	}
 	isCloud := picks.Flavor == FlavorCloud || picks.DetectedFlavor == FlavorCloud
@@ -313,10 +319,21 @@ func promptNewContextName(d PromptDriver, used map[string]bool) (string, error) 
 // prefill is non-nil, its values are offered as defaults that the user can
 // accept by pressing Enter; otherwise example placeholders are shown.
 func runContextWizard(d PromptDriver, hooks WizardHooks, inputs WizardInputs, name string, prefill *NamedContext) (ContextResult, error) {
+	editingExisting := prefill != nil
+	if inputs.Prefill != nil {
+		var err error
+		prefill, err = inputs.Prefill(name, prefill)
+		if err != nil {
+			return ContextResult{}, err
+		}
+	}
 	if name != DefaultContextName || prefill != nil {
 		d.Section(fmt.Sprintf("Context %q", name))
 	}
 	picks := contextPicks{Name: name}
+	if prefill != nil {
+		picks.CredentialURL = prefill.Auth.CredentialURL
+	}
 
 	baseDef := ""
 	if prefill != nil {
@@ -357,12 +374,19 @@ func runContextWizard(d PromptDriver, hooks WizardHooks, inputs WizardInputs, na
 		return ContextResult{}, err
 	}
 	picks.Scheme = scheme
+	guide, guideErr := Guide(Config{BaseURL: picks.BaseURL, Flavor: picks.Flavor, DetectedFlavor: picks.DetectedFlavor, Auth: AuthConfig{Scheme: scheme, CredentialURL: picks.CredentialURL}}, nil)
+	if guideErr != nil {
+		return ContextResult{}, guideErr
+	}
+	for _, line := range guide.Lines() {
+		d.Notice(line)
+	}
 
 	// "Press Enter to keep current" is only meaningful when the scheme did
 	// not change and a secret is actually stored for the prefill identity.
 	var kept Secrets
 	keepable := false
-	if prefill != nil && inputs.LoadSecret != nil && prefill.Auth.Scheme == picks.Scheme {
+	if editingExisting && prefill != nil && inputs.LoadSecret != nil && prefill.Auth.Scheme == picks.Scheme {
 		if loaded, ok := inputs.LoadSecret(*prefill); ok {
 			keepable = true
 			kept = loaded
@@ -437,6 +461,7 @@ type PlainDriver struct {
 	In  io.Reader
 	Out io.Writer
 	r   *bufio.Reader
+	err error
 }
 
 // NewPlainDriver returns a PlainDriver writing to out and reading from in.
@@ -462,12 +487,16 @@ func (p *PlainDriver) Notice(msg string) {
 }
 
 func (p *PlainDriver) AskText(label, def, example string, required bool) (string, error) {
-	return p.text(label, def, example, required), nil
+	value := p.text(label, def, example, required)
+	return value, p.err
 }
 
 func (p *PlainDriver) AskChoice(label string, choices []string, def string) (string, error) {
 	for {
 		v := p.text(fmt.Sprintf("%s (%s)", label, strings.Join(choices, "/")), def, "", true)
+		if p.err != nil {
+			return "", p.err
+		}
 		for _, c := range choices {
 			if strings.EqualFold(v, c) {
 				return c, nil
@@ -486,14 +515,53 @@ func (p *PlainDriver) AskSelect(label string, items []SelectItem, def string) (s
 }
 
 func (p *PlainDriver) AskSecret(label string) (string, error) {
-	return p.text(label, "", "", true), nil
+	return p.secret(label, false)
 }
 
 func (p *PlainDriver) AskSecretOptional(label string) (string, bool, error) {
-	fmt.Fprintf(p.Out, "%s [press Enter to keep current]: ", label)
-	line, _ := p.reader().ReadString('\n')
-	line = strings.TrimSpace(line)
-	return line, line == "", nil
+	value, err := p.secret(label+" [press Enter to keep current]", true)
+	return value, value == "", err
+}
+
+func (p *PlainDriver) secret(label string, optional bool) (string, error) {
+	if file, ok := p.In.(*os.File); ok && term.IsTerminal(int(file.Fd())) {
+		for {
+			fmt.Fprintf(p.Out, "%s: ", label)
+			raw, err := term.ReadPassword(int(file.Fd()))
+			fmt.Fprintln(p.Out)
+			if err != nil {
+				return "", err
+			}
+			value := strings.TrimSpace(string(raw))
+			if optional || value != "" {
+				return value, nil
+			}
+			fmt.Fprintln(p.Out, "  value is required")
+		}
+	}
+	value := p.text(label, "", "", !optional)
+	return value, p.err
+}
+
+// readLine does not read ahead on terminals, so a later hidden prompt owns its bytes.
+func (p *PlainDriver) readLine() (string, error) {
+	if file, ok := p.In.(*os.File); ok && term.IsTerminal(int(file.Fd())) {
+		var line strings.Builder
+		b := make([]byte, 1)
+		for {
+			n, err := file.Read(b)
+			if n > 0 {
+				if b[0] == '\n' {
+					return line.String(), nil
+				}
+				line.WriteByte(b[0])
+			}
+			if err != nil {
+				return line.String(), err
+			}
+		}
+	}
+	return p.reader().ReadString('\n')
 }
 
 func (p *PlainDriver) AskConfirm(label string, def bool) (bool, error) {
@@ -502,7 +570,7 @@ func (p *PlainDriver) AskConfirm(label string, def bool) (bool, error) {
 		d = "y"
 	}
 	v := strings.ToLower(p.text(label+" (y/n)", d, "", true))
-	return v == "y" || v == "yes", nil
+	return v == "y" || v == "yes", p.err
 }
 
 // text is the inner prompt helper that AskText / AskChoice / AskConfirm /
@@ -517,7 +585,11 @@ func (p *PlainDriver) text(label, def, example string, required bool) string {
 		default:
 			fmt.Fprintf(p.Out, "%s: ", label)
 		}
-		line, _ := p.reader().ReadString('\n')
+		line, err := p.readLine()
+		if err != nil && line == "" {
+			p.err = err
+			return ""
+		}
 		line = strings.TrimSpace(line)
 		if line == "" {
 			line = def

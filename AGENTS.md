@@ -178,3 +178,16 @@ both flavors, including `AddCommentReq` and threaded storage/wiki bodies.
   ```
 
   See [`docs/releasing.md`](docs/releasing.md) for the full release procedure.
+
+## Team setup contract
+
+Keep service presets separate from personal credentials. `config set-context`
+must resolve the named destination (including a new one), ignore personal
+variables before scheme inference, remain offline and credential-store-free,
+and share one merge for dry-run and execution. Preserve other contexts, personal
+usernames and shared defaults. Login must persist its identity as well as its
+secret and reject a different complete service URL before credential writes.
+Use the common acquisition guide in all prompt styles and missing-credential
+recovery; never request a guide URL with credentials. Cover a fresh config reload,
+conflict/idempotent setup, and partial persistence failures when changing this
+flow. The canonical behavior is in the installation guide's team setup section.
