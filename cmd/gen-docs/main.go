@@ -217,7 +217,11 @@ func writeReadme(root *cobra.Command, mods []module) error {
 		}
 		b.WriteString("\n")
 	}
-	return os.WriteFile(filepath.Join(outDir, "README.md"), []byte(b.String()), 0o644)
+	// Trim the trailing blank line the per-module separator leaves behind, so
+	// the generated file ends in exactly one newline and `git diff --check`
+	// stays quiet on it.
+	out := strings.TrimRight(b.String(), "\n") + "\n"
+	return os.WriteFile(filepath.Join(outDir, "README.md"), []byte(out), 0o644)
 }
 
 const htmlTemplate = `<!doctype html>

@@ -127,4 +127,3 @@ is published at <https://angelmsger.github.io/confluence-cli/cli/>.
 | Command | Description |
 | --- | --- |
 | [`confluence-cli whoami`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-whoami) | Print the user the configured credentials authenticate as |
-
