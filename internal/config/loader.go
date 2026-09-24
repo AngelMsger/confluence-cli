@@ -211,7 +211,7 @@ func Load(opt LoadOptions) (*Resolved, error) {
 	}
 	resolveAuthDefaults(merged, sources)
 	return &Resolved{
-		Config: configFromMap(merged),
+		Config: preserveCredentialLookup(configFromMap(merged), file, ctxName),
 		Secrets: Secrets{
 			PAT:      merged[fieldPAT],
 			Password: merged[fieldPassword],

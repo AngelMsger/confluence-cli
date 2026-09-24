@@ -12,7 +12,7 @@ func newAuthCmd(s *appState) *cobra.Command {
 		Use:   "auth",
 		Short: "Inspect and manage stored credentials",
 	}
-	cmd.AddCommand(newAuthGuideCmd(s), newAuthStatusCmd(s), newAuthLoginCmd(s), newAuthLogoutCmd(s))
+	cmd.AddCommand(newAuthReuseCmd(s), newAuthGuideCmd(s), newAuthStatusCmd(s), newAuthLoginCmd(s), newAuthLogoutCmd(s))
 	return cmd
 }
 
@@ -100,7 +100,7 @@ func newAuthLogoutCmd(s *appState) *cobra.Command {
 			if scheme == "" {
 				scheme = config.SchemePAT
 			}
-			if err := auth.Forget(cfg.BaseURL, scheme, s.store); err != nil {
+			if err := auth.ForgetForConfig(cfg, scheme, s.store); err != nil {
 				return err
 			}
 			return s.emit(map[string]any{"server": cfg.BaseURL, "status": "removed"})

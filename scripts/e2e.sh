@@ -10,6 +10,7 @@ set -uo pipefail
 
 cd "$(dirname "$0")/.."
 ROOT="$(pwd)"
+SKILL_VERSION="$(sed -n 's/^version: *//p' "$ROOT/skills/confluence/SKILL.md" | head -1)"
 BIN="$ROOT/bin/confluence-cli"
 
 PASS=0
@@ -177,12 +178,12 @@ SKILL_HOME="$(mktemp -d)"
 assert_contains  "skill install for Codex" '"alignment": "current"' \
                                           env HOME="$SKILL_HOME" "${CLI[@]}" skill install --agent codex
 assert_contains  "skill status version aligned" '"loaded_status": "current"' \
-                                          env HOME="$SKILL_HOME" CONFLUENCE_CLI_SKILL=1.11.2 "${CLI[@]}" skill status
+                                          env HOME="$SKILL_HOME" CONFLUENCE_CLI_SKILL="$SKILL_VERSION" "${CLI[@]}" skill status
 assert_err_contains "legacy Skill handshake is detected" '"status":"unknown"' \
                                           env HOME="$SKILL_HOME" CONFLUENCE_CLI_SKILL=1 CONFLUENCE_CLI_NO_UPDATE_NOTIFIER=1 "${CLI[@]}" page get 404
 assert_exit      "missing page -> 6"      6                "${CLI[@]}" page get 404
 assert_err_contains "update notice includes Skill refresh" '"next_steps"' \
-                                          env CONFLUENCE_CLI_SKILL=1.11.2 "${CLI[@]}" page get 404
+                                          env CONFLUENCE_CLI_SKILL="$SKILL_VERSION" "${CLI[@]}" page get 404
 assert_exit      "bad flag -> 2"          2                "${CLI[@]}" page get 123 --bogus
 
 # Read-only mode: env CONFLUENCE_CLI_READ_ONLY blocks writes; --allow-writes

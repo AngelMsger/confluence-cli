@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-09-24
+### Added
+
+- Add `auth reuse` to verify and associate an existing matching login with a team
+  context without another login or copying secrets; include dry-run and explicit
+  source selection for ambiguous identities.
+
+
 ## [0.20.0] - 2026-09-17
 
 ### Added
@@ -23,7 +31,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   authentication and reject a mismatched service before storing credentials.
 - Preserve credential-page metadata and replace configuration files atomically.
 - Hide secret input in terminal prompts while retaining the plain setup pipe flow.
-
 
 ## [0.19.1] - 2026-09-16
 
@@ -122,7 +129,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   each product's home and project markers; `--agent` accepts the full id
   list. Installation guides, generated CLI docs, and help text stay in sync.
 
-
 ## [0.15.1] - 2026-08-11
 
 ### Added
@@ -133,7 +139,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `./.pi` alongside Claude Code, Codex, and Grok Build. Installation guides,
   generated CLI docs, and agent help text list the new target.
 
-
 ## [0.15.0] - 2026-08-11
 
 ### Added
@@ -143,7 +148,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `./.grok/skills/<name>` with `--project`. Auto-detection probes `~/.grok` /
   `./.grok` alongside Claude Code and Codex. Installation guides, generated CLI
   docs, and agent help text list the new target.
-
 
 ## [0.14.0] - 2026-07-16
 
@@ -694,7 +698,8 @@ Initial release.
 - Distribution via npm (`@angelmsger/confluence-cli`), `go install`, prebuilt
   release binaries and `make install`.
 
-[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.20.0...HEAD
+[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.21.0...HEAD
+[0.21.0]: https://github.com/angelmsger/confluence-cli/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/angelmsger/confluence-cli/compare/v0.19.1...v0.20.0
 [0.19.1]: https://github.com/angelmsger/confluence-cli/compare/v0.19.0...v0.19.1
 [0.19.0]: https://github.com/angelmsger/confluence-cli/compare/v0.18.0...v0.19.0

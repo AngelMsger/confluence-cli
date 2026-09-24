@@ -459,3 +459,16 @@ without a service or user credentials. Unit tests cover target-specific
 precedence, persistence failures, guide URLs, and reloading a stored login.
 See [installation](installation.md#team-distribution-and-personal-login) for the
 canonical user-facing contract and product-specific authentication guidance.
+
+### Existing credential reuse
+
+`internal/app/auth_reuse.go` matches stored contexts and verifies credentials
+through native auth/client code before associating identity with the destination.
+It never writes the credential store, consumes environment secrets or changes
+current_context. Public `config set-context` remains offline and credential-free.
+The destination's complete service identity and the captured config are checked
+again before writing. See the installation guide for the result and recovery contract.
+
+Equivalent service URL overrides preserve the persisted native credential lookup
+key without redirecting requests or copying secrets. Logout removes that same
+entry. A different complete deployment URL cannot use the retained lookup key.

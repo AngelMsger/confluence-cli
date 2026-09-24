@@ -23,6 +23,7 @@ is published at <https://angelmsger.github.io/confluence-cli/cli/>.
 | [`confluence-cli auth guide`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-auth-guide) | Show offline credential acquisition guidance for this service |
 | [`confluence-cli auth login`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-auth-login) | Verify and store personal credentials for the configured service |
 | [`confluence-cli auth logout`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-auth-logout) | Remove the stored credential for the configured server |
+| [`confluence-cli auth reuse`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-auth-reuse) | Reuse an existing login in the selected context without signing in again |
 | [`confluence-cli auth status`](https://angelmsger.github.io/confluence-cli/cli/#confluence-cli-auth-status) | Show whether a usable credential is configured |
 
 ## comment

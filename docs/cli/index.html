@@ -39,6 +39,7 @@
       <a href="#confluence-cli-auth-guide">confluence-cli auth guide</a>
       <a href="#confluence-cli-auth-login">confluence-cli auth login</a>
       <a href="#confluence-cli-auth-logout">confluence-cli auth logout</a>
+      <a href="#confluence-cli-auth-reuse">confluence-cli auth reuse</a>
       <a href="#confluence-cli-auth-status">confluence-cli auth status</a>
       </div>
     <div class="side-group">
@@ -298,6 +299,27 @@ same name already exists, Confluence stores the upload as a new version.</p>
       <pre>confluence-cli auth logout</pre>
 
 
+
+    </section>
+
+    <section class="cmd" id="confluence-cli-auth-reuse">
+      <h2>confluence-cli auth reuse</h2>
+      <p class="short">Reuse an existing login in the selected context without signing in again</p>
+      <pre>confluence-cli auth reuse [flags]</pre>
+      <p class="long">Match stored contexts by complete service URL, authentication scheme and service scope.
+Verify a matching stored credential before filling a missing personal identity in
+the selected context. Never copy secrets, replace an existing identity, activate
+a context, or read credentials from environment variables. Dry-run performs
+read-only verification and reports the same proposed association. An unchanged
+or unavailable result is not proof of authentication; use auth status to check.</p>
+      <h3>Options</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>verify and preview the identity association without writing</td></tr>
+        <tr><td><code>--from-context</code></td><td></td><td>choose a matching source from config contexts when multiple identities are available</td></tr>
+        </tbody>
+      </table>
 
     </section>
 

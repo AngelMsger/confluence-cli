@@ -340,3 +340,38 @@ variables remain transient and are never copied by `config set-context`.
 Non-interactive users supply credentials through the documented environment
 variables rather than piping secrets into `auth login`. `config init` retains its
 edit/add/replace flow and now uses target-specific presets and the same guide.
+
+## Reuse an existing login
+
+After preparing a team context, associate an existing personal login without
+creating another token or changing the active context:
+
+```sh
+confluence-cli --use-context team auth reuse --dry-run
+confluence-cli --use-context team auth reuse
+confluence-cli --use-context team auth status
+```
+
+Reuse matches the complete normalized service URL, authentication scheme and
+provider scope (deployment flavor, organization or tenant where applicable).
+It verifies the source credential before filling missing destination identity.
+A populated destination identity is preserved. Credentials stay in their native
+store; no secrets or environment credentials are copied. Both source and unrelated
+contexts remain unchanged. Configuration changes during verification stop the write.
+
+The JSON result reports `context`, `state`, `changed`, `verified`, `dry_run` and,
+when selected, `source_context`. States are `available` (verified preview),
+`reused`, `unchanged`, or `unavailable`. The last two do not establish successful
+authentication: always retain the separate `auth status` check. No reusable
+identity is a normal no-change result. Network, permission and credential-store
+failures retain their structured errors instead of suggesting a fresh login.
+
+Multiple different verified identities return `AUTH_REUSE_AMBIGUOUS`; discover
+context names with `config contexts`, then repeat with `--from-context <name>`.
+The command does not replace identities or switch authentication schemes. As
+with native `auth login`, updating this CLI's own settings remains available
+in remote read-only mode; `--dry-run` never changes settings or credentials.
+
+Equivalent service URL overrides preserve the persisted native credential lookup
+key without redirecting requests or copying secrets. Logout removes that same
+entry. A different complete deployment URL cannot use the retained lookup key.

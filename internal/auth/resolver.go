@@ -34,7 +34,11 @@ func Resolve(cfg config.Config, secrets config.Secrets, store *Store) (credResul
 	}
 
 	if cred.Secret == "" && store != nil && cfg.BaseURL != "" {
-		loaded, err := store.Load(AccountKey(cfg.BaseURL, scheme))
+		lookupBase, err := CredentialLookupURL(cfg)
+		if err != nil {
+			return Credential{}, err
+		}
+		loaded, err := store.Load(AccountKey(lookupBase, scheme))
 		switch {
 		case err == nil:
 			cred.Secret = loaded
@@ -93,4 +97,26 @@ func Save(baseURL string, cred Credential, store *Store) (string, error) {
 // Forget removes any stored secret for the base URL and scheme.
 func Forget(baseURL, scheme string, store *Store) error {
 	return store.Delete(AccountKey(baseURL, scheme))
+}
+
+// CredentialLookupURL retains legacy store addressing only for the same complete service.
+func CredentialLookupURL(cfg config.Config) (string, error) {
+	if cfg.CredentialBaseURL == "" {
+		return cfg.BaseURL, nil
+	}
+	target, e1 := config.NormalizeServiceURL(cfg.BaseURL)
+	stored, e2 := config.NormalizeServiceURL(cfg.CredentialBaseURL)
+	if e1 != nil || e2 != nil || target != stored {
+		return "", cerrors.New(cerrors.CategoryConfig, "CREDENTIAL_SERVICE_MISMATCH", "stored credential lookup does not match the complete service URL")
+	}
+	return cfg.CredentialBaseURL, nil
+}
+
+// ForgetForConfig removes the same entry that configured requests resolve.
+func ForgetForConfig(cfg config.Config, scheme string, store *Store) error {
+	base, err := CredentialLookupURL(cfg)
+	if err != nil {
+		return err
+	}
+	return Forget(base, scheme, store)
 }
