@@ -14,12 +14,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rows, including empty pages with more results. Completed `--all` output
   emits no continuation notice. Cover cursor replay on Cloud and Data Center;
   update the companion Skill to `1.11.5`.
-- Keep a stored credential that a context still uses. `config init` no longer
-  deletes the secret it has just saved when an edit changes only the spelling
-  or path of the server URL, and `config delete-context` no longer deletes the
-  secret another context on the same server resolves, such as a personal
-  context beside a team preset. Cleanup now runs after the config file is
-  written, so a failed write keeps the credential too. Companion Skill `1.11.6`.
+- Keep a stored credential that is still in use. `config init` deleted the
+  secret it had just saved when an edit changed only the spelling or deployment
+  path of a server URL, and `config delete-context` deleted the secret that
+  other contexts on the same host and authentication scheme — such as a team
+  preset beside a personal context — still resolved. A secret is now forgotten
+  only when no remaining context uses it, and `delete-context` forgets it after
+  the config file is written. Companion Skill `1.11.6`.
+- Forget the right credential for a context stored without an authentication
+  scheme. Cleanup assumed `pat`; on Cloud, where such a context resolves
+  `basic`, `config delete-context` removed another context's token and left
+  the real secret behind. Companion Skill `1.11.9` states how `auth logout`
+  treats a shared secret.
 - Name the violated rule when `page history` rejects a time window. `--since`
   with `--from` or `--to`, `--to` without `--from`, and an empty or malformed
   window were already refused with `BAD_TIME_RANGE` (exit 2) before any

@@ -1,6 +1,6 @@
 ---
 name: confluence
-version: 1.11.8
+version: 1.11.9
 description: "Use a Confluence wiki as an external knowledge base. Search, read and summarise pages; browse spaces and page trees; create/update/delete/move/copy pages; find edits by actor and time; view or restore versions; manage comments, attachments, labels and watches. Every write accepts --dry-run; session read-only mode blocks writes unless --allow-writes is set. Use when the user gives a Confluence URL or ID, mentions a Confluence/wiki page, asks to find or edit content, find their edits for a worklog, inspect history, manage page resources, check their identity, or use dry-run/read-only mode. Works with Confluence Cloud and Data Center / Server."
 metadata:
   requires:
@@ -172,7 +172,7 @@ to the whole batch.
 
 ## Agent-facing conventions
 
-- **Skill handshake — set `CONFLUENCE_CLI_SKILL=1.11.8`.** Once you have
+- **Skill handshake — set `CONFLUENCE_CLI_SKILL=1.11.9`.** Once you have
   loaded this Skill, export that exact value in the environment used to run the
   CLI. The CLI compares it with the embedded Skill version and emits a
   structured stderr notice when the Skill is missing, old, or uses the legacy

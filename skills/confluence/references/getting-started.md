@@ -106,10 +106,10 @@ The active context is chosen by, in order: the `--use-context` flag, the
 `CONFLUENCE_CONTEXT` env var, the file's `current_context`. Legacy single-server
 config files keep working without change.
 
-Contexts on one host with the same auth scheme share one stored credential.
-`config delete-context <name>` removes the context and deletes that credential
-only when no remaining context uses it, so removing a team preset does not log
-out a personal context on the same server.
+Contexts on one host and auth scheme share a stored secret — a team preset and
+the personal context whose login it reuses, for example. `config delete-context
+<name>` removes that secret only when no remaining context uses it; `auth
+logout` removes it for all of them.
 
 ## Flavors
 

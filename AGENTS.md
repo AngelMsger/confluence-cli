@@ -216,22 +216,14 @@ filters, not an event window, and stay outside this contract.
 
 ## Credential cleanup
 
-A stored secret belongs to every context that resolves the same
-`<host>:<scheme>` account: another spelling of the URL, another path on the
-host, or a team preset beside a personal context. Remove one only through
-`forgetUnusedCredential`, after the config file is written and only when no
-remaining context resolves it; compare accounts with `credentialKey`, which
-uses the scheme a stored context resolves (`pat` on Data Center, `basic` on
-Cloud when none is saved). `auth logout` is the one explicit removal. When you
-touch `config init` or `config delete-context`, keep the tests in
-`internal/app/config_credentials_test.go` passing, including the failed-write
-case.
-
-## Credential reuse
-
-Keep `auth reuse` separate from public service setup. Match complete URLs and
-provider scope before credential access, preserve configured destination identities,
-verify native credentials before associating missing identity, and retain operational
-failures. Never copy secrets, infer identity from environment variables or activate
-a context. Cover dry-run, ambiguity, scope mismatch, concurrent edits and fresh-load
-credential resolution. Native self-configuration follows the existing read-only exception.
+The keychain account is `<host>:<scheme>`, so contexts on one host with one
+scheme share a secret: a team preset and the personal context whose login it
+reuses, or two spellings of one URL. Forget a stored secret only through
+`forgetUnusedCredential`, after the config write has succeeded, and only when no
+remaining context resolves the same account. Resolve a missing scheme as a
+request does (basic on Cloud, pat elsewhere) instead of assuming one. `auth
+logout` is the explicit exception. Cover a URL edit that keeps the host, a
+shared and an unshared deletion, a scheme change, a context without a scheme
+and a failed write; see `internal/app/config_credentials_test.go`. `internal/app`
+tests run against the in-memory keyring that `TestMain` installs; never add a
+test that can reach the OS keychain.

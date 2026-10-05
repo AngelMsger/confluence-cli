@@ -441,8 +441,9 @@ version &#43; 1; pass --version to assert the version you last read.</p>
       <p class="short">Delete a context and its stored credential</p>
       <pre>confluence-cli config delete-context &lt;name&gt;</pre>
       <p class="long">Delete a context from the config file, together with its stored credential.
-The credential is kept when another context on the same server still uses
-it, such as a team preset beside a personal context.</p>
+The credential is kept when another context on the same host and
+authentication scheme still uses it, such as a team preset beside a
+personal context.</p>
 
       <h3>Examples</h3><pre>  confluence-cli config delete-context staging</pre>
     </section>

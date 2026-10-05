@@ -194,9 +194,11 @@ confluence-cli --use-context prod page get 123   # override for one command
 ```
 
 `CONFLUENCE_CONTEXT` overrides the current context via the environment. Legacy
-single-server config files are read unchanged. `config delete-context` removes a
-context together with its stored credential, unless another context on the same
-server still uses that credential.
+single-server config files are read unchanged.
+
+Contexts on the same host and authentication scheme share one stored
+credential. `config delete-context <name>` removes a context together with its
+credential, unless another context still uses it.
 
 ## Errors and exit codes
 

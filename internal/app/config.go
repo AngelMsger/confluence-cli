@@ -273,8 +273,9 @@ func newConfigDeleteContextCmd(s *appState) *cobra.Command {
 		Use:   "delete-context <name>",
 		Short: "Delete a context and its stored credential",
 		Long: "Delete a context from the config file, together with its stored credential.\n" +
-			"The credential is kept when another context on the same server still uses\n" +
-			"it, such as a team preset beside a personal context.",
+			"The credential is kept when another context on the same host and\n" +
+			"authentication scheme still uses it, such as a team preset beside a\n" +
+			"personal context.",
 		Example: "  confluence-cli config delete-context staging",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -326,8 +327,7 @@ func newConfigDeleteContextCmd(s *appState) *cobra.Command {
 //  1. Validate every credential locally — cheap fail-fast.
 //  2. Save every new credential into the keychain.
 //  3. Write the new config.yaml.
-//  4. Best-effort delete orphaned old credentials that no context in the new
-//     file resolves any more.
+//  4. Best-effort delete orphaned old credentials that no context uses any more.
 //
 // The cleanup deliberately runs LAST. If we Forgot the old credential before
 // Save or WriteFile failed, the on-disk config would still reference the old
@@ -353,9 +353,9 @@ func persistInitResult(s *appState, result *config.WizardResult, existing config
 		}
 	}
 
-	// 2. Save every new credential. orphans collects the previous shape of
-	//    every edited context; its secret is cleaned up once the rest of
-	//    persistence succeeds, if nothing resolves it by then.
+	// 2. Save every new credential. orphans collects the previous form of each
+	//    edited context, whose credential may need cleanup once the rest of
+	//    persistence succeeds.
 	var orphans []config.NamedContext
 	out := configInitOutput{
 		ConfigFile: config.ConfigFilePath(s.cfgDir),
@@ -385,9 +385,9 @@ func persistInitResult(s *appState, result *config.WizardResult, existing config
 			"failed to write the config file")
 	}
 
-	// 4. Best-effort cleanup of orphaned old credentials. Errors are ignored
-	//    on purpose — an orphan secret in the keychain is harmless, while a
-	//    user-visible error here would suggest the new config didn't take.
+	// 4. Best-effort cleanup of orphaned old credentials. A changed URL or
+	//    scheme does not always change the account: another spelling of the
+	//    same server resolves the secret saved in step 2.
 	for _, o := range orphans {
 		forgetUnusedCredential(s.store, o, result.File.Contexts)
 	}
@@ -395,20 +395,24 @@ func persistInitResult(s *appState, result *config.WizardResult, existing config
 	return out, nil
 }
 
-// credentialKey is the account a named, stored context's secret is kept under:
-// the server's host and the scheme the context resolves. Every context on one
-// server with that scheme shares it. The scheme comes from the same persisted
-// resolution `auth reuse` uses, because a context saved without one resolves
-// pat on Data Center but basic on Cloud.
+// credentialKey is the account a context's secret is stored under: the
+// server's host and the scheme. Every context on one host with one scheme
+// shares it. A context without a scheme takes the one a request would resolve
+// for it — basic on Cloud, pat elsewhere — not a fixed default.
 func credentialKey(nc config.NamedContext) string {
-	return auth.AccountKey(nc.BaseURL, config.StoredContext(nc, config.Defaults{}).Auth.Scheme)
+	scheme := nc.Auth.Scheme
+	if scheme == "" {
+		scheme = config.StoredContext(nc, config.Defaults{}).Auth.Scheme
+	}
+	return auth.AccountKey(nc.BaseURL, scheme)
 }
 
 // forgetUnusedCredential removes the secret stored for old unless one of the
 // remaining contexts still resolves it. Another spelling of the same server,
-// another path on its host, or a team preset beside a personal context shares
-// the secret; deleting it would force the user to issue a new token. Errors
-// are ignored: an orphan secret is harmless.
+// or a team preset beside a personal context, shares the secret; deleting it
+// would force a new login on a context the user did not touch. Errors are
+// ignored on purpose: an orphan secret is harmless, while a user-visible error
+// would suggest the new config did not take.
 func forgetUnusedCredential(store *auth.Store, old config.NamedContext, remaining []config.NamedContext) {
 	key := credentialKey(old)
 	for _, c := range remaining {
