@@ -13,6 +13,7 @@ import (
 
 	"github.com/angelmsger/confluence-cli/internal/auth"
 	"github.com/angelmsger/confluence-cli/internal/config"
+	"github.com/angelmsger/confluence-cli/pkg/constants"
 	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 	"github.com/zalando/go-keyring"
 )
@@ -467,5 +468,51 @@ func TestAuthReuseMatchesPreviouslyDetectedFlavor(t *testing.T) {
 	r, err := reuseAuthentication(s, "", false, services)
 	if err != nil || r.State != "reused" {
 		t.Fatalf("detected flavor: %+v %v", r, err)
+	}
+}
+
+// A source-selection failure recovers through the context listing. That
+// command's name differs across the CLI family, so resolve what each error
+// advertises against this command tree instead of trusting its spelling.
+func TestAuthReuseSourceRecoveryNamesARealCommand(t *testing.T) {
+	failures := map[string]error{}
+
+	s, file, services := reuseFixture(t)
+	_, failures["AUTH_REUSE_SOURCE_NOT_FOUND"] = reuseAuthentication(s, "missing", true, services)
+
+	other := file.Contexts[0]
+	other.Name = "second"
+	other.Auth.Username = "second-user"
+	ambiguous := file
+	ambiguous.Contexts = append(append([]config.NamedContext(nil), file.Contexts...), other)
+	if err := config.WriteFile(s.cfgDir, ambiguous); err != nil {
+		t.Fatal(err)
+	}
+	_, failures["AUTH_REUSE_AMBIGUOUS"] = reuseAuthentication(s, "", true, services)
+
+	mismatched := file
+	mismatched.Contexts = append([]config.NamedContext(nil), file.Contexts...)
+	mismatched.Contexts[0].BaseURL = "https://other.example.test/deploy"
+	if err := config.WriteFile(s.cfgDir, mismatched); err != nil {
+		t.Fatal(err)
+	}
+	_, failures["AUTH_REUSE_SOURCE_MISMATCH"] = reuseAuthentication(s, "personal", true, services)
+
+	for code, err := range failures {
+		if err == nil || cerrors.AsCLIError(err).Code != code {
+			t.Fatalf("%s: got %v", code, err)
+		}
+		steps := cerrors.AsCLIError(err).NextSteps
+		if len(steps) == 0 {
+			t.Fatalf("%s: no recovery command", code)
+		}
+		words := strings.Fields(steps[0])
+		if words[0] != constants.AppName {
+			t.Fatalf("%s: recovery %q is not a %s command", code, steps[0], constants.AppName)
+		}
+		cmd, rest, findErr := NewRootCmd().Find(words[1:])
+		if findErr != nil || len(rest) != 0 || !cmd.Runnable() {
+			t.Errorf("%s: recovery %q does not resolve to a command (unresolved %v, %v)", code, steps[0], rest, findErr)
+		}
 	}
 }

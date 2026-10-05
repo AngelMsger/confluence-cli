@@ -27,6 +27,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   states the rule, with the contract in `hint` and a valid form of each window
   in `next_steps`; the command help and flag descriptions state the rules too.
   Companion Skill `1.11.7`.
+- Point `auth reuse` recovery at a command that exists. The
+  `AUTH_REUSE_AMBIGUOUS`, `AUTH_REUSE_SOURCE_NOT_FOUND` and
+  `AUTH_REUSE_SOURCE_MISMATCH` errors, the installation guide and the Skill
+  sent callers to `config contexts`, which this CLI does not have; they now
+  name `config get-contexts`. Companion Skill `1.11.8`.
 
 ### Changed
 

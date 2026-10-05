@@ -372,7 +372,7 @@ identity is a normal no-change result. Network, permission and credential-store
 failures retain their structured errors instead of suggesting a fresh login.
 
 Multiple different verified identities return `AUTH_REUSE_AMBIGUOUS`; discover
-context names with `config contexts`, then repeat with `--from-context <name>`.
+context names with `config get-contexts`, then repeat with `--from-context <name>`.
 The command does not replace identities or switch authentication schemes. As
 with native `auth login`, updating this CLI's own settings remains available
 in remote read-only mode; `--dry-run` never changes settings or credentials.

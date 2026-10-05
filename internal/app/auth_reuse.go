@@ -59,7 +59,7 @@ func newAuthReuseCmd(s *appState) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "verify and preview the identity association without writing")
-	cmd.Flags().StringVar(&from, "from-context", "", "choose a matching source from config contexts when multiple identities are available")
+	cmd.Flags().StringVar(&from, "from-context", "", "choose the source context when multiple identities match; list names with 'config get-contexts'")
 	return cmd
 }
 
@@ -82,10 +82,10 @@ func reuseAuthentication(s *appState, from string, dryRun bool, services reuseSe
 	if from != "" {
 		source, ok := file.Context(from)
 		if !ok {
-			return result, cerrors.New(cerrors.CategoryNotFound, "AUTH_REUSE_SOURCE_NOT_FOUND", "the selected source context does not exist").WithNextSteps(constants.AppName + " config contexts")
+			return result, cerrors.New(cerrors.CategoryNotFound, "AUTH_REUSE_SOURCE_NOT_FOUND", "the selected source context does not exist").WithNextSteps(constants.AppName + " config get-contexts")
 		}
 		if !sameReuseService(targetCfg, reuseContextConfig(source, file.Defaults)) {
-			return result, cerrors.New(cerrors.CategoryConflict, "AUTH_REUSE_SOURCE_MISMATCH", "the source context belongs to a different service or authentication scope").WithNextSteps(constants.AppName + " config contexts")
+			return result, cerrors.New(cerrors.CategoryConflict, "AUTH_REUSE_SOURCE_MISMATCH", "the source context belongs to a different service or authentication scope").WithNextSteps(constants.AppName + " config get-contexts")
 		}
 	}
 	if targetCfg.Auth.Scheme == "none" {
@@ -176,7 +176,7 @@ func reuseAuthentication(s *appState, from string, dryRun bool, services reuseSe
 		for i, m := range matches {
 			names[i] = m.source.Name
 		}
-		return result, cerrors.New(cerrors.CategoryConflict, "AUTH_REUSE_AMBIGUOUS", "multiple matching login identities are available; choose a source context").WithDetails(map[string]any{"contexts": names}).WithNextSteps(constants.AppName+" config contexts", constants.AppName+" --use-context "+reuseContextArg(target.Name)+" auth reuse --from-context <name> --dry-run")
+		return result, cerrors.New(cerrors.CategoryConflict, "AUTH_REUSE_AMBIGUOUS", "multiple matching login identities are available; choose a source context").WithDetails(map[string]any{"contexts": names}).WithNextSteps(constants.AppName+" config get-contexts", constants.AppName+" --use-context "+reuseContextArg(target.Name)+" auth reuse --from-context <name> --dry-run")
 	}
 	chosen := matches[0]
 	updated := target
