@@ -144,7 +144,11 @@ are never written to the config file.
 In the default JSON output, list commands return a `{items, next, has_more}`
 envelope; pass `--cursor` with a prior page's `next` to read the following page,
 or `--all` to fetch every page. `--format ndjson` instead streams the items
-themselves, one JSON object per line.
+themselves, one JSON object per line. If more results remain, stderr emits a
+structured `_notice.pagination` with `next` and `has_more: true`; pass that
+`next` as `--cursor`. Field projection affects rows only, so an empty filtered
+page can still have a continuation notice. Completed pages and `--all` results
+emit no pagination notice.
 
 ### Find pages I edited in a time range
 

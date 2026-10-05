@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -30,12 +31,25 @@ func main() {
 func routes() http.Handler {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("GET /rest/api/space", func(w http.ResponseWriter, r *http.Request) {
+	listSpaces := func(w http.ResponseWriter, r *http.Request) {
+		spaces := []any{space("ENG", "Engineering"), space("OPS", "Operations"), space("DOC", "Documentation")}
+		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+		if limit <= 0 {
+			limit = 25
+		}
+		start, _ := strconv.Atoi(r.URL.Query().Get("start"))
+		if start < 0 || start > len(spaces) {
+			http.Error(w, `{"message":"invalid pagination offset"}`, http.StatusBadRequest)
+			return
+		}
+		end := min(start+limit, len(spaces))
 		writeJSON(w, map[string]any{
-			"results": []any{space("ENG", "Engineering")},
-			"size":    1, "limit": 25,
+			"results": spaces[start:end],
+			"size":    end - start, "limit": limit, "start": start,
 		})
-	})
+	}
+	mux.HandleFunc("GET /rest/api/space", listSpaces)
+	mux.HandleFunc("GET /wiki/rest/api/space", listSpaces)
 	mux.HandleFunc("GET /rest/api/space/{key}", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, space(r.PathValue("key"), "Engineering"))
 	})

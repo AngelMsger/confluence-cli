@@ -83,6 +83,8 @@ func newRootCmdWithState() (*cobra.Command, *appState) {
 		Long: "confluence-cli reads Confluence pages, searches via CQL, creates and\n" +
 			"edits pages, and manages comments. It supports Confluence Cloud and\n" +
 			"Data Center / Server, and emits agent-friendly JSON with structured errors.\n\n" +
+			"NDJSON lists keep rows on stdout and emit pagination notices on stderr;\n" +
+			"pass the notice's next value as --cursor to continue.\n\n" +
 			"AGENT NOTE: a companion Skill (\"confluence\") carries the canonical usage,\n" +
 			"safety modes, and env setup and is the source of truth for driving this CLI.\n" +
 			"If you are an agent, load that Skill before composing commands. Check status\n" +

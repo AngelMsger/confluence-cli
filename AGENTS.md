@@ -140,6 +140,14 @@ both flavors, including `AddCommentReq` and threaded storage/wiki bodies.
 
 ## Documentation — keep it current
 
+- Keep list pagination in `internal/output.EmitList`. NDJSON emits rows on
+  stdout and a structured `_notice.pagination` on stderr only after successful
+  row output when more results remain. Preserve cursors through field
+  projection and empty filtered pages; completed `--all` results emit no
+  pagination notice. `Options.NoticeWriter` defaults to stderr and `NextFlag`
+  defaults to `--cursor`, shared with the table footer. Test cursor replay
+  through the real CLI for both Cloud and Data Center when changing this path.
+
 - **Actively maintain the docs.** When a change affects architecture,
   installation, commands, flags, or the release process, update the relevant
   file under [`docs/`](docs/) in the same commit. Stale docs are a defect.

@@ -83,7 +83,10 @@ Each hit has `id`, `type`, `title`, `space_key`, `url`, `excerpt` and
 
 ## Large result sets
 
-`search` returns one page (default 25) and prints a stderr note when more
-exist. Add `--all` to walk every page, `--limit N` to size each request, and
-`--format ndjson` for streaming-friendly output. Narrow the query (add
+`search` returns one page (default 25). JSON keeps `next` and `has_more` in its
+list envelope; NDJSON streams rows to stdout and emits `_notice.pagination`
+with `next` and `has_more: true` on stderr when more results remain. Pass `next`
+as `--cursor`, including after an empty filtered page. Add `--all` to walk
+every page, `--limit N` to size each request, and `--format ndjson` for streaming
+output. Completed `--all` results emit no pagination notice. Narrow the query (add
 `--space`, `--type`, a date range) rather than paging through thousands of hits.

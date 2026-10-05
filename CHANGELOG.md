@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Preserve NDJSON pagination on stderr through `_notice.pagination` and
+  actionable `--cursor` guidance while keeping stdout limited to projected
+  rows, including empty pages with more results. Completed `--all` output
+  emits no continuation notice. Cover cursor replay on Cloud and Data Center;
+  update the companion Skill to `1.11.5`.
+
 ## [0.21.0] - 2026-09-24
 ### Added
 

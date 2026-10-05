@@ -132,6 +132,9 @@
 edits pages, and manages comments. It supports Confluence Cloud and
 Data Center / Server, and emits agent-friendly JSON with structured errors.
 
+NDJSON lists keep rows on stdout and emit pagination notices on stderr;
+pass the notice&#39;s next value as --cursor to continue.
+
 AGENT NOTE: a companion Skill (&#34;confluence&#34;) carries the canonical usage,
 safety modes, and env setup and is the source of truth for driving this CLI.
 If you are an agent, load that Skill before composing commands. Check status

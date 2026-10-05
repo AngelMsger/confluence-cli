@@ -227,11 +227,23 @@ implementation.
 
 ### 6.1 Output
 
-Three `Formatter` implementations: `json` (default, agent-oriented,
-stdout), `table` (human-readable), and `ndjson` (streaming for large
-result sets). `--fields a,b.c` projects by dot-path. List commands
-emit the pagination envelope `{items, next, has_more}`; `--cursor`
-continues from a prior page's `next`.
+The shared `internal/output` renderer supports `json` (default,
+agent-oriented), `table` (human-readable), and `ndjson` (one row per line).
+`--fields a,b.c` projects by dot-path. JSON lists keep the pagination envelope
+`{items, next, has_more}`; tables append a continuation footer. NDJSON keeps
+stdout limited to rows and, after every row is written successfully, emits a
+compact stderr notice when `has_more` is true:
+
+```json
+{"_notice":{"pagination":{"next":"25","has_more":true},"next_steps":["Pass next as --cursor to retrieve the next page."]}}
+```
+
+`output.Options.NoticeWriter` overrides stderr for testing or embedding;
+`NextFlag` defaults to `--cursor` and controls both the notice and table footer.
+Projection never removes pagination metadata. An empty filtered page can still
+have a continuation notice; a final page or completed `--all` result does not.
+Failed row output suppresses the notice, and notice-write failures do not change
+the command's exit status. Pass `next` as `--cursor` to continue.
 
 Successful output is unified as JSON on stdout, with three deliberate
 raw-output exceptions:

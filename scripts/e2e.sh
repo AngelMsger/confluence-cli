@@ -132,6 +132,33 @@ else
 fi
 assert_contains  "space list"             "ENG"            "${CLI[@]}" space list
 assert_contains  "space list table"       "ENG"            "${CLI[@]}" space list --format table
+for flavor in datacenter cloud; do
+  PAGE_ERR="$MOCK_DIR/pagination-$flavor.err"
+  PAGE_OUT="$MOCK_DIR/pagination-$flavor.out"
+  PAGE_CLI=(env CONFLUENCE_CLI_NO_SKILL_HINT=1 CONFLUENCE_CLI_NO_UPDATE_NOTIFIER=1
+    "${CLI[@]}" --flavor "$flavor" space list --format ndjson --fields key --limit 2)
+  if "${PAGE_CLI[@]}" >"$PAGE_OUT" 2>"$PAGE_ERR" &&
+      jq -se 'length == 2 and .[0] == {key: "ENG"} and .[1] == {key: "OPS"}' "$PAGE_OUT" >/dev/null &&
+      PAGE_CURSOR="$(jq -er 'select(._notice.pagination.has_more == true) | ._notice.pagination.next' "$PAGE_ERR")" &&
+      [[ -n "$PAGE_CURSOR" ]]; then
+    pass "NDJSON $flavor page keeps projected rows and stderr cursor"
+    if "${PAGE_CLI[@]}" --cursor "$PAGE_CURSOR" >"$PAGE_OUT" 2>"$PAGE_ERR" &&
+        jq -se '. == [{key: "DOC"}]' "$PAGE_OUT" >/dev/null && [[ ! -s "$PAGE_ERR" ]]; then
+      pass "NDJSON $flavor stderr cursor retrieves the final page"
+    else
+      fail "NDJSON $flavor cursor continuation or final-page notice"
+    fi
+  else
+    fail "NDJSON $flavor first page or stderr cursor"
+  fi
+  if "${PAGE_CLI[@]}" --all >"$PAGE_OUT" 2>"$PAGE_ERR" &&
+      jq -se '. == [{key: "ENG"}, {key: "OPS"}, {key: "DOC"}]' "$PAGE_OUT" >/dev/null &&
+      [[ ! -s "$PAGE_ERR" ]]; then
+    pass "NDJSON $flavor --all preserves complete output without a cursor notice"
+  else
+    fail "NDJSON $flavor --all incomplete output or spurious notice"
+  fi
+done
 assert_contains  "space get"              "Engineering"    "${CLI[@]}" space get ENG
 assert_contains  "comment list"           "First comment"  "${CLI[@]}" comment list 123
 assert_contains  "comment add"            "new-comment"    "${CLI[@]}" comment add 123 --body "looks good"

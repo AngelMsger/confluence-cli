@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 
 	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 	"github.com/neilotoole/jsoncolor"
@@ -25,6 +26,10 @@ type Options struct {
 	// Fields, when non-empty, projects each record to these dot-path keys.
 	Fields []string
 	Writer io.Writer
+	// NoticeWriter receives streaming pagination notices; nil uses stderr.
+	NoticeWriter io.Writer
+	// NextFlag is the command's continuation flag; empty defaults to --cursor.
+	NextFlag string
 	// Pretty enables ANSI-colored JSON when Writer is a TTY. It has no effect
 	// on table output and is silently downgraded to plain JSON when Writer is
 	// not a terminal (so e.g. `--pretty | jq` continues to work).
@@ -79,6 +84,10 @@ func EmitList(items any, next string, hasMore bool, opt Options) error {
 			list = projected
 		}
 	}
+	nextFlag := opt.NextFlag
+	if nextFlag == "" {
+		nextFlag = "--cursor"
+	}
 
 	switch opt.Format {
 	case FormatTable:
@@ -86,12 +95,25 @@ func EmitList(items any, next string, hasMore bool, opt Options) error {
 			return err
 		}
 		if hasMore {
-			_, err := fmt.Fprintf(opt.Writer, "\n(more results — re-run with --cursor %s)\n", next)
+			_, err := fmt.Fprintf(opt.Writer, "\n(more results — re-run with %s %s)\n", nextFlag, next)
 			return err
 		}
 		return nil
 	case FormatNDJSON:
-		return emitNDJSON(list, opt.Writer, opt.Pretty)
+		if err := emitNDJSON(list, opt.Writer, opt.Pretty); err != nil {
+			return err
+		}
+		if hasMore {
+			writer := opt.NoticeWriter
+			if writer == nil {
+				writer = os.Stderr
+			}
+			EmitNotice(writer, map[string]any{"_notice": map[string]any{
+				"pagination": map[string]any{"next": next, "has_more": hasMore},
+				"next_steps": []string{"Pass next as " + nextFlag + " to retrieve the next page."},
+			}})
+		}
+		return nil
 	case FormatJSON, "":
 		env := map[string]any{"items": list, "has_more": hasMore}
 		if next != "" {
