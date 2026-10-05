@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rows, including empty pages with more results. Completed `--all` output
   emits no continuation notice. Cover cursor replay on Cloud and Data Center;
   update the companion Skill to `1.11.5`.
+- Keep a stored credential that a context still uses. `config init` no longer
+  deletes the secret it has just saved when an edit changes only the spelling
+  or path of the server URL, and `config delete-context` no longer deletes the
+  secret another context on the same server resolves, such as a personal
+  context beside a team preset. Cleanup now runs after the config file is
+  written, so a failed write keeps the credential too. Companion Skill `1.11.6`.
 
 ## [0.21.0] - 2026-09-24
 ### Added

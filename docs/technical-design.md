@@ -163,6 +163,16 @@ dir 0700 on macOS/Linux) —
 location. Runtime secrets supplied via env / `.env` / flag are used
 transiently and not persisted.
 
+The account is the server's host plus the scheme, so every context on one host
+with that scheme shares a secret: two spellings of one URL, two deployment
+paths, or a team preset beside a personal context. `config init` and
+`config delete-context` therefore remove a secret only through
+`forgetUnusedCredential` (`internal/app/config.go`), after the new config file
+is written and only when no remaining context resolves that account. A context
+saved without a scheme is compared by the scheme it resolves — `pat` on Data
+Center, `basic` on Cloud. `auth logout` is the explicit removal of the active
+context's entry.
+
 Credential reads distinguish "not found" from "store inaccessible". When a
 sandbox cannot inspect the host keychain/file, resolution returns
 `CREDENTIAL_STORE_INACCESSIBLE`; an ambiguous absence returns

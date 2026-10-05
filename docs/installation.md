@@ -341,6 +341,11 @@ Non-interactive users supply credentials through the documented environment
 variables rather than piping secrets into `auth login`. `config init` retains its
 edit/add/replace flow and now uses target-specific presets and the same guide.
 
+Contexts on one host with the same scheme share one stored secret. Editing a
+context with `config init` or removing one with `config delete-context` deletes
+that secret only when no remaining context still uses it, and only after the
+config file has been written; use `auth logout` to remove it deliberately.
+
 ## Reuse an existing login
 
 After preparing a team context, associate an existing personal login without

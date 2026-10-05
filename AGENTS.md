@@ -200,6 +200,19 @@ recovery; never request a guide URL with credentials. Cover a fresh config reloa
 conflict/idempotent setup, and partial persistence failures when changing this
 flow. The canonical behavior is in the installation guide's team setup section.
 
+## Credential cleanup
+
+A stored secret belongs to every context that resolves the same
+`<host>:<scheme>` account: another spelling of the URL, another path on the
+host, or a team preset beside a personal context. Remove one only through
+`forgetUnusedCredential`, after the config file is written and only when no
+remaining context resolves it; compare accounts with `credentialKey`, which
+uses the scheme a stored context resolves (`pat` on Data Center, `basic` on
+Cloud when none is saved). `auth logout` is the one explicit removal. When you
+touch `config init` or `config delete-context`, keep the tests in
+`internal/app/config_credentials_test.go` passing, including the failed-write
+case.
+
 ## Credential reuse
 
 Keep `auth reuse` separate from public service setup. Match complete URLs and

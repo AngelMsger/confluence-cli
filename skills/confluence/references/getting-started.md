@@ -106,6 +106,11 @@ The active context is chosen by, in order: the `--use-context` flag, the
 `CONFLUENCE_CONTEXT` env var, the file's `current_context`. Legacy single-server
 config files keep working without change.
 
+Contexts on one host with the same auth scheme share one stored credential.
+`config delete-context <name>` removes the context and deletes that credential
+only when no remaining context uses it, so removing a team preset does not log
+out a personal context on the same server.
+
 ## Flavors
 
 - **cloud** — Confluence Cloud (`*.atlassian.net`). REST API under `/wiki`.
