@@ -7,37 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
+### Added
 
 - Preserve NDJSON pagination on stderr through `_notice.pagination` and
   actionable `--cursor` guidance while keeping stdout limited to projected
   rows, including empty pages with more results. Completed `--all` output
-  emits no continuation notice. Cover cursor replay on Cloud and Data Center;
-  update the companion Skill to `1.11.5`.
+  emits no continuation notice. Cover cursor replay on Cloud and Data Center.
+
+### Fixed
+
 - Keep a stored credential that is still in use. `config init` deleted the
   secret it had just saved when an edit changed only the spelling or deployment
   path of a server URL, and `config delete-context` deleted the secret that
   other contexts on the same host and authentication scheme — such as a team
   preset beside a personal context — still resolved. A secret is now forgotten
   only when no remaining context uses it, and `delete-context` forgets it after
-  the config file is written. Companion Skill `1.11.6`.
+  the config file is written.
 - Forget the right credential for a context stored without an authentication
   scheme. Cleanup assumed `pat`; on Cloud, where such a context resolves
   `basic`, `config delete-context` removed another context's token and left
-  the real secret behind. Companion Skill `1.11.9` states how `auth logout`
-  treats a shared secret.
+  the real secret behind.
 - Name the violated rule when `page history` rejects a time window. `--since`
   with `--from` or `--to`, `--to` without `--from`, and an empty or malformed
   window were already refused with `BAD_TIME_RANGE` (exit 2) before any
   request, but the message was a generic "invalid history time range". It now
   states the rule, with the contract in `hint` and a valid form of each window
   in `next_steps`; the command help and flag descriptions state the rules too.
-  Companion Skill `1.11.7`.
 - Point `auth reuse` recovery at a command that exists. The
   `AUTH_REUSE_AMBIGUOUS`, `AUTH_REUSE_SOURCE_NOT_FOUND` and
   `AUTH_REUSE_SOURCE_MISMATCH` errors, the installation guide and the Skill
   sent callers to `config contexts`, which this CLI does not have; they now
-  name `config get-contexts`. Companion Skill `1.11.8`.
+  name `config get-contexts`.
 
 ### Changed
 
@@ -46,6 +46,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   [wecom-calendar-cli](https://github.com/AngelMsger/wecom-calendar-cli).
 - The landing page's install card names the thirteen coding agents
   `skill install` detects, instead of only Claude Code and Codex.
+
+### Skill
+
+- Read NDJSON continuation from the stderr `_notice.pagination` object; state
+  the `page history` time-window rules and the `BAD_TIME_RANGE` recovery; say
+  that contexts on one host and authentication scheme share a stored secret,
+  and how `config delete-context` and `auth logout` treat it; name
+  `config get-contexts` for `auth reuse` source selection.
+- Bump the companion Skill to `1.11.9`.
 
 ## [0.21.0] - 2026-09-24
 ### Added
