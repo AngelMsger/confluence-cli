@@ -54,26 +54,53 @@ func TestNDJSONPaginationNotice(t *testing.T) {
 	}
 }
 
+// The notice is one compact line, and an opaque token survives unescaped even
+// when the rows are pretty-printed.
+func TestNDJSONPaginationNoticeIsOneCompactLine(t *testing.T) {
+	t.Parallel()
+	var rows, notices bytes.Buffer
+	if err := EmitList([]map[string]any{{"id": "1"}}, "opaque<cursor>&start=25", true, Options{
+		Format: FormatNDJSON, Writer: &rows, NoticeWriter: &notices, Pretty: true,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	want := `{"_notice":{"next_steps":["Pass next as --cursor to retrieve the next page."],` +
+		`"pagination":{"has_more":true,"next":"opaque<cursor>&start=25"}}}` + "\n"
+	if notices.String() != want {
+		t.Fatalf("notice = %q, want %q", notices.String(), want)
+	}
+}
+
 func TestPaginationNoticeOnlyForIncompleteNDJSON(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name    string
 		format  string
+		items   []map[string]any
+		next    string
 		hasMore bool
+		want    string
 	}{
-		{name: "final NDJSON page", format: FormatNDJSON},
-		{name: "JSON envelope", format: FormatJSON, hasMore: true},
-		{name: "table footer", format: FormatTable, hasMore: true},
+		{name: "final NDJSON page", format: FormatNDJSON, next: "next"},
+		{name: "final NDJSON page with rows", format: FormatNDJSON, items: []map[string]any{{"id": "1"}}, next: "next", want: "{\"id\":\"1\"}\n"},
+		{name: "unpaginated NDJSON result", format: FormatNDJSON, items: []map[string]any{{"id": "1"}}, want: "{\"id\":\"1\"}\n"},
+		{name: "JSON envelope", format: FormatJSON, next: "next", hasMore: true,
+			want: "{\n  \"has_more\": true,\n  \"items\": [],\n  \"next\": \"next\"\n}\n"},
+		{name: "table footer", format: FormatTable, next: "next", hasMore: true,
+			want: "(no results)\n\n(more results — re-run with --cursor next)\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var rows, notices bytes.Buffer
-			if err := EmitList(nil, "next", tc.hasMore, Options{
+			if err := EmitList(tc.items, tc.next, tc.hasMore, Options{
 				Format: tc.format, Writer: &rows, NoticeWriter: &notices,
 			}); err != nil {
 				t.Fatal(err)
 			}
 			if notices.Len() != 0 {
 				t.Fatalf("unexpected notice: %s", notices.String())
+			}
+			if rows.String() != tc.want {
+				t.Fatalf("output = %q, want %q", rows.String(), tc.want)
 			}
 		})
 	}
