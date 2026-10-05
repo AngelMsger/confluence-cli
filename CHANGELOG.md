@@ -28,6 +28,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   in `next_steps`; the command help and flag descriptions state the rules too.
   Companion Skill `1.11.7`.
 
+### Changed
+
+- README and the docs-site footer now list all seven sibling CLIs, adding
+  [prometheus-cli](https://github.com/AngelMsger/prometheus-cli) and
+  [wecom-calendar-cli](https://github.com/AngelMsger/wecom-calendar-cli).
+- The landing page's install card names the thirteen coding agents
+  `skill install` detects, instead of only Claude Code and Codex.
+
 ## [0.21.0] - 2026-09-24
 ### Added
 
