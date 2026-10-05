@@ -48,6 +48,10 @@ optional `recovery` object instead.
 
 ## Recovery patterns
 
+- **`BAD_TIME_RANGE` (usage, 2)** → a `page history` window broke the contract;
+  `message` names the rule. Use `--since <duration>` alone, or `--from` with an
+  optional `--to`; never `--since` with either, and never `--to` without
+  `--from`.
 - **`CREDENTIAL_STORE_INACCESSIBLE` / `CREDENTIAL_NOT_VISIBLE_OR_MISSING`** →
   when `recovery.scope` is `host`, request host access and retry the same
   invocation once. Repeating it in the same sandbox will not help. Only

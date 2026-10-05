@@ -7,6 +7,7 @@ import (
 
 	"github.com/angelmsger/confluence-cli/internal/output"
 	"github.com/angelmsger/confluence-cli/pkg/apiclient"
+	"github.com/angelmsger/confluence-cli/pkg/constants"
 	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 	"github.com/spf13/cobra"
 )
@@ -24,7 +25,10 @@ func newPageHistoryCmd(s *appState) *cobra.Command {
 		Long: "List page version history. Pass several page references, or a single '-' to\n" +
 			"read newline-separated references from stdin. Batch mode requires --since or\n" +
 			"--from so automation cannot accidentally scan unbounded history. Inaccessible\n" +
-			"pages are reported individually while the remaining pages are still read.",
+			"pages are reported individually while the remaining pages are still read.\n\n" +
+			"The time window is --since <duration> ending now, or --from with an optional\n" +
+			"exclusive --to. --since cannot be combined with --from or --to, and --to\n" +
+			"requires --from; a rejected window fails with BAD_TIME_RANGE before any request.",
 		Example: "  confluence-cli page history 123456\n" +
 			"  confluence-cli page history 123456 --all --format table\n" +
 			"  confluence-cli page history 123456 --actor me --since 24h\n" +
@@ -44,8 +48,7 @@ func newPageHistoryCmd(s *appState) *cobra.Command {
 			}
 			window, err := resolveHistoryWindow(since, from, to, time.Time{})
 			if err != nil {
-				return cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_TIME_RANGE",
-					"invalid history time range")
+				return badHistoryWindow(err)
 			}
 			ids, err := resolvePageHistoryIDs(inputs)
 			if err != nil {
@@ -133,11 +136,25 @@ func newPageHistoryCmd(s *appState) *cobra.Command {
 	}
 	f := cmd.Flags()
 	f.StringVar(&actor, "actor", "", "only versions by this user selector; use 'me' for the authenticated user")
-	f.StringVar(&since, "since", "", "only versions within this recent duration, such as 24h or 7d")
+	f.StringVar(&since, "since", "", "only versions within this recent duration, such as 24h or 7d (not with --from or --to)")
 	f.StringVar(&from, "from", "", "versions at or after this RFC3339 timestamp or UTC date")
-	f.StringVar(&to, "to", "", "versions before this RFC3339 timestamp or UTC date (defaults to now)")
+	f.StringVar(&to, "to", "", "versions before this RFC3339 timestamp or UTC date (requires --from; defaults to now)")
 	addListFlags(cmd, &limit, &all, &cursor)
 	return cmd
+}
+
+// badHistoryWindow is the family's error for an unusable window: usage
+// category, BAD_TIME_RANGE, the violated rule as the message, a hint that
+// restates the contract, and example invocations.
+func badHistoryWindow(cause error) error {
+	return cerrors.Wrap(cause, cerrors.CategoryUsage, "BAD_TIME_RANGE", cause.Error()).
+		WithHint("Pass --since <duration> for a window ending now, or --from with an optional --to for [from, to). "+
+			"--since cannot be combined with --from or --to, and --to requires --from. "+
+			"Date-only values are midnight UTC; use an RFC 3339 instant with an offset for a local calendar day.").
+		WithNextSteps(
+			constants.AppName+" page history <id> --since 7d",
+			constants.AppName+" page history <id> --from 2026-09-03T00:00:00+08:00 --to 2026-09-04T00:00:00+08:00",
+		)
 }
 
 func resolvePageHistoryIDs(inputs []string) ([]string, error) {

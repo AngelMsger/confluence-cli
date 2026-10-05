@@ -189,6 +189,11 @@ assert_contains  "user search (DC global)" "alice"          "${CLI[@]}" user sea
 assert_contains  "user search (DC query)"  "alice"          "${CLI[@]}" user search --query Alice
 assert_contains  "user get"               "Alice Example"  "${CLI[@]}" user get alice
 assert_contains  "page history by DC actor" "Alice Example" "${CLI[@]}" page history 123 --actor alice --from 2026-09-01 --to 2026-09-04
+assert_exit      "history --since with --to -> 2" 2 "${CLI[@]}" page history 123 --since 24h --to 2026-09-04
+assert_err_contains "history window error names the rule" '--since cannot be combined with --from or --to' \
+                                          "${CLI[@]}" page history 123 --since 24h --from 2026-09-03
+assert_err_contains "history --to requires --from" '"code": "BAD_TIME_RANGE"' \
+                                          "${CLI[@]}" page history 123 --to 2026-09-04
 SKILL_DIR="$(mktemp -d)"
 assert_contains  "skill install"          '"installed"' \
                                           "${CLI[@]}" skill install --dir "$SKILL_DIR"

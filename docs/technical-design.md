@@ -218,7 +218,12 @@ Commands group by resource: `page`, `search`, `space`, `comment`,
   `storage|wiki`.
 - **Time windows**: event filters use `--since` or `--from` / `--to` and
   half-open `[from,to)` intervals. Date-only values are UTC; RFC 3339 values
-  retain their explicit offset. Multi-page `page history` calls require a
+  retain their explicit offset. `--since` is mutually exclusive with `--from`
+  and `--to`, and `--to` requires `--from`. `resolveHistoryWindow` enforces
+  this before any credential or network access, and `badHistoryWindow` reports
+  it as `BAD_TIME_RANGE` (usage, exit 2) whose message names the violated rule,
+  with the contract in `hint` and example invocations in `next_steps`.
+  Multi-page `page history` calls require a
   lower time bound and accept either several page refs or newline-delimited
   refs from stdin. Time-bounded queries read newest-first and stop after
   crossing the lower bound; an actor-only single-page query may traverse the

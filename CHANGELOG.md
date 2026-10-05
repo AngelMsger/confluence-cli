@@ -20,6 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   secret another context on the same server resolves, such as a personal
   context beside a team preset. Cleanup now runs after the config file is
   written, so a failed write keeps the credential too. Companion Skill `1.11.6`.
+- Name the violated rule when `page history` rejects a time window. `--since`
+  with `--from` or `--to`, `--to` without `--from`, and an empty or malformed
+  window were already refused with `BAD_TIME_RANGE` (exit 2) before any
+  request, but the message was a generic "invalid history time range". It now
+  states the rule, with the contract in `hint` and a valid form of each window
+  in `next_steps`; the command help and flag descriptions state the rules too.
+  Companion Skill `1.11.7`.
 
 ## [0.21.0] - 2026-09-24
 ### Added

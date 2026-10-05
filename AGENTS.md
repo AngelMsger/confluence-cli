@@ -200,6 +200,16 @@ recovery; never request a guide URL with credentials. Cover a fresh config reloa
 conflict/idempotent setup, and partial persistence failures when changing this
 flow. The canonical behavior is in the installation guide's team setup section.
 
+## Time-window flags
+
+`--since` excludes `--from` and `--to`, and `--to` requires `--from`; the
+window is the half-open `[from, to)`. Resolve it with `resolveHistoryWindow`
+before any credential or network access and report a rejected one through
+`badHistoryWindow`: `BAD_TIME_RANGE`, usage category, the violated rule as the
+message. Reuse both for any new event or history filter rather than adding a
+second parser. `search --after/--before` are server-side `lastmodified`
+filters, not an event window, and stay outside this contract.
+
 ## Credential cleanup
 
 A stored secret belongs to every context that resolves the same

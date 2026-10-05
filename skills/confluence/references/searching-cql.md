@@ -61,7 +61,10 @@ the target window, its current `lastmodified` value moves beyond that bound and
 the page disappears from the candidate set. The history filters use a
 half-open `[from,to)` interval. Date-only values are UTC; use RFC 3339 with an
 explicit offset for a local calendar day. `--since` is the relative alternative
-to `--from`, and batch history queries require one of those lower bounds.
+to `--from`: it cannot be combined with `--from` or `--to`, and `--to` requires
+`--from`. Batch history queries require one of those lower bounds. A rejected
+window sends no request and exits 2 with `BAD_TIME_RANGE`; its `message` names
+the violated rule and `next_steps` shows a valid form of each window.
 
 Each returned version keeps `by` and adds `actor` plus `page` context. Stable
 actor IDs are Cloud account IDs or Data Center usernames/user keys. If the

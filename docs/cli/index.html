@@ -758,7 +758,11 @@ Use --as raw to get the untouched source body instead.</p>
       <p class="long">List page version history. Pass several page references, or a single &#39;-&#39; to
 read newline-separated references from stdin. Batch mode requires --since or
 --from so automation cannot accidentally scan unbounded history. Inaccessible
-pages are reported individually while the remaining pages are still read.</p>
+pages are reported individually while the remaining pages are still read.
+
+The time window is --since &lt;duration&gt; ending now, or --from with an optional
+exclusive --to. --since cannot be combined with --from or --to, and --to
+requires --from; a rejected window fails with BAD_TIME_RANGE before any request.</p>
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
@@ -768,8 +772,8 @@ pages are reported individually while the remaining pages are still read.</p>
         <tr><td><code>--cursor</code></td><td></td><td>start from this pagination cursor (the &#39;next&#39; of a prior page)</td></tr>
         <tr><td><code>--from</code></td><td></td><td>versions at or after this RFC3339 timestamp or UTC date</td></tr>
         <tr><td><code>--limit</code></td><td><code>0</code></td><td>page size (default from config)</td></tr>
-        <tr><td><code>--since</code></td><td></td><td>only versions within this recent duration, such as 24h or 7d</td></tr>
-        <tr><td><code>--to</code></td><td></td><td>versions before this RFC3339 timestamp or UTC date (defaults to now)</td></tr>
+        <tr><td><code>--since</code></td><td></td><td>only versions within this recent duration, such as 24h or 7d (not with --from or --to)</td></tr>
+        <tr><td><code>--to</code></td><td></td><td>versions before this RFC3339 timestamp or UTC date (requires --from; defaults to now)</td></tr>
         </tbody>
       </table>
       <h3>Examples</h3><pre>  confluence-cli page history 123456

@@ -1,6 +1,6 @@
 ---
 name: confluence
-version: 1.11.6
+version: 1.11.7
 description: "Use a Confluence wiki as an external knowledge base. Search, read and summarise pages; browse spaces and page trees; create/update/delete/move/copy pages; find edits by actor and time; view or restore versions; manage comments, attachments, labels and watches. Every write accepts --dry-run; session read-only mode blocks writes unless --allow-writes is set. Use when the user gives a Confluence URL or ID, mentions a Confluence/wiki page, asks to find or edit content, find their edits for a worklog, inspect history, manage page resources, check their identity, or use dry-run/read-only mode. Works with Confluence Cloud and Data Center / Server."
 metadata:
   requires:
@@ -142,8 +142,10 @@ pagination notice. Other notices may also appear on stderr, so select the
 
 Batch `page history` queries require `--since` or `--from`. Filter by the
 authenticated user with `--actor me`; use `--to` for an optional exclusive
-upper bound after `--from`. Time-bounded queries read newest-first and stop
-after crossing the lower bound; an actor-only single-page filter may traverse
+upper bound after `--from`. `--since` cannot be combined with `--from` or
+`--to`, and `--to` requires `--from`; a rejected window exits 2 with
+`BAD_TIME_RANGE` and names the rule. Time-bounded queries read newest-first and
+stop after crossing the lower bound; an actor-only single-page filter may traverse
 the full history. Data Center automatically falls back to versioned historical
 content when its version-list endpoint is unavailable. If one page in a batch
 is inaccessible, successful versions remain on stdout, stderr identifies it
@@ -170,7 +172,7 @@ to the whole batch.
 
 ## Agent-facing conventions
 
-- **Skill handshake — set `CONFLUENCE_CLI_SKILL=1.11.6`.** Once you have
+- **Skill handshake — set `CONFLUENCE_CLI_SKILL=1.11.7`.** Once you have
   loaded this Skill, export that exact value in the environment used to run the
   CLI. The CLI compares it with the embedded Skill version and emits a
   structured stderr notice when the Skill is missing, old, or uses the legacy
