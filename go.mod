@@ -3,7 +3,7 @@ module github.com/angelmsger/confluence-cli
 go 1.24.0
 
 require (
-	github.com/angelmsger/agent-cli-kit v0.1.0
+	github.com/angelmsger/agent-cli-kit v0.1.1-0.20261011142931-0e9336ab0f86
 	github.com/charmbracelet/huh v1.0.0
 	github.com/joho/godotenv v1.5.1
 	github.com/spf13/cobra v1.10.2
