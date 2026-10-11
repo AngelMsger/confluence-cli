@@ -1,67 +1,35 @@
+// Package transport provides a flavor-agnostic HTTP layer: a thin client that
+// applies request decorators (auth, user-agent) and retries transient failures.
+// The client lives in github.com/angelmsger/agent-cli-kit/transport, shared by
+// every CLI in the family; this package re-exports it with confluence-cli's
+// User-Agent as the default.
+//
+// This package backs the confluence-cli command layer and is also importable as a library;
+// see the repository README. The CLI relies on its retry, timeout and decorator
+// behavior; change it additively and keep the defaults stable rather than tuning
+// them for a single local call site.
 package transport
 
 import (
-	"context"
-	"net/http"
-	"time"
-
+	kit "github.com/angelmsger/agent-cli-kit/transport"
 	"github.com/angelmsger/confluence-cli/pkg/constants"
 )
 
-// Options configures a Client.
-type Options struct {
-	// Doer executes requests. Defaults to an *http.Client with Timeout.
-	Doer Doer
-	// Timeout is the per-request timeout when Doer is nil.
-	Timeout time.Duration
-	// MaxRetries is the number of additional attempts after the first failure.
-	MaxRetries int
-	// RetryBaseDelay is the base backoff delay; the Nth retry waits N*base.
-	RetryBaseDelay time.Duration
-	// Decorators are applied to every request in order.
-	Decorators []Decorator
-}
+type (
+	// Doer executes an HTTP request. *http.Client satisfies it; tests inject fakes.
+	Doer = kit.Doer
+	// Decorator mutates an outgoing request before it is sent (e.g. adds headers).
+	Decorator = kit.Decorator
+	// Client is a retrying HTTP client.
+	Client = kit.Client
+	// Options configures a Client.
+	Options = kit.Options
+)
 
-// Client is a retrying HTTP client. It is flavor-agnostic: callers build fully
-// formed *http.Request values and Client only adds decorators and retries.
-type Client struct {
-	doer       Doer
-	maxRetries int
-	baseDelay  time.Duration
-	decorators []Decorator
-}
-
-// New builds a Client from Options, filling defaults.
+// New returns a Client. Requests that carry no User-Agent get confluence-cli's.
 func New(opt Options) *Client {
-	c := &Client{
-		doer:       opt.Doer,
-		maxRetries: opt.MaxRetries,
-		baseDelay:  opt.RetryBaseDelay,
-		decorators: opt.Decorators,
+	if opt.UserAgent == "" {
+		opt.UserAgent = constants.UserAgent()
 	}
-	if c.doer == nil {
-		timeout := opt.Timeout
-		if timeout == 0 {
-			timeout = constants.DefaultTimeout
-		}
-		c.doer = &http.Client{Timeout: timeout}
-	}
-	if c.baseDelay == 0 {
-		c.baseDelay = 500 * time.Millisecond
-	}
-	return c
-}
-
-// Do sends req, applying decorators and retrying transient failures. The
-// returned response (if any) has a readable, non-nil Body that the caller must
-// close. The context bounds the whole retry sequence.
-func (c *Client) Do(ctx context.Context, req *http.Request) (*http.Response, error) {
-	req = req.WithContext(ctx)
-	for _, d := range c.decorators {
-		d(req)
-	}
-	if req.Header.Get("User-Agent") == "" {
-		req.Header.Set("User-Agent", constants.UserAgent())
-	}
-	return c.doWithRetry(ctx, req)
+	return kit.New(opt)
 }

@@ -5,7 +5,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/angelmsger/confluence-cli/internal/output"
+	"github.com/angelmsger/agent-cli-kit/output"
 	"github.com/angelmsger/confluence-cli/pkg/apiclient"
 	"github.com/angelmsger/confluence-cli/pkg/constants"
 	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"

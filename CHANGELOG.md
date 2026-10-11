@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Output rendering, argv correction, the release check, the credential store,
+  and the code behind `pkg/errors` and `pkg/transport` now come from the shared
+  [agent-cli-kit](https://github.com/AngelMsger/agent-cli-kit) module. Commands,
+  output, exit codes, hints and stored credentials are unchanged, and
+  `pkg/errors` and `pkg/transport` keep their exported names.
+
+### Fixed
+
+- Never raise the macOS "Reset To Defaults" keychain dialog. When the user's
+  HOME had no default keychain (common in agent sandboxes), saving a credential
+  made macOS offer to reset the default keychain, then failed with `exit status
+  154`. The credential store now checks for a default keychain first, once per
+  store, and uses its protected file fallback when none exists. Ported from
+  `openobserve-cli`.
+
 ## [0.22.0] - 2026-10-06
 
 ### Added

@@ -27,6 +27,15 @@ restrictions, content properties, blog content types, PDF export, and
 third-party OAuth 2.0 authorization (extension point reserved, not
 shipped in this cycle).
 
+Output rendering, argv correction, the update check, the credential store,
+and the code behind `pkg/errors` and `pkg/transport` come from
+[agent-cli-kit](https://github.com/AngelMsger/agent-cli-kit), shared by every
+CLI in the family; confluence-cli supplies its own hints, User-Agent, keychain
+service name and release repository. `pkg/transport` re-exports the kit's
+retrying HTTP client with the User-Agent defaulted to `confluence-cli/<version>`;
+it keeps Go's default redirect policy, because attachment downloads may be
+redirected to another origin.
+
 ## 2. API flavor difference matrix
 
 The CLI uses a `Flavor` value to distinguish two backends:
@@ -154,14 +163,16 @@ holds.
   username + password; cloud uses email + API token.
 
 Secrets are never persisted to `config.yaml`. `config init` stores them
-in the OS keychain (`go-keyring`, service `confluence-cli`, account
-`<host>:<scheme>`); on failure it falls back to a `credentials` file
-inside the resolved config directory (per-user DPAPI on Windows; file 0600 and
-dir 0700 on macOS/Linux) —
+through agent-cli-kit's `credstore` in the OS keychain (`go-keyring`, service
+`confluence-cli`, account `<host>:<scheme>`); on failure it falls back to a
+`credentials` file inside the resolved config directory (per-user DPAPI on
+Windows; file 0600 and dir 0700 on macOS/Linux) —
 `~/.angelmsger/confluence/credentials` by default, or
 `~/.confluence/credentials` when the CLI is running against the legacy
-location. Runtime secrets supplied via env / `.env` / flag are used
-transiently and not persisted.
+location. On macOS the store first checks for a default keychain, so a
+sandbox without one never raises the "Reset To Defaults" dialog. Runtime
+secrets supplied via env / `.env` / flag are used transiently and not
+persisted.
 
 The account ignores the context name, the deployment path and the username,
 so every context on one host with one scheme shares a secret: a team preset and
@@ -241,7 +252,7 @@ implementation.
 
 ### 6.1 Output
 
-The shared `internal/output` renderer supports `json` (default,
+agent-cli-kit's shared `output` renderer supports `json` (default,
 agent-oriented), `table` (human-readable), and `ndjson` (one row per line).
 `--fields a,b.c` projects by dot-path. JSON lists keep the pagination envelope
 `{items, next, has_more}`; tables append a continuation footer. NDJSON keeps
@@ -321,8 +332,10 @@ retry with that version. Page edits use raw storage XHTML, not a rendered or
 scoped body. Transient and decoding errors after writes require checking the
 remote outcome before replay; `retryable` does not establish write replay safety.
 
-`hints.go` maps each category to `next_steps`, guiding agents to
-self-correct.
+`pkg/errors` re-exports agent-cli-kit's `errors` model, which owns this
+exit-code map. Its `hints.go` maps each category to confluence-cli's default
+`hint` and `next_steps`, guiding agents to self-correct, and is installed with
+`SetGuidance` when the package loads.
 
 ## 7. Body rendering pipeline
 

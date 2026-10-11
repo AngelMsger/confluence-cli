@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/angelmsger/agent-cli-kit/output"
 	"github.com/angelmsger/confluence-cli/internal/auth"
 	"github.com/angelmsger/confluence-cli/internal/config"
-	"github.com/angelmsger/confluence-cli/internal/output"
 	"github.com/angelmsger/confluence-cli/pkg/apiclient"
 	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 )
