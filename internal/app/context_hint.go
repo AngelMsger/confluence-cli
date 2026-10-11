@@ -1,23 +1,15 @@
 package app
 
 import (
-	"fmt"
 	"os"
-	"strings"
 
 	"github.com/angelmsger/agent-cli-kit/output"
 	"github.com/angelmsger/confluence-cli/internal/config"
-	"github.com/angelmsger/confluence-cli/pkg/constants"
 	"github.com/spf13/cobra"
 )
 
-const (
-	// envContextOverride names the context for one invocation; it is also the
-	// env half of the "explicit selection" signal.
-	envContextOverride = "CONFLUENCE_CONTEXT"
-	// envNoContextHint opts out of the runtime multi-context nudge entirely.
-	envNoContextHint = "CONFLUENCE_CLI_NO_CONTEXT_HINT"
-)
+// envNoContextHint opts out of the runtime multi-context nudge entirely.
+const envNoContextHint = config.EnvNoContextHint
 
 // contextReminderBlock returns the plain-text block appended to --help when the
 // config defines more than one context, so an agent reading help sees which
@@ -49,21 +41,7 @@ func contextReminderBlock(s *appState) string {
 	if err != nil || len(resolved.ContextNames) <= 1 {
 		return ""
 	}
-
-	names := resolved.ContextNames
-	var head string
-	if resolved.ActiveContext == "" {
-		head = fmt.Sprintf("No active context selected (%d configured: %s).",
-			len(names), strings.Join(names, ", "))
-	} else {
-		head = fmt.Sprintf("Active context: %s  (%d configured: %s; %s)",
-			resolved.ActiveContext, len(names), strings.Join(names, ", "),
-			contextSourceLabel(resolved.ContextSource))
-	}
-	return head + "\n" +
-		"Multiple contexts are configured — verify you are targeting the intended one.\n" +
-		"Override per call with --use-context <name> or " + envContextOverride + "=<name>, or\n" +
-		"change the default with `" + constants.AppName + " config use-context <name>`.\n"
+	return config.ReminderBlock(resolved.ActiveContext, resolved.ContextSource, resolved.ContextNames)
 }
 
 // maybeContextHint nudges an agent that is about to run a real command against
@@ -86,23 +64,7 @@ func maybeContextHint(cmd *cobra.Command, s *appState) {
 	if !contextHintApplies(cmd, s) {
 		return
 	}
-	active := s.resolved.ActiveContext
-	target := active
-	if target == "" {
-		target = "the resolved context"
-	}
-	output.EmitNotice(os.Stderr, map[string]any{"_notice": map[string]any{
-		"context": map[string]any{
-			"active":       active,
-			"available":    s.resolved.ContextNames,
-			"selected_via": s.resolved.ContextSource,
-			"message": fmt.Sprintf("Multiple contexts are configured and this one was selected implicitly (%s). "+
-				"Confirm %q is the intended target before trusting results.",
-				contextSourceLabel(s.resolved.ContextSource), target),
-			"override": "--use-context <name> or " + envContextOverride + "=<name>",
-			"silence":  "set " + envNoContextHint + "=1 to suppress",
-		},
-	}})
+	output.EmitNotice(os.Stderr, config.ContextNotice(s.resolved.ActiveContext, s.resolved.ContextSource, s.resolved.ContextNames))
 }
 
 // contextHintApplies holds the gating for the runtime multi-context nudge,
@@ -121,23 +83,4 @@ func contextHintApplies(cmd *cobra.Command, s *appState) bool {
 		return false
 	}
 	return cmd.Runnable() && !skillHintSkip(cmd)
-}
-
-// contextSourceLabel renders a config.ContextSource* value as a human phrase
-// for the help block and the runtime notice.
-func contextSourceLabel(source string) string {
-	switch source {
-	case config.ContextSourceFlag:
-		return "selected via --use-context"
-	case config.ContextSourceEnv:
-		return "selected via " + envContextOverride
-	case config.ContextSourceCurrent:
-		return "selected via the saved current_context"
-	case config.ContextSourceSingle:
-		return "the only configured context"
-	case config.ContextSourceDefault:
-		return `selected as the "default" context`
-	default:
-		return "no context selected"
-	}
 }

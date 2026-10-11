@@ -11,12 +11,16 @@ import (
 	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 )
 
+// envNames lists every variable the schema binds, plus the context selector.
+var envNames = []string{"CONFLUENCE_SERVER", "CONFLUENCE_FLAVOR", "CONFLUENCE_CREDENTIAL_URL", "CONFLUENCE_AUTH_SCHEME",
+	"CONFLUENCE_USERNAME", "CONFLUENCE_FORMAT", "CONFLUENCE_CLI_READ_ONLY", "CONFLUENCE_PERSONAL_ACCESS_TOKEN",
+	"CONFLUENCE_PASSWORD", "CONFLUENCE_API_TOKEN", "CONFLUENCE_CONTEXT"}
+
 func cleanSetupEnv(t *testing.T) {
 	t.Helper()
-	for key := range envBindings {
+	for _, key := range envNames {
 		t.Setenv(key, "")
 	}
-	t.Setenv("CONFLUENCE_CONTEXT", "")
 }
 func setupFixture() NamedContext {
 	return NamedContext{Name: "team", BaseURL: "https://service.example.test/deploy", Auth: AuthConfig{Scheme: "pat", Username: "PersonalUser", CredentialURL: "https://help.example.test/tokens"}, Flavor: "datacenter"}

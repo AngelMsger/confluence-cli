@@ -257,6 +257,8 @@ assert_contains  "get-contexts lists default" "default"      "${CLI2[@]}" config
 assert_contains  "get-contexts lists alt"     "alt"          "${CLI2[@]}" config get-contexts
 assert_ok        "use-context alt"                           "${CLI2[@]}" config use-context alt
 assert_exit      "unknown context -> 3"       3              "${CLI2[@]}" --use-context ghost doctor
+assert_err_contains "unknown context names get-contexts" "config get-contexts" \
+                                              "${CLI2[@]}" --use-context ghost doctor
 assert_contains  "--use-context selects ctx"  '"healthy": true' \
                                               "${CLI2[@]}" --use-context default doctor
 assert_contains  "config show exposes context" '"context"'  "${CLI2[@]}" config show

@@ -32,11 +32,15 @@ up front.
   conventions in `CONTRIBUTING.md`.
 - Never commit `.env`, credentials, tokens, or build artifacts.
 - Output rendering, argv correction, the update check, the credential store,
-  credential resolution, and the code behind `pkg/errors` and `pkg/transport`
-  come from [agent-cli-kit](https://github.com/AngelMsger/agent-cli-kit), shared
-  by every CLI in the family. Fix bugs in those there, not here. `internal/auth`
+  credential resolution, the configuration engine, and the code behind
+  `pkg/errors` and `pkg/transport` come from
+  [agent-cli-kit](https://github.com/AngelMsger/agent-cli-kit), shared by every
+  CLI in the family. Fix bugs in those there, not here. `internal/auth`
   declares confluence-cli's auth schemes and recovery wording and maps config
-  onto the shared resolver. `pkg/errors` re-exports
+  onto the shared resolver. `internal/config` registers confluence-cli's
+  settings, file locations, command wording and flavor rules with the shared
+  config engine (`schema.go`) and keeps the YAML shape of `config.yaml`,
+  including the legacy flat layout. `pkg/errors` re-exports
   the shared `CLIError` model and exit-code map (0–11) and installs
   confluence-cli's hints (`hints.go`); `pkg/transport` re-exports the shared
   retrying HTTP client with confluence-cli's User-Agent.
@@ -96,8 +100,9 @@ invocation for missing a required identifier, the resulting `CLIError`'s
 are defects.
 
 Recovery steps must name commands that exist in this CLI. The context listing
-is `config get-contexts` here, not the `config contexts` some siblings use;
-resolve an advertised command against the command tree in a test.
+is `config get-contexts`; `UNKNOWN_CONTEXT` names it through the wording
+registered in `internal/config/schema.go`. Resolve an advertised command
+against the command tree in a test.
 
 The e2e harness should exercise this contract: when adding a "missing
 input" error path, also add a `scripts/e2e.sh` assertion that the error

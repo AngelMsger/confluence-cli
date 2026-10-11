@@ -1,34 +1,18 @@
 package config
 
 import (
-	"fmt"
-	"os"
-	"strconv"
-	"strings"
-
-	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
+	kit "github.com/angelmsger/agent-cli-kit/config"
 )
 
 // FlagValues carries the global CLI flags that override configuration. Empty
 // fields are ignored (not treated as overrides).
 type FlagValues struct {
-	AuthScheme    string
-	CredentialURL string
-	BaseURL       string
-	Flavor        string
-	Format        string
-	Timeout       string
-}
-
-func (f FlagValues) layer() map[string]string {
-	m := map[string]string{}
-	put(m, fieldServer, f.BaseURL)
-	put(m, fieldAuthScheme, f.AuthScheme)
-	put(m, fieldCredentialURL, f.CredentialURL)
-	put(m, fieldFlavor, f.Flavor)
-	put(m, fieldFormat, f.Format)
-	put(m, fieldTimeout, f.Timeout)
-	return m
+	AuthScheme    string `config:"auth.scheme"`
+	CredentialURL string `config:"auth.credential_url"`
+	BaseURL       string `config:"server"`
+	Flavor        string `config:"flavor"`
+	Format        string `config:"defaults.format"`
+	Timeout       string `config:"defaults.timeout"`
 }
 
 // LoadOptions controls where configuration is read from. All fields are
@@ -48,106 +32,12 @@ type LoadOptions struct {
 	Context string
 }
 
-type namedLayer struct {
-	name string
-	data map[string]string
-}
-
-// selectContext picks the active context name for f, plus the source that
-// decided it (one of the ContextSource* constants). Precedence: the flag, the
-// CONFLUENCE_CONTEXT env var, the file's current_context, the sole context,
-// then a context literally named "default". It returns "" (source
-// ContextSourceNone, no error) when no context can or need be selected — a
-// missing file, or an ambiguous multi-context file with no current_context;
-// the missing-server error is then raised later, at the point a server is
-// actually needed. An override naming a context that does not exist is an error.
-func selectContext(f File, flagCtx, envCtx string) (string, string, error) {
-	pick := func(name, src, source string) (string, string, error) {
-		if c, ok := f.Context(name); ok {
-			// Return the canonical (as-stored) name so downstream lookups,
-			// keychain account keys, and any user-facing labels all agree on
-			// one spelling regardless of how the user wrote the override.
-			return c.Name, source, nil
-		}
-		return "", "", cerrors.Newf(cerrors.CategoryConfig, "UNKNOWN_CONTEXT",
-			"context %q (from %s) is not defined in the config file", name, src).
-			WithHint(unknownContextHint(name, f.ContextNames()))
-	}
-	switch {
-	case flagCtx != "":
-		return pick(flagCtx, "--use-context", ContextSourceFlag)
-	case envCtx != "":
-		return pick(envCtx, "CONFLUENCE_CONTEXT", ContextSourceEnv)
-	case f.CurrentContext != "":
-		return pick(f.CurrentContext, "current_context", ContextSourceCurrent)
-	case len(f.Contexts) == 1:
-		return f.Contexts[0].Name, ContextSourceSingle, nil
-	default:
-		if _, ok := f.Context(DefaultContextName); ok {
-			return DefaultContextName, ContextSourceDefault, nil
-		}
-		return "", ContextSourceNone, nil
-	}
-}
-
-// UnknownContextHint builds the hint shown when a context override (flag,
-// env, current_context, or a positional argument to a config subcommand)
-// names a context that does not exist. It prefers a case-insensitive "did
-// you mean" suggestion; otherwise it lists every available name; otherwise
-// it falls back to a generic pointer to get-contexts.
-//
-// File.Context already does CI lookup, so the "did you mean" branch is now
-// mostly a defensive belt — it can still fire for legacy configs that have
-// two contexts differing only in case (CI lookup hits the first one in
-// iteration order; a user typing the second one's casing still misses).
-func UnknownContextHint(name string, available []string) string {
-	return unknownContextHint(name, available)
-}
-
-func unknownContextHint(name string, available []string) string {
-	for _, a := range available {
-		if strings.EqualFold(a, name) && a != name {
-			return fmt.Sprintf("Did you mean %q? Context names are case-sensitive.", a)
-		}
-	}
-	if len(available) > 0 {
-		return fmt.Sprintf("Available contexts: %s.", strings.Join(available, ", "))
-	}
-	return "Run `confluence-cli config get-contexts` to list defined contexts."
-}
-
-// buildFileLayer flattens the active context's fields plus the shared runtime
-// defaults into a layer map. An empty ctxName yields just the defaults.
-func buildFileLayer(f File, ctxName string) map[string]string {
-	m := map[string]string{}
-	if ctxName != "" {
-		if c, ok := f.Context(ctxName); ok {
-			put(m, fieldServer, c.BaseURL)
-			put(m, fieldFlavor, c.Flavor)
-			put(m, fieldDetectedFlavor, c.DetectedFlavor)
-			put(m, fieldAuthScheme, c.Auth.Scheme)
-			put(m, fieldAuthUsername, c.Auth.Username)
-			put(m, fieldCredentialURL, c.Auth.CredentialURL)
-		}
-	}
-	put(m, fieldFormat, f.Defaults.Format)
-	if f.Defaults.PageSize > 0 {
-		m[fieldPageSize] = strconv.Itoa(f.Defaults.PageSize)
-	}
-	if f.Defaults.Timeout > 0 {
-		m[fieldTimeout] = f.Defaults.Timeout.String()
-	}
-	if f.Defaults.MaxRetries > 0 {
-		m[fieldMaxRetries] = strconv.Itoa(f.Defaults.MaxRetries)
-	}
-	if f.Defaults.ReadOnly {
-		m[fieldReadOnly] = "true"
-	}
-	return m
-}
-
 // Load resolves configuration from all sources and returns the merged result
-// with per-field provenance.
+// with per-field provenance. Context selection is the flag,
+// CONFLUENCE_CONTEXT, the file's current_context, the sole context, then a
+// context literally named "default"; naming a context that does not exist is
+// UNKNOWN_CONTEXT. A detected flavor is dropped when the server in effect is
+// not the stored one, and Cloud defaults to basic auth.
 func Load(opt LoadOptions) (*Resolved, error) {
 	dir := opt.ConfigDir
 	if dir == "" {
@@ -161,87 +51,54 @@ func Load(opt LoadOptions) (*Resolved, error) {
 	if err != nil {
 		return nil, err
 	}
-	ctxName, ctxSource := opt.Context, ContextSourceFlag
-	if opt.Setup {
-		if c, ok := file.Context(ctxName); ok {
-			ctxName = c.Name
-		}
-	} else {
-		ctxName, ctxSource, err = selectContext(file, opt.Context, os.Getenv("CONFLUENCE_CONTEXT"))
-		if err != nil {
-			return nil, err
-		}
-	}
-	fileLayer := buildFileLayer(file, ctxName)
-
-	dotenvPath := opt.DotenvPath
-	if dotenvPath == "" {
-		dotenvPath = ".env"
-	}
-	dotLayer, err := dotenvLayer(dotenvPath, opt.Setup)
+	r, err := kit.Load(file, kit.LoadOptions{
+		Setup:      opt.Setup,
+		DotenvPath: opt.DotenvPath,
+		Flags:      kit.Encode(opt.Flags),
+		Context:    opt.Context,
+	})
 	if err != nil {
 		return nil, err
 	}
-
-	// Lowest precedence first.
-	layers := []namedLayer{
-		{"default", defaultLayer()},
-		{"file", fileLayer},
-		{"dotenv", dotLayer},
-		{"env", envLayer(opt.Setup)},
-		{"flag", opt.Flags.layer()},
+	out := &Resolved{
+		Config:        configOf(r.Values),
+		Sources:       r.Sources,
+		ActiveContext: r.ActiveContext,
+		ContextSource: r.ContextSource,
+		ContextNames:  r.ContextNames,
 	}
+	kit.Decode(r.Values, &out.Secrets)
+	out.Config.CredentialBaseURL = r.StoredServer
+	return out, nil
+}
 
-	merged := map[string]string{}
-	sources := map[string]string{}
-	for _, l := range layers {
-		for k, v := range l.data {
-			merged[k] = v
-			sources[k] = l.name
-		}
-	}
-
-	if merged[fieldServer] != fileLayer[fieldServer] {
-		current, e1 := NormalizeServiceURL(merged[fieldServer])
-		previous, e2 := NormalizeServiceURL(fileLayer[fieldServer])
-		if e1 != nil || e2 != nil || current != previous {
-			delete(merged, fieldDetectedFlavor)
-			delete(sources, fieldDetectedFlavor)
-		}
-	}
-	resolveAuthDefaults(merged, sources)
-	return &Resolved{
-		Config: preserveCredentialLookup(configFromMap(merged), file, ctxName),
-		Secrets: Secrets{
-			PAT:      merged[fieldPAT],
-			Password: merged[fieldPassword],
-			APIToken: merged[fieldAPIToken],
-		},
-		Sources:       sources,
-		ActiveContext: ctxName,
-		ContextSource: ctxSource,
-		ContextNames:  file.ContextNames(),
-	}, nil
+// StoredContext resolves only persisted context data and built-in defaults.
+// Credential reuse must not inherit another context's environment or .env identity.
+func StoredContext(context NamedContext, defaults Defaults) Config {
+	return configOf(kit.StoredContext(context, defaults))
 }
 
 // ExplainField returns a human-readable provenance label for a field key,
 // e.g. ExplainField(sources, "server") -> "env". Unknown fields report "default".
 func ExplainField(sources map[string]string, field string) string {
-	if s, ok := sources[field]; ok {
-		return s
-	}
-	return "default"
+	return kit.ExplainField(sources, field)
 }
 
-// Field key accessors for callers outside this package (e.g. config show).
-const (
-	FieldServer     = fieldServer
-	FieldFlavor     = fieldFlavor
-	FieldAuthScheme = fieldAuthScheme
-	FieldAuthUser   = fieldAuthUsername
-	FieldFormat     = fieldFormat
-	FieldTimeout    = fieldTimeout
-	FieldPageSize   = fieldPageSize
-	FieldMaxRetries = fieldMaxRetries
-	FieldReadOnly   = fieldReadOnly
-)
+// UnknownContextHint builds the hint shown when a context override (flag,
+// env, current_context, or a positional argument to a config subcommand)
+// names a context that does not exist: every available name, otherwise a
+// pointer to get-contexts.
+func UnknownContextHint(name string, available []string) string {
+	return kit.UnknownContextHint(name, available)
+}
+
+// ReminderBlock is the --help block shown when several contexts exist.
+func ReminderBlock(active, source string, names []string) string {
+	return kit.ReminderBlock(active, source, names)
+}
+
+// ContextNotice is the _notice payload for a command that runs against one of
+// several contexts chosen implicitly.
+func ContextNotice(active, source string, names []string) map[string]any {
+	return kit.ContextNotice(active, source, names)
+}
