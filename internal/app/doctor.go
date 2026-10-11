@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/angelmsger/agent-cli-kit/update"
 	"github.com/angelmsger/confluence-cli/internal/auth"
-	"github.com/angelmsger/confluence-cli/internal/update"
 	"github.com/angelmsger/confluence-cli/pkg/apiclient"
 	"github.com/angelmsger/confluence-cli/pkg/constants"
 	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
@@ -153,7 +153,7 @@ func runDoctor(s *appState, skipUpdate bool) doctorReport {
 	if !skipUpdate {
 		ctx, cancel := updateContext(s)
 		defer cancel()
-		st := update.Check(ctx, &http.Client{Timeout: updateCheckTimeout}, constants.Version)
+		st := releaseChecker.Check(ctx, &http.Client{Timeout: updateCheckTimeout}, constants.Version)
 		report.Update = &st
 	}
 	return report

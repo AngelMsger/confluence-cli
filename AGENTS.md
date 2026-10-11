@@ -31,6 +31,13 @@ up front.
 - Keep commits scoped to one logical change; follow the commit and PR
   conventions in `CONTRIBUTING.md`.
 - Never commit `.env`, credentials, tokens, or build artifacts.
+- Output rendering, argv correction, the update check, the credential store,
+  and the code behind `pkg/errors` and `pkg/transport` come from
+  [agent-cli-kit](https://github.com/AngelMsger/agent-cli-kit), shared by every
+  CLI in the family. Fix bugs in those there, not here. `pkg/errors` re-exports
+  the shared `CLIError` model and exit-code map (0–11) and installs
+  confluence-cli's hints (`hints.go`); `pkg/transport` re-exports the shared
+  retrying HTTP client with confluence-cli's User-Agent.
 
 ## Cloud / Data Center parity — touch both branches, always
 
@@ -144,7 +151,7 @@ both flavors, including `AddCommentReq` and threaded storage/wiki bodies.
 
 ## Documentation — keep it current
 
-- Keep list pagination in `internal/output.EmitList`. NDJSON emits rows on
+- Keep list pagination in agent-cli-kit's `output.EmitList`. NDJSON emits rows on
   stdout and a structured `_notice.pagination` on stderr only after successful
   row output when more results remain. Preserve cursors through field
   projection and empty filtered pages; completed `--all` results emit no

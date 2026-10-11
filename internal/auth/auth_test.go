@@ -4,19 +4,27 @@ import (
 	"errors"
 	"net/http"
 	"os"
-	"runtime"
 	"testing"
 
+	"github.com/angelmsger/agent-cli-kit/credstore"
 	"github.com/angelmsger/confluence-cli/internal/config"
+	"github.com/angelmsger/confluence-cli/pkg/constants"
 	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 	"github.com/zalando/go-keyring"
 )
 
+// failingKeyring is a keychain backend whose every call fails with err.
 type failingKeyring struct{ err error }
 
 func (f failingKeyring) Get(string, string) (string, error) { return "", f.err }
 func (f failingKeyring) Set(string, string, string) error   { return f.err }
 func (f failingKeyring) Delete(string, string) error        { return f.err }
+
+// newStoreWithKeyring returns confluence-cli's Store over a substitute keychain
+// backend. The store's own behavior is tested in agent-cli-kit/credstore.
+func newStoreWithKeyring(dir string, backend credstore.Backend) *Store {
+	return credstore.NewStoreWithBackend(dir, constants.KeychainService, backend)
+}
 
 func TestMain(m *testing.M) {
 	// Use an in-memory keychain for all tests in this package.
@@ -83,77 +91,6 @@ func TestRedacted(t *testing.T) {
 	r := Credential{Scheme: SchemePAT, Secret: "supersecret"}.Redacted()
 	if r.Secret == "supersecret" || r.Secret[len(r.Secret)-4:] != "cret" {
 		t.Errorf("Redacted secret = %q", r.Secret)
-	}
-}
-
-func TestStoreKeychainRoundTrip(t *testing.T) {
-	t.Parallel()
-	s := NewStore(t.TempDir())
-	backend, err := s.Save("host:pat", "tok-xyz")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if backend != BackendKeychain {
-		t.Errorf("backend = %q, want keychain", backend)
-	}
-	got, err := s.Load("host:pat")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got != "tok-xyz" {
-		t.Errorf("Load = %q", got)
-	}
-	if err := s.Delete("host:pat"); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func TestStoreFileFallback(t *testing.T) {
-	t.Parallel()
-	dir := t.TempDir()
-	s := NewStore(dir)
-	if err := s.fileSave("acct", "filesecret"); err != nil {
-		t.Fatal(err)
-	}
-	info, err := os.Stat(s.credentialsPath())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if perm := info.Mode().Perm(); runtime.GOOS != "windows" && perm != 0o600 {
-		t.Errorf("credentials file perm = %o, want 600", perm)
-	}
-	got, err := s.fileLoad("acct")
-	if err != nil || got != "filesecret" {
-		t.Errorf("fileLoad = %q, %v", got, err)
-	}
-	if _, err := s.fileLoad("missing"); err != ErrSecretNotFound {
-		t.Errorf("fileLoad(missing) err = %v, want ErrSecretNotFound", err)
-	}
-}
-
-func TestStoreDistinguishesInaccessibleFromMissing(t *testing.T) {
-	t.Parallel()
-	accessErr := errors.New("keychain interaction is not allowed")
-	s := newStoreWithKeyring(t.TempDir(), failingKeyring{err: accessErr})
-	_, err := s.Load("acct")
-	var storeErr *StoreAccessError
-	if !errors.As(err, &storeErr) || storeErr.Backend != BackendKeychain {
-		t.Fatalf("Load() error = %v, want keychain StoreAccessError", err)
-	}
-	if !errors.Is(err, accessErr) {
-		t.Fatalf("Load() should preserve keychain cause: %v", err)
-	}
-}
-
-func TestStoreUsesFileWhenKeychainIsInaccessible(t *testing.T) {
-	t.Parallel()
-	s := newStoreWithKeyring(t.TempDir(), failingKeyring{err: errors.New("locked")})
-	if err := s.fileSave("acct", "fallback-secret"); err != nil {
-		t.Fatal(err)
-	}
-	got, err := s.Load("acct")
-	if err != nil || got != "fallback-secret" {
-		t.Fatalf("Load() = %q, %v; want file fallback", got, err)
 	}
 }
 

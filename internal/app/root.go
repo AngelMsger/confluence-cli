@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/angelmsger/confluence-cli/internal/cliflags"
-	"github.com/angelmsger/confluence-cli/internal/output"
+	"github.com/angelmsger/agent-cli-kit/cliflags"
+	"github.com/angelmsger/agent-cli-kit/output"
 	"github.com/angelmsger/confluence-cli/pkg/constants"
 	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 	"github.com/spf13/cobra"
