@@ -28,13 +28,13 @@ third-party OAuth 2.0 authorization (extension point reserved, not
 shipped in this cycle).
 
 Output rendering, argv correction, the update check, the credential store,
-and the code behind `pkg/errors` and `pkg/transport` come from
-[agent-cli-kit](https://github.com/AngelMsger/agent-cli-kit), shared by every
-CLI in the family; confluence-cli supplies its own hints, User-Agent, keychain
-service name and release repository. `pkg/transport` re-exports the kit's
-retrying HTTP client with the User-Agent defaulted to `confluence-cli/<version>`;
-it keeps Go's default redirect policy, because attachment downloads may be
-redirected to another origin.
+credential resolution, and the code behind `pkg/errors` and `pkg/transport`
+come from [agent-cli-kit](https://github.com/AngelMsger/agent-cli-kit), shared
+by every CLI in the family; confluence-cli supplies its own hints, User-Agent,
+keychain service name, auth schemes and release repository. `pkg/transport`
+re-exports the kit's retrying HTTP client with the User-Agent defaulted to
+`confluence-cli/<version>`; it keeps Go's default redirect policy, because
+attachment downloads may be redirected to another origin.
 
 ## 2. API flavor difference matrix
 
@@ -161,6 +161,9 @@ holds.
   7.9+.
 - **basic**: `Authorization: Basic base64(user:secret)`. Datacenter uses
   username + password; cloud uses email + API token.
+
+`internal/auth` registers both schemes with agent-cli-kit's `auth` package,
+which owns the credential model, the header encoding and the recovery errors.
 
 Secrets are never persisted to `config.yaml`. `config init` stores them
 through agent-cli-kit's `credstore` in the OS keychain (`go-keyring`, service

@@ -1,12 +1,13 @@
-// Package auth models Confluence credentials, resolves them from configuration
-// or secure storage, and applies them to outgoing HTTP requests.
+// Package auth declares confluence-cli's auth schemes and resolves credentials
+// from configuration or secure storage. The credential model, header encoding
+// and recovery errors come from agent-cli-kit/auth; this package registers
+// Confluence's schemes and wording with it.
 package auth
 
 import (
-	"net/url"
-	"strings"
-
-	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
+	kit "github.com/angelmsger/agent-cli-kit/auth"
+	"github.com/angelmsger/confluence-cli/pkg/constants"
+	_ "github.com/angelmsger/confluence-cli/pkg/errors" // installs Confluence's error guidance
 )
 
 // Scheme identifies an authentication scheme.
@@ -15,55 +16,26 @@ const (
 	SchemeBasic = "basic" // HTTP Basic (DC: user+password; Cloud: email+API token)
 )
 
+func init() {
+	kit.Register(&kit.Product{
+		Schemes: []kit.Scheme{
+			{Name: SchemePAT, Kind: kit.Bearer,
+				Missing: "no Personal Access Token configured"},
+			{Name: SchemeBasic, Kind: kit.Basic,
+				Missing: "basic auth requires both a username and a password/token"},
+		},
+		DefaultScheme:    SchemePAT,
+		Name:             "Confluence",
+		Doctor:           constants.AppName + " doctor",
+		MissingStep:      "Only if the host retry also reports missing credentials, run `" + constants.AppName + " config init` in the user's terminal or set CONFLUENCE_* environment variables.",
+		InaccessibleStep: "Do not run `config init` unless the same check also fails in the host environment.",
+	})
+}
+
 // Credential is a fully resolved credential ready to authenticate requests.
-type Credential struct {
-	Scheme   string
-	Username string // basic only
-	Secret   string // PAT token, or password / API token
-}
-
-// Validate reports whether the credential is internally consistent.
-func (c Credential) Validate() error {
-	switch c.Scheme {
-	case SchemePAT:
-		if c.Secret == "" {
-			return cerrors.New(cerrors.CategoryConfig, "AUTH_NO_TOKEN",
-				"no Personal Access Token configured")
-		}
-	case SchemeBasic:
-		if c.Username == "" || c.Secret == "" {
-			return cerrors.New(cerrors.CategoryConfig, "AUTH_NO_BASIC",
-				"basic auth requires both a username and a password/token")
-		}
-	default:
-		return cerrors.Newf(cerrors.CategoryConfig, "AUTH_BAD_SCHEME",
-			"unknown auth scheme %q", c.Scheme)
-	}
-	return nil
-}
-
-// Redacted returns a copy safe for logging: the secret is masked.
-func (c Credential) Redacted() Credential {
-	c.Secret = maskSecret(c.Secret)
-	return c
-}
-
-func maskSecret(s string) string {
-	if s == "" {
-		return ""
-	}
-	if len(s) <= 4 {
-		return "****"
-	}
-	return strings.Repeat("*", len(s)-4) + s[len(s)-4:]
-}
+// Its Validate, Header, Decorator and Redacted methods follow the schemes
+// registered above.
+type Credential = kit.Credential
 
 // AccountKey derives the keychain account identifier for a base URL and scheme.
-// It is stable across runs so credentials can be located later.
-func AccountKey(baseURL, scheme string) string {
-	host := baseURL
-	if u, err := url.Parse(baseURL); err == nil && u.Host != "" {
-		host = u.Host
-	}
-	return host + ":" + scheme
-}
+func AccountKey(baseURL, scheme string) string { return kit.AccountKey(baseURL, scheme) }

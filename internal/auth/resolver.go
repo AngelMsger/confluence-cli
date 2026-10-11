@@ -1,102 +1,45 @@
 package auth
 
 import (
-	"errors"
-
+	kit "github.com/angelmsger/agent-cli-kit/auth"
 	"github.com/angelmsger/confluence-cli/internal/config"
-	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 )
 
 // Resolve produces a Credential from configuration. A secret supplied via
 // flags/env/.env (carried in secrets) takes precedence; otherwise the secret
 // is loaded from the Store. The returned credential is validated.
-func Resolve(cfg config.Config, secrets config.Secrets, store *Store) (credResult Credential, resultErr error) {
-	defer func() {
-		if resultErr != nil {
-			resultErr = config.WithCredentialGuide(resultErr, cfg)
-		}
-	}()
-	scheme := cfg.Auth.Scheme
-	if scheme == "" {
-		scheme = SchemePAT
-	}
-	cred := Credential{Scheme: scheme, Username: cfg.Auth.Username}
-
-	switch scheme {
-	case SchemePAT:
-		cred.Secret = secrets.PAT
-	case SchemeBasic:
-		if secrets.Password != "" {
-			cred.Secret = secrets.Password
-		} else {
-			cred.Secret = secrets.APIToken
-		}
-	}
-
-	if cred.Secret == "" && store != nil && cfg.BaseURL != "" {
-		lookupBase, err := CredentialLookupURL(cfg)
-		if err != nil {
-			return Credential{}, err
-		}
-		loaded, err := store.Load(AccountKey(lookupBase, scheme))
-		switch {
-		case err == nil:
-			cred.Secret = loaded
-		case errors.Is(err, ErrSecretNotFound):
-			return Credential{}, credentialNotVisibleOrMissingError()
-		default:
-			return Credential{}, credentialStoreInaccessibleError(err)
-		}
-	}
-
-	if err := cred.Validate(); err != nil {
-		return Credential{}, err
+func Resolve(cfg config.Config, secrets config.Secrets, store *Store) (Credential, error) {
+	cred, err := kit.Resolve(kit.Request{
+		Scheme:    cfg.Auth.Scheme,
+		Username:  cfg.Auth.Username,
+		Secrets:   map[string]string{SchemePAT: secrets.PAT, SchemeBasic: basicSecret(secrets)},
+		BaseURL:   cfg.BaseURL,
+		LookupURL: func() (string, error) { return CredentialLookupURL(cfg) },
+	}, store)
+	if err != nil {
+		return Credential{}, config.WithCredentialGuide(err, cfg)
 	}
 	return cred, nil
 }
 
-func credentialNotVisibleOrMissingError() error {
-	return cerrors.New(cerrors.CategoryConfig, "CREDENTIAL_NOT_VISIBLE_OR_MISSING",
-		"stored Confluence credentials are missing or not visible in this execution environment").
-		WithHint("An agent sandbox may have a different home or keychain view even when the host is already configured.").
-		WithNextSteps(
-			"Retry the same command with access to the host user environment (home directory and OS keychain).",
-			"confluence-cli doctor",
-			"Only if the host retry also reports missing credentials, run `confluence-cli config init` in the user's terminal or set CONFLUENCE_* environment variables.").
-		WithRecovery(hostCredentialRecovery())
-}
-
-func credentialStoreInaccessibleError(err error) error {
-	return cerrors.Wrap(err, cerrors.CategoryConfig, "CREDENTIAL_STORE_INACCESSIBLE",
-		"stored Confluence credentials cannot be read in this execution environment").
-		WithHint("The configured credential store is inaccessible; this commonly happens when an agent sandbox cannot access the host keychain or credential file.").
-		WithNextSteps(
-			"Retry the same command with access to the host user environment (home directory and OS keychain).",
-			"confluence-cli doctor",
-			"Do not run `config init` unless the same check also fails in the host environment.").
-		WithRecovery(hostCredentialRecovery())
-}
-
-func hostCredentialRecovery() cerrors.Recovery {
-	return cerrors.Recovery{
-		Action:   "retry_current_command",
-		Scope:    "host",
-		Requires: []string{"user_home", "os_keychain"},
+// basicSecret is the basic scheme's secret: the password when one is set,
+// otherwise the API token (Cloud pairs an email with an API token).
+func basicSecret(secrets config.Secrets) string {
+	if secrets.Password != "" {
+		return secrets.Password
 	}
+	return secrets.APIToken
 }
 
 // Save stores a credential's secret for later resolution and returns the
 // backend ("keychain" or "file") that accepted it.
 func Save(baseURL string, cred Credential, store *Store) (string, error) {
-	if err := cred.Validate(); err != nil {
-		return "", err
-	}
-	return store.Save(AccountKey(baseURL, cred.Scheme), cred.Secret)
+	return kit.Save(baseURL, cred, store)
 }
 
 // Forget removes any stored secret for the base URL and scheme.
 func Forget(baseURL, scheme string, store *Store) error {
-	return store.Delete(AccountKey(baseURL, scheme))
+	return kit.Forget(baseURL, scheme, store)
 }
 
 // CredentialLookupURL retains legacy store addressing only for the same complete service.
@@ -107,7 +50,7 @@ func CredentialLookupURL(cfg config.Config) (string, error) {
 	target, e1 := config.NormalizeServiceURL(cfg.BaseURL)
 	stored, e2 := config.NormalizeServiceURL(cfg.CredentialBaseURL)
 	if e1 != nil || e2 != nil || target != stored {
-		return "", cerrors.New(cerrors.CategoryConfig, "CREDENTIAL_SERVICE_MISMATCH", "stored credential lookup does not match the complete service URL")
+		return "", kit.ServiceMismatchError()
 	}
 	return cfg.CredentialBaseURL, nil
 }
