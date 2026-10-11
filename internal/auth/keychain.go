@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/angelmsger/confluence-cli/pkg/constants"
 	"github.com/zalando/go-keyring"
@@ -53,6 +54,12 @@ func (systemKeyring) Delete(service, account string) error {
 type Store struct {
 	dir     string // config directory for the file fallback
 	keyring keyringBackend
+
+	// probe reports whether the OS keychain is worth attempting; see
+	// useKeychain. Its answer is cached per store because it depends on HOME.
+	probe     func() bool
+	probeOnce sync.Once
+	probeOK   bool
 }
 
 // Backend names reported by Save.
@@ -62,16 +69,37 @@ const (
 )
 
 // NewStore returns a Store whose file fallback lives in dir.
-func NewStore(dir string) *Store { return newStoreWithKeyring(dir, systemKeyring{}) }
+func NewStore(dir string) *Store {
+	s := newStoreWithKeyring(dir, systemKeyring{})
+	s.probe = probeKeychain
+	return s
+}
 
+// newStoreWithKeyring returns a Store over a substitute keychain backend. The
+// availability probe is skipped (the backend is always attempted) unless the
+// caller sets probe.
 func newStoreWithKeyring(dir string, backend keyringBackend) *Store {
 	return &Store{dir: dir, keyring: backend}
 }
 
+// useKeychain reports whether the keychain is worth attempting at all. On macOS
+// a missing default keychain must be detected before the write, because the
+// write itself raises a destructive system dialog rather than an error; see
+// probeKeychain in available_darwin.go.
+func (s *Store) useKeychain() bool {
+	if s.probe == nil {
+		return true
+	}
+	s.probeOnce.Do(func() { s.probeOK = s.probe() })
+	return s.probeOK
+}
+
 // Save stores secret for account and returns the backend that accepted it.
 func (s *Store) Save(account, secret string) (string, error) {
-	if err := s.keyring.Set(constants.KeychainService, account, secret); err == nil {
-		return BackendKeychain, nil
+	if s.useKeychain() {
+		if err := s.keyring.Set(constants.KeychainService, account, secret); err == nil {
+			return BackendKeychain, nil
+		}
 	}
 	if err := s.fileSave(account, secret); err != nil {
 		return "", err
@@ -82,9 +110,13 @@ func (s *Store) Save(account, secret string) (string, error) {
 // Load retrieves the secret for account, trying the keychain then the file.
 // It returns ErrSecretNotFound when neither holds a value.
 func (s *Store) Load(account string) (string, error) {
-	secret, keyringErr := s.keyring.Get(constants.KeychainService, account)
-	if keyringErr == nil {
-		return secret, nil
+	keyringErr := error(ErrSecretNotFound)
+	if s.useKeychain() {
+		var secret string
+		secret, keyringErr = s.keyring.Get(constants.KeychainService, account)
+		if keyringErr == nil {
+			return secret, nil
+		}
 	}
 
 	// A file fallback may still be usable when the platform keychain is locked
@@ -94,7 +126,7 @@ func (s *Store) Load(account string) (string, error) {
 		return secret, nil
 	}
 
-	keyringMissing := errors.Is(keyringErr, keyring.ErrNotFound)
+	keyringMissing := errors.Is(keyringErr, keyring.ErrNotFound) || errors.Is(keyringErr, ErrSecretNotFound)
 	fileMissing := errors.Is(fileErr, ErrSecretNotFound)
 	switch {
 	case keyringMissing && fileMissing:
@@ -111,7 +143,9 @@ func (s *Store) Load(account string) (string, error) {
 // Delete removes the secret for account from both backends. Missing entries
 // are not an error.
 func (s *Store) Delete(account string) error {
-	_ = s.keyring.Delete(constants.KeychainService, account)
+	if s.useKeychain() {
+		_ = s.keyring.Delete(constants.KeychainService, account)
+	}
 	return s.fileDelete(account)
 }
 
