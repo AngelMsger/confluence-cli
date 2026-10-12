@@ -40,9 +40,10 @@ func TestSetWatch(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			var got string
+			var got, contentType string
 			c, _ := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				got = r.Method + " " + r.URL.Path
+				contentType = r.Header.Get("Content-Type")
 				w.WriteHeader(http.StatusNoContent)
 			}))
 			err := c.SetWatch(context.Background(), WatchReq{PageID: "123", Watching: tc.watching})
@@ -51,6 +52,10 @@ func TestSetWatch(t *testing.T) {
 			}
 			if got != tc.method+" /rest/api/user/watch/content/123" {
 				t.Errorf("request = %q", got)
+			}
+			// Data Center's XSRF guard rejects a bodyless POST without one.
+			if contentType != "application/json" {
+				t.Errorf("Content-Type = %q, want application/json", contentType)
 			}
 		})
 	}
