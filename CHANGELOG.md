@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- `page watch` could fail with HTTP 403 on Confluence Data Center. Writes
+  without a body, such as watch, sent no `Content-Type`, and Data Center's XSRF
+  check refuses a POST like that. Every write now declares
+  `Content-Type: application/json`. Found in `bitbucket-cli`, where `pr approve`
+  failed the same way.
+
 ## [0.23.0] - 2026-10-12
 
 ### Changed

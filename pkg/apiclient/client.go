@@ -142,7 +142,9 @@ func (c *apiClient) doJSON(ctx context.Context, method, path string, query url.V
 		return cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_REQUEST", "failed to build request")
 	}
 	req.Header.Set("Accept", "application/json")
-	if body != nil {
+	// Writes declare JSON even without a body: Data Center's XSRF guard rejects
+	// a POST with no Content-Type (such as watch) with HTTP 403.
+	if method != http.MethodGet {
 		req.Header.Set("Content-Type", "application/json")
 	}
 
