@@ -8,10 +8,11 @@ For deeper background see [`docs/`](docs/) — start with
 
 ## Project Structure & Module Organization
 
-This repository is a Go CLI for Confluence. The executable entrypoint is in `cmd/confluence-cli/`. Core implementation is split between `internal/` (CLI-only: `app` for Cobra commands, `auth` and `config` for setup, `render` for presentation) and `pkg/`, which holds the importable client library (`apiclient` for Confluence APIs, `transport` for the shared HTTP client with confluence-cli's User-Agent, `errors` for the shared structured error model plus confluence-cli's hints) alongside other public helpers. `internal/auth` holds the credential model; secrets live in the shared credstore. Tests sit beside the code as `*_test.go`; the mock Confluence server is in `test/mockserver/`. Documentation is in `docs/`, companion agent skill files are in `skills/confluence/`, and npm wrapper/release assets are in `build/npm/`.
+This repository is a Go CLI for Confluence. The executable entrypoint is in `cmd/confluence-cli/`. Core implementation is split between `internal/` (CLI-only: `app` for Cobra commands, `auth` and `config` for setup, `render` for presentation) and `pkg/`, which holds the importable client library (`apiclient` for Confluence APIs, `transport` for the shared HTTP client with confluence-cli's User-Agent, `errors` for the shared structured error model plus confluence-cli's hints) alongside other public helpers. `internal/auth` declares confluence-cli's auth schemes on top of the shared resolver; secrets live in the shared credstore. `internal/config` registers confluence-cli's settings, file locations and flavor rules with the shared config engine and keeps the file's YAML shape. Tests sit beside the code as `*_test.go`; the mock Confluence server is in `test/mockserver/`. Documentation is in `docs/`, companion agent skill files are in `skills/confluence/`, and npm wrapper/release assets are in `build/npm/`.
 
 Output rendering, argv normalization, the release check, the credential store,
-and the code behind `pkg/errors` and `pkg/transport` come from
+credential resolution, the configuration engine, and the code behind `pkg/errors`
+and `pkg/transport` come from
 [agent-cli-kit](https://github.com/AngelMsger/agent-cli-kit), which every CLI in
 the family shares. A fix to one of those belongs there; this repo then bumps the
 version in `go.mod`.

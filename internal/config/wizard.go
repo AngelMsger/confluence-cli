@@ -182,7 +182,7 @@ func RunWizard(d PromptDriver, hooks WizardHooks, inputs WizardInputs) (*WizardR
 	result := &WizardResult{
 		File: File{
 			CurrentContext: DefaultContextName,
-			Defaults:       configFromMap(defaultLayer()).Defaults,
+			Defaults:       defaultConfig().Defaults,
 		},
 	}
 

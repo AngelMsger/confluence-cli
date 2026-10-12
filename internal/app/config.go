@@ -227,12 +227,6 @@ func newConfigGetContextsCmd(s *appState) *cobra.Command {
 	}
 }
 
-// unknownContextHintFor wraps the config-package hint helper for use by
-// app-level commands.
-func unknownContextHintFor(file config.File, name string) string {
-	return config.UnknownContextHint(name, file.ContextNames())
-}
-
 func newConfigUseContextCmd(s *appState) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "use-context <name>",
@@ -247,21 +241,18 @@ func newConfigUseContextCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			target, ok := file.Context(name)
-			if !ok {
-				return cerrors.Newf(cerrors.CategoryConfig, "UNKNOWN_CONTEXT",
-					"context %q is not defined", name).
-					WithHint(unknownContextHintFor(file, name))
+			// UseContext persists the canonical name, so a CI lookup against a
+			// legacy mixed-case file does not leave current_context pointing
+			// at a spelling that is not in the contexts list.
+			current, err := config.UseContext(&file, name)
+			if err != nil {
+				return err
 			}
-			// Persist the canonical name so a CI lookup against a legacy
-			// mixed-case file does not leave current_context pointing at a
-			// spelling that is not in the contexts list.
-			file.CurrentContext = target.Name
 			if err := config.WriteFile(s.cfgDir, file); err != nil {
 				return cerrors.Wrap(err, cerrors.CategoryConfig, "CONFIG_WRITE",
 					"failed to write the config file")
 			}
-			return s.emit(map[string]any{"context": target.Name, "status": "current"})
+			return s.emit(map[string]any{"context": current, "status": "current"})
 		},
 	}
 	cmd.ValidArgsFunction = completeContextNames(s)
@@ -284,27 +275,11 @@ func newConfigDeleteContextCmd(s *appState) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			target, ok := file.Context(name)
-			if !ok {
-				return cerrors.Newf(cerrors.CategoryConfig, "UNKNOWN_CONTEXT",
-					"context %q is not defined", name).
-					WithHint(unknownContextHintFor(file, name))
-			}
-			if len(file.Contexts) == 1 {
-				return cerrors.New(cerrors.CategoryUsage, "LAST_CONTEXT",
-					"cannot delete the only context")
-			}
-			// Filter by canonical name so a CI lookup against a mixed-case
-			// legacy file still removes the right entry.
-			kept := file.Contexts[:0]
-			for _, c := range file.Contexts {
-				if c.Name != target.Name {
-					kept = append(kept, c)
-				}
-			}
-			file.Contexts = kept
-			if file.CurrentContext == target.Name {
-				file.CurrentContext = file.Contexts[0].Name
+			// DeleteContext filters by the canonical name, so a CI lookup
+			// against a mixed-case legacy file still removes the right entry.
+			target, err := config.DeleteContext(&file, name)
+			if err != nil {
+				return err
 			}
 			if err := config.WriteFile(s.cfgDir, file); err != nil {
 				return cerrors.Wrap(err, cerrors.CategoryConfig, "CONFIG_WRITE",

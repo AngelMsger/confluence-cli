@@ -2,17 +2,21 @@
 // environment variables, a .env file, a YAML config file and built-in
 // defaults, in that precedence order (highest first).
 //
+// The engine — layering, provenance, context selection, the atomic file
+// write and team presets — comes from agent-cli-kit/config. This package
+// registers confluence-cli's fields, environment variables, file location,
+// command wording and flavor rules with it (schema.go), keeps the YAML shape
+// of the file (file.go), and keeps the names the rest of the repo uses.
+//
 // Secrets (tokens, passwords) are never stored in the YAML config file. They
 // are surfaced through Resolved.Secrets when supplied via flags/env/.env, or
 // loaded from the OS keychain by the auth package.
 package config
 
 import (
-	"strconv"
-	"strings"
 	"time"
 
-	"github.com/angelmsger/confluence-cli/pkg/constants"
+	kit "github.com/angelmsger/agent-cli-kit/config"
 )
 
 // Flavor values for the Confluence backend.
@@ -30,27 +34,27 @@ const (
 
 // DefaultContextName is the name given to an unnamed context, and to the
 // single context synthesized from a legacy flat config file.
-const DefaultContextName = "default"
+const DefaultContextName = kit.DefaultContextName
 
 // Context selection sources, reported on Resolved.ContextSource. The first two
 // are explicit (the caller named a context for this invocation); the rest are
 // implicit (the CLI fell back to a stored or sole context).
 const (
-	ContextSourceFlag    = "flag"            // --use-context
-	ContextSourceEnv     = "env"             // CONFLUENCE_CONTEXT
-	ContextSourceCurrent = "current_context" // the file's current_context
-	ContextSourceSingle  = "single"          // the sole defined context
-	ContextSourceDefault = "default-name"    // a context literally named "default"
-	ContextSourceNone    = "none"            // nothing selected (no/empty config)
+	ContextSourceFlag    = kit.ContextSourceFlag    // --use-context
+	ContextSourceEnv     = kit.ContextSourceEnv     // CONFLUENCE_CONTEXT
+	ContextSourceCurrent = kit.ContextSourceCurrent // the file's current_context
+	ContextSourceSingle  = kit.ContextSourceSingle  // the sole defined context
+	ContextSourceDefault = kit.ContextSourceDefault // a context literally named "default"
+	ContextSourceNone    = kit.ContextSourceNone    // nothing selected (no/empty config)
 )
 
 // NamedContext is one named Confluence server profile inside the config file.
 // Runtime defaults are shared across contexts and live in File.Defaults.
 type NamedContext struct {
-	Name           string
-	BaseURL        string
-	Flavor         string
-	DetectedFlavor string
+	Name           string `config:"name"`
+	BaseURL        string `config:"server"`
+	Flavor         string `config:"flavor"`
+	DetectedFlavor string `config:"detected_flavor"`
 	Auth           AuthConfig
 }
 
@@ -59,38 +63,38 @@ type Config struct {
 	// CredentialBaseURL preserves an equivalent stored URL's native lookup key.
 	// It is runtime-only and never changes the request destination.
 	CredentialBaseURL string     `yaml:"-" json:"-"`
-	BaseURL           string     `yaml:"server"`
-	Flavor            string     `yaml:"flavor"`
-	DetectedFlavor    string     `yaml:"detected_flavor,omitempty"`
+	BaseURL           string     `yaml:"server" config:"server"`
+	Flavor            string     `yaml:"flavor" config:"flavor"`
+	DetectedFlavor    string     `yaml:"detected_flavor,omitempty" config:"detected_flavor"`
 	Auth              AuthConfig `yaml:"auth"`
 	Defaults          Defaults   `yaml:"defaults"`
 }
 
 // AuthConfig holds non-secret auth settings.
 type AuthConfig struct {
-	CredentialURL string `yaml:"credential_url,omitempty"`
-	Scheme        string `yaml:"scheme"`
-	Username      string `yaml:"username,omitempty"`
+	CredentialURL string `yaml:"credential_url,omitempty" config:"auth.credential_url"`
+	Scheme        string `yaml:"scheme" config:"auth.scheme"`
+	Username      string `yaml:"username,omitempty" config:"auth.username"`
 }
 
 // Defaults holds tunable runtime defaults.
 type Defaults struct {
-	Format     string        `yaml:"format"`
-	PageSize   int           `yaml:"page_size"`
-	Timeout    time.Duration `yaml:"timeout"`
-	MaxRetries int           `yaml:"max_retries"`
+	Format     string        `yaml:"format" config:"defaults.format"`
+	PageSize   int           `yaml:"page_size" config:"defaults.page_size"`
+	Timeout    time.Duration `yaml:"timeout" config:"defaults.timeout"`
+	MaxRetries int           `yaml:"max_retries" config:"defaults.max_retries"`
 	// ReadOnly blocks every mutating client method. Settable from the config
 	// file, from CONFLUENCE_CLI_READ_ONLY, or temporarily overridden via
 	// --allow-writes.
-	ReadOnly bool `yaml:"read_only,omitempty"`
+	ReadOnly bool `yaml:"read_only,omitempty" config:"defaults.read_only"`
 }
 
 // Secrets holds credentials observed in non-file layers. Empty fields mean the
 // secret was not supplied via flags/env/.env and must come from the keychain.
 type Secrets struct {
-	PAT      string
-	Password string
-	APIToken string
+	PAT      string `config:"secret.pat"`
+	Password string `config:"secret.password"`
+	APIToken string `config:"secret.api_token"`
 }
 
 // Resolved is the outcome of Load: the merged Config plus provenance and any
@@ -123,11 +127,11 @@ func (r *Resolved) ContextSelectedExplicitly() bool {
 
 // Field keys used for layer maps and provenance tracking.
 const (
-	fieldCredentialURL  = "auth.credential_url"
-	fieldServer         = "server"
+	fieldCredentialURL  = kit.KeyCredentialURL
+	fieldServer         = kit.KeyServer
 	fieldFlavor         = "flavor"
 	fieldDetectedFlavor = "detected_flavor"
-	fieldAuthScheme     = "auth.scheme"
+	fieldAuthScheme     = kit.KeyAuthScheme
 	fieldAuthUsername   = "auth.username"
 	fieldFormat         = "defaults.format"
 	fieldPageSize       = "defaults.page_size"
@@ -140,85 +144,38 @@ const (
 	fieldAPIToken = "secret.api_token"
 )
 
-// defaultLayer returns the built-in defaults as a layer map.
-func defaultLayer() map[string]string {
-	return map[string]string{
-		fieldFlavor:     FlavorAuto,
-		fieldAuthScheme: SchemePAT,
-		fieldFormat:     constants.DefaultFormat,
-		fieldPageSize:   strconv.Itoa(constants.DefaultPageSize),
-		fieldTimeout:    constants.DefaultTimeout.String(),
-		fieldMaxRetries: strconv.Itoa(constants.DefaultMaxRetries),
-	}
-}
+// Field key accessors for callers outside this package (e.g. config show).
+const (
+	FieldServer        = fieldServer
+	FieldCredentialURL = fieldCredentialURL
+	FieldFlavor        = fieldFlavor
+	FieldAuthScheme    = fieldAuthScheme
+	FieldAuthUser      = fieldAuthUsername
+	FieldFormat        = fieldFormat
+	FieldTimeout       = fieldTimeout
+	FieldPageSize      = fieldPageSize
+	FieldMaxRetries    = fieldMaxRetries
+	FieldReadOnly      = fieldReadOnly
+)
 
-// configFromMap builds a Config from a fully merged layer map.
-func configFromMap(m map[string]string) Config {
-	c := Config{
-		BaseURL:        m[fieldServer],
-		Flavor:         m[fieldFlavor],
-		DetectedFlavor: m[fieldDetectedFlavor],
-		Auth: AuthConfig{
-			CredentialURL: m[fieldCredentialURL],
-			Scheme:        m[fieldAuthScheme],
-			Username:      m[fieldAuthUsername],
-		},
-		Defaults: Defaults{
-			Format:     m[fieldFormat],
-			PageSize:   atoiOr(m[fieldPageSize], constants.DefaultPageSize),
-			Timeout:    durationOr(m[fieldTimeout], constants.DefaultTimeout),
-			MaxRetries: atoiOr(m[fieldMaxRetries], constants.DefaultMaxRetries),
-			ReadOnly:   boolOr(m[fieldReadOnly], false),
-		},
-	}
+// configOf decodes merged values into a Config.
+func configOf(v kit.Values) Config {
+	var c Config
+	kit.Decode(v, &c)
 	return c
 }
 
-// boolOr parses a flag-style truthy string. "1", "true", "yes", "on" count as
-// true; everything else (including empty) yields the fallback.
-func boolOr(s string, fallback bool) bool {
-	switch strings.ToLower(strings.TrimSpace(s)) {
-	case "":
-		return fallback
-	case "1", "true", "yes", "on":
-		return true
-	case "0", "false", "no", "off":
-		return false
-	}
-	return fallback
-}
+// defaultConfig is the configuration the built-in defaults alone resolve to.
+func defaultConfig() Config { return configOf(kit.DefaultValues()) }
 
 // contextConfig builds a Config from a NamedContext plus the built-in runtime
 // defaults. It is used to feed the wizard's detect/validate hooks, which
 // operate on a whole Config.
 func contextConfig(nc NamedContext) Config {
-	c := configFromMap(defaultLayer())
+	c := defaultConfig()
 	c.BaseURL = nc.BaseURL
 	c.Flavor = nc.Flavor
 	c.DetectedFlavor = nc.DetectedFlavor
 	c.Auth = nc.Auth
 	return c
 }
-
-func atoiOr(s string, fallback int) int {
-	if s == "" {
-		return fallback
-	}
-	if n, err := strconv.Atoi(s); err == nil {
-		return n
-	}
-	return fallback
-}
-
-func durationOr(s string, fallback time.Duration) time.Duration {
-	if s == "" {
-		return fallback
-	}
-	if d, err := time.ParseDuration(s); err == nil {
-		return d
-	}
-	return fallback
-}
-
-// FieldCredentialURL is the provenance key for the acquisition page.
-const FieldCredentialURL = fieldCredentialURL

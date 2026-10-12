@@ -1,0 +1,10 @@
+# Bump agent-cli-kit when the owner tags a new release. Other modules are
+# updated by hand, so only the kit is allowed here.
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    allow:
+      - dependency-name: github.com/angelmsger/agent-cli-kit

@@ -2,8 +2,8 @@ package auth
 
 import (
 	"errors"
-	"net/http"
 	"os"
+	"slices"
 	"testing"
 
 	"github.com/angelmsger/agent-cli-kit/credstore"
@@ -32,30 +32,43 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+// TestCredentialValidate pins each scheme's error code and message; header
+// encoding and masking are tested in agent-cli-kit/auth.
 func TestCredentialValidate(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name string
-		cred Credential
-		ok   bool
+		name    string
+		cred    Credential
+		code    string
+		message string
 	}{
-		{"pat ok", Credential{Scheme: SchemePAT, Secret: "tok"}, true},
-		{"pat missing secret", Credential{Scheme: SchemePAT}, false},
-		{"basic ok", Credential{Scheme: SchemeBasic, Username: "u", Secret: "p"}, true},
-		{"basic missing user", Credential{Scheme: SchemeBasic, Secret: "p"}, false},
-		{"unknown scheme", Credential{Scheme: "oauth", Secret: "x"}, false},
+		{"pat ok", Credential{Scheme: SchemePAT, Secret: "tok"}, "", ""},
+		{"pat missing secret", Credential{Scheme: SchemePAT}, "AUTH_NO_TOKEN", "no Personal Access Token configured"},
+		{"basic ok", Credential{Scheme: SchemeBasic, Username: "u", Secret: "p"}, "", ""},
+		{"basic missing user", Credential{Scheme: SchemeBasic, Secret: "p"}, "AUTH_NO_BASIC", "basic auth requires both a username and a password/token"},
+		{"basic missing secret", Credential{Scheme: SchemeBasic, Username: "u"}, "AUTH_NO_BASIC", "basic auth requires both a username and a password/token"},
+		{"unknown scheme", Credential{Scheme: "oauth", Secret: "x"}, "AUTH_BAD_SCHEME", `unknown auth scheme "oauth"`},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			err := tc.cred.Validate()
-			if (err == nil) != tc.ok {
-				t.Errorf("Validate() err=%v, want ok=%v", err, tc.ok)
+			if tc.code == "" {
+				if err != nil {
+					t.Fatalf("Validate() = %v, want nil", err)
+				}
+				return
+			}
+			ce := cerrors.AsCLIError(err)
+			if err == nil || ce.Code != tc.code || ce.Message != tc.message {
+				t.Fatalf("Validate() = %+v, want %s %q", ce, tc.code, tc.message)
 			}
 		})
 	}
 }
 
+// TestCredentialHeader pins each scheme's wire form: pat is a Bearer token,
+// basic is HTTP Basic.
 func TestCredentialHeader(t *testing.T) {
 	t.Parallel()
 	pat := Credential{Scheme: SchemePAT, Secret: "abc"}
@@ -69,15 +82,8 @@ func TestCredentialHeader(t *testing.T) {
 	}
 }
 
-func TestDecoratorSetsAuthorization(t *testing.T) {
-	t.Parallel()
-	req, _ := http.NewRequest(http.MethodGet, "http://x", nil)
-	Credential{Scheme: SchemePAT, Secret: "tok"}.Decorator()(req)
-	if req.Header.Get("Authorization") != "Bearer tok" {
-		t.Errorf("Authorization = %q", req.Header.Get("Authorization"))
-	}
-}
-
+// TestAccountKey pins the keychain account: host and scheme, without the
+// deployment path, so existing stored secrets stay reachable.
 func TestAccountKey(t *testing.T) {
 	t.Parallel()
 	got := AccountKey("https://kms.example.com/wiki", SchemePAT)
@@ -86,11 +92,44 @@ func TestAccountKey(t *testing.T) {
 	}
 }
 
-func TestRedacted(t *testing.T) {
+func TestResolveDefaultsToPAT(t *testing.T) {
 	t.Parallel()
-	r := Credential{Scheme: SchemePAT, Secret: "supersecret"}.Redacted()
-	if r.Secret == "supersecret" || r.Secret[len(r.Secret)-4:] != "cret" {
-		t.Errorf("Redacted secret = %q", r.Secret)
+	cfg := config.Config{BaseURL: "https://kms.example.com"}
+	cred, err := Resolve(cfg, config.Secrets{PAT: "flag-token"}, NewStore(t.TempDir()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cred.Scheme != SchemePAT || cred.Secret != "flag-token" {
+		t.Errorf("Resolve() = %+v, want pat with flag-token", cred)
+	}
+}
+
+func TestResolveBasicSecret(t *testing.T) {
+	t.Parallel()
+	cfg := config.Config{
+		BaseURL: "https://kms.example.com",
+		Auth:    config.AuthConfig{Scheme: SchemeBasic, Username: "alice"},
+	}
+	tests := []struct {
+		name    string
+		secrets config.Secrets
+		want    string
+	}{
+		{"password", config.Secrets{Password: "pw"}, "pw"},
+		{"api token", config.Secrets{APIToken: "api"}, "api"},
+		{"password wins over api token", config.Secrets{Password: "pw", APIToken: "api"}, "pw"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			cred, err := Resolve(cfg, tc.secrets, NewStore(t.TempDir()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if cred.Secret != tc.want {
+				t.Errorf("Secret = %q, want %q", cred.Secret, tc.want)
+			}
+		})
 	}
 }
 
@@ -138,21 +177,31 @@ func TestResolveNoCredentialErrors(t *testing.T) {
 		BaseURL: "https://nocreds.example.com",
 		Auth:    config.AuthConfig{Scheme: SchemePAT},
 	}
+	hostRetry := "Retry the same command with access to the host user environment (home directory and OS keychain)."
 	tests := []struct {
-		name string
-		err  error
-		code string
+		name    string
+		err     error
+		code    string
+		message string
+		steps   []string
 	}{
-		{"missing", keyring.ErrNotFound, "CREDENTIAL_NOT_VISIBLE_OR_MISSING"},
-		{"inaccessible", errors.New("sandbox denied keychain"), "CREDENTIAL_STORE_INACCESSIBLE"},
+		{"missing", keyring.ErrNotFound, "CREDENTIAL_NOT_VISIBLE_OR_MISSING",
+			"stored Confluence credentials are missing or not visible in this execution environment",
+			[]string{hostRetry, "confluence-cli doctor", "Only if the host retry also reports missing credentials, run `confluence-cli config init` in the user's terminal or set CONFLUENCE_* environment variables."}},
+		{"inaccessible", errors.New("sandbox denied keychain"), "CREDENTIAL_STORE_INACCESSIBLE",
+			"stored Confluence credentials cannot be read in this execution environment",
+			[]string{hostRetry, "confluence-cli doctor", "Do not run `config init` unless the same check also fails in the host environment."}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			s := newStoreWithKeyring(t.TempDir(), failingKeyring{err: tc.err})
 			_, err := Resolve(cfg, config.Secrets{}, s)
 			ce := cerrors.AsCLIError(err)
-			if ce == nil || ce.Code != tc.code {
-				t.Fatalf("Resolve() error = %+v, want code %s", ce, tc.code)
+			if ce == nil || ce.Code != tc.code || ce.Message != tc.message {
+				t.Fatalf("Resolve() error = %+v, want %s %q", ce, tc.code, tc.message)
+			}
+			if len(ce.NextSteps) < len(tc.steps) || !slices.Equal(ce.NextSteps[:len(tc.steps)], tc.steps) {
+				t.Fatalf("Resolve() next steps = %q, want them to start with %q", ce.NextSteps, tc.steps)
 			}
 			if ce.Recovery == nil || ce.Recovery.Scope != "host" || ce.Retryable {
 				t.Fatalf("Resolve() recovery = %+v retryable=%v, want host and false", ce.Recovery, ce.Retryable)

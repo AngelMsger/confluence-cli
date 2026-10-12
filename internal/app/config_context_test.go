@@ -122,6 +122,29 @@ func TestCmdUseContextUnknownPreservesStructuredError(t *testing.T) {
 	}
 }
 
+// Every UNKNOWN_CONTEXT, from the loader or from a context argument, names
+// the listing command as its next step, and that command must exist here.
+func TestUnknownContextNextStepResolves(t *testing.T) {
+	dir := t.TempDir()
+	writeContextFile(t, dir, "https://alpha.example.com", "https://beta.example.com")
+	for _, args := range [][]string{
+		{"--use-context", "ghost", "config", "show"},
+		{"config", "use-context", "ghost"},
+		{"config", "delete-context", "ghost"},
+	} {
+		_, err := runCLIFile(t, dir, args...)
+		ce := cerrors.AsCLIError(err)
+		if err == nil || ce.Code != "UNKNOWN_CONTEXT" || len(ce.NextSteps) != 1 {
+			t.Fatalf("%v: got %v", args, err)
+		}
+		words := strings.Fields(ce.NextSteps[0])
+		cmd, rest, findErr := NewRootCmd().Find(words[1:])
+		if words[0] != "confluence-cli" || findErr != nil || len(rest) != 0 || cmd.CommandPath() != "confluence-cli config get-contexts" {
+			t.Errorf("%v: next step %q does not resolve to config get-contexts", args, ce.NextSteps[0])
+		}
+	}
+}
+
 // Case-only mismatch should now succeed via case-insensitive lookup — the
 // previous "Did you mean X?" UX is unnecessary when the lookup just works.
 // The output must show the *canonical* server, not whatever URL might have

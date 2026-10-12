@@ -1,12 +1,9 @@
 package config
 
 import (
-	"os"
-	"path/filepath"
-	"strings"
+	"time"
 
-	"github.com/angelmsger/confluence-cli/pkg/constants"
-	"gopkg.in/yaml.v3"
+	kit "github.com/angelmsger/agent-cli-kit/config"
 )
 
 // authShape / defaultsShape / contextShape are the on-disk YAML building
@@ -50,58 +47,20 @@ type fileShape struct {
 }
 
 // File is the parsed config file: a set of named contexts plus the shared
-// runtime defaults and the name of the current context.
-type File struct {
-	CurrentContext string
-	Contexts       []NamedContext
-	Defaults       Defaults
-}
-
-// Context returns the context whose name matches, case-insensitively. The
-// returned struct carries the canonical (as-stored) name; callers that intend
-// to persist a reference to the context (e.g. set CurrentContext or filter a
-// kept list) must use the returned NamedContext.Name, not the lookup string —
-// otherwise a CI lookup against a legacy mixed-case file would write back a
-// name that no longer exists in the contexts list.
-func (f File) Context(name string) (NamedContext, bool) {
-	for _, c := range f.Contexts {
-		if strings.EqualFold(c.Name, name) {
-			return c, true
-		}
-	}
-	return NamedContext{}, false
-}
-
-// ContextNames returns every context name, in file order.
-func (f File) ContextNames() []string {
-	names := make([]string, len(f.Contexts))
-	for i, c := range f.Contexts {
-		names[i] = c.Name
-	}
-	return names
-}
+// runtime defaults and the name of the current context. Context looks a name
+// up case-insensitively and returns the stored spelling; callers that persist
+// a reference to a context must use that spelling, not the lookup string.
+type File = kit.File[NamedContext, Defaults]
 
 // DefaultConfigDir returns the new-form per-user config directory
 // (~/.angelmsger/confluence). Callers that want the smart "prefer new,
 // fall back to legacy" resolution should use ResolveConfigDir instead;
 // this function is the unconditional new path used by writes.
-func DefaultConfigDir() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(home, constants.ConfigParentDirName, constants.ConfigDirName), nil
-}
+func DefaultConfigDir() (string, error) { return kit.DefaultDir() }
 
 // LegacyConfigDir returns the pre-0.7 config directory (~/.confluence).
 // It is consulted as a read-write fallback by ResolveConfigDir.
-func LegacyConfigDir() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(home, constants.LegacyConfigDirName), nil
-}
+func LegacyConfigDir() (string, error) { return kit.LegacyDir() }
 
 // ResolveConfigDir picks the config directory to use when --config was not
 // supplied. It prefers the new ~/.angelmsger/confluence location, but falls
@@ -109,68 +68,54 @@ func LegacyConfigDir() (string, error) {
 // config.yaml yet and the legacy path does — so existing users keep working
 // without an explicit migration step. When neither directory has a config
 // file it returns the new path (so first-time setup writes there).
-func ResolveConfigDir() (string, error) {
-	newDir, err := DefaultConfigDir()
-	if err != nil {
-		return "", err
-	}
-	if _, statErr := os.Stat(filepath.Join(newDir, constants.ConfigFileName)); statErr == nil {
-		return newDir, nil
-	}
-	legacyDir, err := LegacyConfigDir()
-	if err != nil {
-		return newDir, nil
-	}
-	if _, statErr := os.Stat(filepath.Join(legacyDir, constants.ConfigFileName)); statErr == nil {
-		return legacyDir, nil
-	}
-	return newDir, nil
-}
+func ResolveConfigDir() (string, error) { return kit.ResolveDir() }
 
 // ConfigFilePath returns the YAML config file path inside dir.
-func ConfigFilePath(dir string) string {
-	return filepath.Join(dir, constants.ConfigFileName)
-}
+func ConfigFilePath(dir string) string { return kit.FilePath(dir) }
+
+// UseContext makes the named context current and returns its stored name, or
+// UNKNOWN_CONTEXT when there is no such context.
+func UseContext(f *File, name string) (string, error) { return kit.UseContext(f, name) }
+
+// DeleteContext removes the named context and returns it; the first remaining
+// context becomes current when it was. It returns UNKNOWN_CONTEXT or
+// LAST_CONTEXT instead when the name is unknown or the context is the only one.
+func DeleteContext(f *File, name string) (NamedContext, error) { return kit.DeleteContext(f, name) }
 
 // ReadFile reads and parses the config file in dir. The bool return is false
 // when the file does not exist. A legacy flat-format file is normalized into a
 // single context named "default".
 func ReadFile(dir string) (File, bool, error) {
-	raw, err := os.ReadFile(ConfigFilePath(dir))
-	if err != nil {
-		if os.IsNotExist(err) {
-			return File{}, false, nil
-		}
-		return File{}, false, err
-	}
 	var fs fileShape
-	if err := yaml.Unmarshal(raw, &fs); err != nil {
+	if ok, err := kit.ReadFile(dir, &fs); !ok || err != nil {
 		return File{}, false, err
 	}
+	// Missing defaults stay zero; the default layer fills them during Load.
+	timeout, _ := time.ParseDuration(fs.Defaults.Timeout)
 	f := File{
 		CurrentContext: fs.CurrentContext,
-		Defaults:       defaultsFromShape(fs.Defaults),
+		Defaults: Defaults{
+			Format:     fs.Defaults.Format,
+			PageSize:   fs.Defaults.PageSize,
+			Timeout:    timeout,
+			MaxRetries: fs.Defaults.MaxRetries,
+			ReadOnly:   fs.Defaults.ReadOnly,
+		},
 	}
 	switch {
 	case len(fs.Contexts) > 0:
 		for _, cs := range fs.Contexts {
-			f.Contexts = append(f.Contexts, NamedContext{
-				Name:           cs.Name,
-				BaseURL:        cs.Server,
-				Flavor:         cs.Flavor,
-				DetectedFlavor: cs.DetectedFlavor,
-				Auth:           AuthConfig{Scheme: cs.Auth.Scheme, Username: cs.Auth.Username, CredentialURL: cs.Auth.CredentialURL},
-			})
+			f.Contexts = append(f.Contexts, contextFromShape(cs))
 		}
 	case fs.Server != "":
 		// Legacy flat format → one synthesized "default" context.
-		f.Contexts = []NamedContext{{
+		f.Contexts = []NamedContext{contextFromShape(contextShape{
 			Name:           DefaultContextName,
-			BaseURL:        fs.Server,
+			Server:         fs.Server,
 			Flavor:         fs.Flavor,
 			DetectedFlavor: fs.DetectedFlavor,
-			Auth:           AuthConfig{Scheme: fs.Auth.Scheme, Username: fs.Auth.Username, CredentialURL: fs.Auth.CredentialURL},
-		}}
+			Auth:           fs.Auth,
+		})}
 		if f.CurrentContext == "" {
 			f.CurrentContext = DefaultContextName
 		}
@@ -179,13 +124,21 @@ func ReadFile(dir string) (File, bool, error) {
 }
 
 // WriteFile persists a multi-context File to dir/config.yaml in the new
-// format, creating dir with 0700 permissions. Secrets are never written here.
+// format, creating dir with 0700 permissions and replacing the file
+// atomically. Secrets are never written here.
 func WriteFile(dir string, f File) error {
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return err
+	fs := fileShape{
+		CurrentContext: f.CurrentContext,
+		Defaults: defaultsShape{
+			Format:     f.Defaults.Format,
+			PageSize:   f.Defaults.PageSize,
+			MaxRetries: f.Defaults.MaxRetries,
+			ReadOnly:   f.Defaults.ReadOnly,
+		},
 	}
-	var fs fileShape
-	fs.CurrentContext = f.CurrentContext
+	if f.Defaults.Timeout > 0 {
+		fs.Defaults.Timeout = f.Defaults.Timeout.String()
+	}
 	for _, c := range f.Contexts {
 		fs.Contexts = append(fs.Contexts, contextShape{
 			Name:           c.Name,
@@ -195,52 +148,15 @@ func WriteFile(dir string, f File) error {
 			Auth:           authShape{Scheme: c.Auth.Scheme, Username: c.Auth.Username, CredentialURL: c.Auth.CredentialURL},
 		})
 	}
-	fs.Defaults.Format = f.Defaults.Format
-	fs.Defaults.PageSize = f.Defaults.PageSize
-	if f.Defaults.Timeout > 0 {
-		fs.Defaults.Timeout = f.Defaults.Timeout.String()
-	}
-	fs.Defaults.MaxRetries = f.Defaults.MaxRetries
-	fs.Defaults.ReadOnly = f.Defaults.ReadOnly
-
-	out, err := yaml.Marshal(&fs)
-	if err != nil {
-		return err
-	}
-	// Replace atomically so a failed write does not truncate an existing config.
-	tmp, err := os.CreateTemp(dir, ".config-*.tmp")
-	if err != nil {
-		return err
-	}
-	defer os.Remove(tmp.Name())
-	if err := tmp.Chmod(0o600); err != nil {
-		_ = tmp.Close()
-		return err
-	}
-	if _, err := tmp.Write(out); err != nil {
-		_ = tmp.Close()
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		return err
-	}
-	return os.Rename(tmp.Name(), ConfigFilePath(dir))
+	return kit.WriteFile(dir, &fs)
 }
 
-// defaultsFromShape converts the on-disk defaults block into a Defaults value.
-// Missing fields stay zero; the default layer fills them during Load.
-func defaultsFromShape(ds defaultsShape) Defaults {
-	return Defaults{
-		Format:     ds.Format,
-		PageSize:   ds.PageSize,
-		Timeout:    durationOr(ds.Timeout, 0),
-		MaxRetries: ds.MaxRetries,
-		ReadOnly:   ds.ReadOnly,
-	}
-}
-
-func put(m map[string]string, key, val string) {
-	if val != "" {
-		m[key] = val
+func contextFromShape(cs contextShape) NamedContext {
+	return NamedContext{
+		Name:           cs.Name,
+		BaseURL:        cs.Server,
+		Flavor:         cs.Flavor,
+		DetectedFlavor: cs.DetectedFlavor,
+		Auth:           AuthConfig{Scheme: cs.Auth.Scheme, Username: cs.Auth.Username, CredentialURL: cs.Auth.CredentialURL},
 	}
 }

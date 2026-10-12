@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Layered configuration, context selection, the config file write and
+  `config set-context` planning now come from agent-cli-kit's `config`
+  package. Commands, output, hints and the `config.yaml` format, including
+  the legacy flat layout and the `~/.confluence` fallback, are unchanged.
+- `UNKNOWN_CONTEXT` (from `--use-context`, `CONFLUENCE_CONTEXT`, a stale
+  `current_context`, `config use-context` or `config delete-context`) now
+  carries `next_steps: ["confluence-cli config get-contexts"]` in place of the
+  generic `config init` / `config show --explain` steps, as in the rest of the
+  family. Its message and hint are unchanged.
+- Credential validation, header encoding, keychain lookup and the credential
+  recovery errors now come from agent-cli-kit's `auth` package. Messages, error
+  codes and stored credentials are unchanged.
 - Output rendering, argv correction, the release check, the credential store,
   and the code behind `pkg/errors` and `pkg/transport` now come from the shared
   [agent-cli-kit](https://github.com/AngelMsger/agent-cli-kit) module. Commands,

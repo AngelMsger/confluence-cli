@@ -28,13 +28,14 @@ third-party OAuth 2.0 authorization (extension point reserved, not
 shipped in this cycle).
 
 Output rendering, argv correction, the update check, the credential store,
-and the code behind `pkg/errors` and `pkg/transport` come from
+credential resolution, the configuration engine, and the code behind
+`pkg/errors` and `pkg/transport` come from
 [agent-cli-kit](https://github.com/AngelMsger/agent-cli-kit), shared by every
-CLI in the family; confluence-cli supplies its own hints, User-Agent, keychain
-service name and release repository. `pkg/transport` re-exports the kit's
-retrying HTTP client with the User-Agent defaulted to `confluence-cli/<version>`;
-it keeps Go's default redirect policy, because attachment downloads may be
-redirected to another origin.
+CLI in the family; confluence-cli supplies its own hints, User-Agent,
+keychain service name, auth schemes, settings table and release repository.
+`pkg/transport` re-exports the kit's retrying HTTP client with the User-Agent
+defaulted to `confluence-cli/<version>`; it keeps Go's default redirect policy,
+because attachment downloads may be redirected to another origin.
 
 ## 2. API flavor difference matrix
 
@@ -134,9 +135,19 @@ Defaults   { Format string         // json (default)
 Highest → lowest: CLI flags > environment variables (`CONFLUENCE_*`) >
 `.env` file > `~/.angelmsger/confluence/config.yaml` (or the legacy
 `~/.confluence/config.yaml` when only that exists) > built-in defaults.
-Implemented as an ordered `mergeLayers([]Config)`: each layer is a
-sparse `Config`, and non-zero fields override lower layers. Provenance
-is recorded per-field so `config show --explain` can report it.
+Provenance is recorded per-field so `config show --explain` can report it.
+
+`internal/config` registers the settings (keys, `CONFLUENCE_*` variables,
+defaults), both file locations, the command wording and the flavor rules
+with agent-cli-kit's `config` package, which owns the layering, context
+selection, the atomic file write and set-context planning. The flavor rules
+are confluence-cli's: an unset scheme becomes `basic` on Cloud, Cloud rejects
+`pat` (`AUTH_CLOUD_NEEDS_BASIC`), an unknown flavor is `BAD_FLAVOR`, and the
+cached `detected_flavor` is dropped when the server in effect is not the
+stored one and cleared by `set-context` when the server or flavor changes.
+confluence-cli keeps the YAML shape structs that define the file format,
+including the legacy flat layout, which reads as one context named
+`default`.
 
 Environment variable mapping:
 
@@ -161,6 +172,9 @@ holds.
   7.9+.
 - **basic**: `Authorization: Basic base64(user:secret)`. Datacenter uses
   username + password; cloud uses email + API token.
+
+`internal/auth` registers both schemes with agent-cli-kit's `auth` package,
+which owns the credential model, the header encoding and the recovery errors.
 
 Secrets are never persisted to `config.yaml`. `config init` stores them
 through agent-cli-kit's `credstore` in the OS keychain (`go-keyring`, service
@@ -477,8 +491,9 @@ informational check that does not change connectivity health.
 
 ## Team service setup and login persistence
 
-`internal/config/setup.go` owns offline service-field validation, acquisition
-links and the pure `PlanServiceContext` merge used by execution and dry-run.
+`internal/config/setup.go` owns the acquisition links and wraps the shared
+offline service-field validation and the pure `PlanServiceContext` merge used by
+execution and dry-run.
 `LoadOptions.Setup` selects the requested destination even when it is new and
 filters personal environment fields before credential-based scheme inference.
 Ordinary runtime precedence and transient environment secrets remain supported.
