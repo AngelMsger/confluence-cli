@@ -100,8 +100,12 @@ func newAuthLogoutCmd(s *appState) *cobra.Command {
 			if scheme == "" {
 				scheme = config.SchemePAT
 			}
-			if err := auth.ForgetForConfig(cfg, scheme, s.store); err != nil {
+			base, err := auth.CredentialLookupURL(cfg)
+			if err != nil {
 				return err
+			}
+			if err := auth.Forget(base, scheme, s.store); err != nil {
+				return credentialStoreRecovery(err, "CREDENTIAL_DELETE_FAILED", "credential removal did not complete; stored credentials may remain")
 			}
 			return s.emit(map[string]any{"server": cfg.BaseURL, "status": "removed"})
 		},

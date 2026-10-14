@@ -103,7 +103,12 @@ func completeLogin(s *appState, cfg config.Config, cred auth.Credential, service
 	}
 	backend, err := services.Save(cfg.BaseURL, cred)
 	if err != nil {
-		return "", cerrors.Wrap(err, cerrors.CategoryConfig, "CREDENTIAL_SAVE_FAILED", "credentials verified but could not be stored").WithNextSteps(constants.AppName+" doctor", constants.AppName+" auth login")
+		message := "credentials verified, but credential storage did not complete; login identity was not changed"
+		if backend != "" {
+			message = "credential stored in " + backend + ", but stale credential cleanup failed; login identity was not changed"
+		}
+		return "", credentialStoreRecovery(err, "CREDENTIAL_SAVE_FAILED", message).
+			WithDetails(map[string]any{"credential_stored": backend != "", "stored_in": backend})
 	}
 	if !reflect.DeepEqual(original, file) {
 		if err := services.Write(s.cfgDir, file); err != nil {
@@ -131,4 +136,12 @@ func verifyCredential(s *appState, cfg config.Config, cred auth.Credential) erro
 		return cerrors.New(cerrors.CategoryAuth, "AUTH_IDENTITY_UNAVAILABLE", "the service did not return an authenticated user")
 	}
 	return nil
+}
+
+// Store recovery requires access to the existing credentials, not a new token.
+func credentialStoreRecovery(err error, code, message string) *cerrors.CLIError {
+	return cerrors.Wrap(err, cerrors.CategoryConfig, code, message).
+		WithHint("Restore access to the host user home and OS credential store, then retry the same command once. Do not request a new token or reinitialize the service configuration for a storage failure.").
+		WithNextSteps("Retry the same command in the host environment with access to the existing credential store.").
+		WithRecovery(cerrors.Recovery{Action: "retry_current_command", Scope: "host", Requires: []string{"user_home", "os_keychain"}})
 }
