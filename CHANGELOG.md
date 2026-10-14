@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Credential storage failures retain host recovery instructions and distinguish
+  a saved credential with incomplete cleanup from a credential not saved;
+  neither failure changes the login identity configuration.
+
 ## [0.23.1] - 2026-10-12
 
 ### Fixed

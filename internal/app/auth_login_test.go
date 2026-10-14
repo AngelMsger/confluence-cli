@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"github.com/angelmsger/agent-cli-kit/credstore"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -192,5 +193,45 @@ func TestEquivalentURLLoginKeepsCredentialKeyAfterReload(t *testing.T) {
 	got, err := auth.Resolve(fresh, config.Secrets{}, auth.NewStore(s.cfgDir))
 	if err != nil || got != cred {
 		t.Fatalf("equivalent URL orphaned credential: %v", err)
+	}
+}
+
+func TestCredentialStorageFailurePreservesPartialOutcome(t *testing.T) {
+	for _, backend := range []string{"", "keychain"} {
+		t.Run(backend, func(t *testing.T) {
+			s, cfg, cred := loginStateForTest(t)
+			cause := errors.New("credential store inaccessible")
+			written := false
+			_, err := completeLogin(s, cfg, cred, loginServices{
+				Verify: func(config.Config, auth.Credential) error { return nil },
+				Save:   func(string, auth.Credential) (string, error) { return backend, cause },
+				Write:  func(string, config.File) error { written = true; return nil },
+			})
+			ce := cerrors.AsCLIError(err)
+			if ce == nil || written || !errors.Is(err, cause) || ce.Retryable || ce.Recovery == nil || ce.Recovery.Scope != "host" {
+				t.Fatalf("written=%v err=%+v", written, ce)
+			}
+			details := ce.Details.(map[string]any)
+			if details["credential_stored"] != (backend != "") || details["stored_in"] != backend {
+				t.Fatalf("details=%v", details)
+			}
+		})
+	}
+}
+
+func TestLogoutRetainsStoreRecovery(t *testing.T) {
+	keyring.MockInit()
+	s, _, _ := loginStateForTest(t)
+	// A directory at the credential-file path forces a read error without
+	// accessing host credentials.
+	if err := os.Mkdir(filepath.Join(s.cfgDir, credstore.CredentialsFileName), 0700); err != nil {
+		t.Fatal(err)
+	}
+	cmd := newAuthLogoutCmd(s)
+	err := cmd.RunE(cmd, nil)
+	ce := cerrors.AsCLIError(err)
+	var cause *os.PathError
+	if ce == nil || ce.Code != "CREDENTIAL_DELETE_FAILED" || ce.Retryable || ce.Recovery == nil || ce.Recovery.Scope != "host" || !errors.As(err, &cause) {
+		t.Fatalf("error=%+v", ce)
 	}
 }
