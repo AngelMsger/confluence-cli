@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- The `skill` commands, the Skill notice and `doctor` read the Skill version,
+  load state, installed copies and agent directories through agent-cli-kit's
+  `skill` package instead of a private copy. Output is unchanged.
+
 ### Fixed
 
 - Credential storage failures retain host recovery instructions and distinguish
