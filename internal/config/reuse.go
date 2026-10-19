@@ -68,10 +68,7 @@ func reuseStep(cfg Config, sources map[string]string, file File, name string) st
 	case "flag", "env", "dotenv":
 		runtimeUser = cfg.Auth.Username
 	}
-	// Cloud accepts only basic, so there a source can only be another context
-	// under the destination's own scheme, as when the scheme is supplied.
-	sameSchemeOnly := SchemeSupplied(sources) || !otherSchemeValid(storedCfg)
-	if !reuse.MayReuse(target, ReuseContexts(file), runtimeUser, sameSchemeOnly) {
+	if !reuse.MayReuse(target, ReuseContexts(file), runtimeUser, SchemeSupplied(sources), validUnder(storedCfg)) {
 		return ""
 	}
 	step := constants.AppName + " --use-context " + kit.QuoteArg(stored.Name) + " auth reuse"
@@ -81,18 +78,12 @@ func reuseStep(cfg Config, sources map[string]string, file File, name string) st
 	return step
 }
 
-// otherSchemeValid reports whether the context stays a valid configuration
-// under some scheme other than its own.
-func otherSchemeValid(cfg Config) bool {
-	for _, scheme := range []string{SchemePAT, SchemeBasic} {
-		if scheme == cfg.Auth.Scheme {
-			continue
-		}
-		next := cfg
-		next.Auth.Scheme = scheme
-		if ValidateService(next) == nil {
-			return true
-		}
+// validUnder reports whether the context stays a valid configuration under a
+// scheme, so reuse is not offered for a scheme its deployment rejects.
+func validUnder(cfg Config) func(string) bool {
+	return func(scheme string) bool {
+		c := cfg
+		c.Auth.Scheme = scheme
+		return ValidateService(c) == nil
 	}
-	return false
 }
