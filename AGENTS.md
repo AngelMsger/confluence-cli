@@ -228,6 +228,21 @@ message. Reuse both for any new event or history filter rather than adding a
 second parser. `search --after/--before` are server-side `lastmodified`
 filters, not an event window, and stay outside this contract.
 
+## Credential reuse
+
+Keep `auth reuse` separate from public service setup. The decision belongs to
+agent-cli-kit's `reuse` package; this repository only describes its contexts,
+resolves, verifies and writes. Match complete URLs and the effective deployment
+flavor before credential access, keep `ValidateService` as the scheme check (Cloud
+never adopts `pat`, not even when selected explicitly), never replace a working
+login automatically, and retain operational failures. A username is an identity
+only under `basic`. Verification reports the canonical account from the same
+`user/current` call (`accountId` on Cloud, `userKey` or the username on Data
+Center); credentials of one account are one login. Never copy secrets, infer
+identity from environment variables or activate a context. Cover dry-run,
+ambiguity, scope mismatch, concurrent edits, fresh-load credential resolution and
+both flavors. Native self-configuration follows the existing read-only exception.
+
 ## Credential cleanup
 
 The keychain account is `<host>:<scheme>`, so contexts on one host with one

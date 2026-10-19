@@ -354,28 +354,52 @@ creating another token or changing the active context:
 ```sh
 confluence-cli --use-context team auth reuse --dry-run
 confluence-cli --use-context team auth reuse
-confluence-cli --use-context team auth status
+confluence-cli --use-context team whoami
 ```
 
-Reuse matches the complete normalized service URL, authentication scheme and
-provider scope (deployment flavor, organization or tenant where applicable).
-It verifies the source credential before filling missing destination identity.
-A populated destination identity is preserved. Credentials stay in their native
-store; no secrets or environment credentials are copied. Both source and unrelated
-contexts remain unchanged. Configuration changes during verification stop the write.
+Reuse matches the complete normalized service URL and the deployment flavor (an
+`auto` flavor counts as the one detected earlier) before any credential access.
+It looks at contexts under the destination's scheme first, then at a credential
+under the other scheme: another context's, or one stored for the service that no
+context points at, paired with the usernames recorded on the service when it is
+a basic secret, and only when every context on that credential key is this same
+service. Cloud accepts only basic, so a personal access token is never adopted
+there. A username recorded under `pat` is only a label; a destination with a
+label adopts a basic login only for that username. A destination with a basic
+username, and any login that still works, is kept. Credentials stay in their
+native store; no secrets or environment credentials are copied. Both source and
+unrelated contexts remain unchanged. Configuration or credential changes during
+verification stop the write.
 
-The JSON result reports `context`, `state`, `changed`, `verified`, `dry_run` and,
-when selected, `source_context`. States are `available` (verified preview),
-`reused`, `unchanged`, or `unavailable`. The last two do not establish successful
-authentication: always retain the separate `auth status` check. No reusable
-identity is a normal no-change result. Network, permission and credential-store
-failures retain their structured errors instead of suggesting a fresh login.
+Checks the command did not make before (of a labelled destination, of stored
+secrets, of the other scheme) run within ten seconds of the start, or the
+`--timeout` when shorter, and only adopt on reliable evidence that the
+destination has no working login: the keychain itself answered during this run.
+Otherwise the earlier answer stands, with its `reason`. A scheme supplied by
+`--auth-scheme`, `CONFLUENCE_AUTH_SCHEME`, `.env` or a credential variable keeps
+reuse within that scheme.
 
-Multiple different verified identities return `AUTH_REUSE_AMBIGUOUS`; discover
-context names with `config get-contexts`, then repeat with `--from-context <name>`.
-The command does not replace identities or switch authentication schemes. As
-with native `auth login`, updating this CLI's own settings remains available
-in remote read-only mode; `--dry-run` never changes settings or credentials.
+The JSON result reports `context`, `state`, `changed`, `verified`, `dry_run`,
+`next_steps` and, when a source was selected, `scheme`, `username` (for basic),
+`account` and `account_name` (the account the login authenticates as: `accountId`
+on Cloud, `userKey` on Data Center) and `source_context` (when the source is a
+context). Writes in the context then run as that account. States are `available`
+(verified preview), `reused`, `unchanged`, or `unavailable`. The last two do not
+establish successful authentication: run the check `next_steps` names (`whoami`).
+No reusable login is a normal no-change result. Network, permission and
+credential-store failures retain their structured errors instead of suggesting a
+fresh login.
+
+Several different verified logins return `AUTH_REUSE_AMBIGUOUS` with
+`details.candidates`; two credentials of one account count as one login. Repeat
+with `--from-context <name>`, `--from-scheme <scheme>`, or both (the stored
+secret of that scheme paired with that context's username). As with native
+`auth login`, updating this CLI's own settings remains available in remote
+read-only mode; `--dry-run` never changes settings or credentials.
+
+`config set-context`, `auth guide`, missing-credential errors, `doctor` and HTTP
+401 errors list `auth reuse` before any sign-in step when the configuration file
+shows that a stored login could apply.
 
 Equivalent service URL overrides preserve the persisted native credential lookup
 key without redirecting requests or copying secrets. Logout removes that same

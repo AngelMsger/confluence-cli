@@ -123,10 +123,25 @@ For preset team services, use `config set-context` and `auth guide` before perso
 
 ## Reuse existing authentication
 
-`confluence-cli --use-context team auth reuse --dry-run` previews association from
-an existing context with the same complete service URL, scheme and provider scope.
-Apply without `--dry-run`, then verify with `auth status`. No login, token copy,
-current-context switch or replacement of a populated identity occurs. A different
-verified source can be selected with `--from-context` after `config get-contexts`.
-`AUTH_REUSE_AMBIGUOUS` requires choosing an identity; store/network/permission
-errors require their named recovery, not automatic reauthentication.
+`confluence-cli --use-context team auth reuse` points a context without a working
+login at one this machine already verified for the same complete service URL and
+deployment flavor; `--dry-run` previews the same decision. It looks first at
+contexts under the context's own scheme, then at a credential under the other
+scheme: another context's, or one stored for this service that no context points
+at any more (a basic secret is paired with the usernames recorded on the
+service). Cloud accepts only basic, so there a personal access token is never
+adopted. A username under the `pat` scheme is only a label: it does not stop
+reuse, and a context with a label only adopts a basic login for that same
+username. A login that still works is never replaced automatically. The result
+reports `scheme`, `username` (for basic), `account` (the account the login
+authenticates as: `accountId` on Cloud, `userKey` on Data Center) and, when the
+source is a context, `source_context`; its `next_steps` name the check to run next
+(`whoami`). Writes in that context then run as that account. No secret is copied
+and the current context does not change.
+
+`AUTH_REUSE_AMBIGUOUS` lists `details.candidates` (two credentials of one account
+count as one login); choose one with `--from-context <name>`, `--from-scheme
+<scheme>`, or both (the stored secret of that scheme paired with that context's
+username). Store, network and permission errors require their named recovery, not
+a new login. When the result says the keychain could not be read here, retry on
+the host before signing in.

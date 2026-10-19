@@ -61,6 +61,7 @@ func Execute() int {
 		if ce.Category == cerrors.CategoryInternal && !isCLIError(err) {
 			ce = cerrors.Wrap(err, cerrors.CategoryUsage, "USAGE", err.Error())
 		}
+		withReuseRecovery(ce, state, cmd)
 		output.EmitError(ce, os.Stderr)
 		return cerrors.ExitCode(ce)
 	}

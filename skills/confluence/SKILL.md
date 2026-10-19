@@ -91,6 +91,7 @@ confluence-cli user me                    # the current user (alias: current; sa
 confluence-cli config init|show           # configuration
 confluence-cli config get-contexts|use-context|delete-context|path  # named contexts
 confluence-cli auth status                # credential check
+confluence-cli auth reuse                 # adopt a login already verified for this service (--from-context, --from-scheme, --dry-run)
 confluence-cli whoami                      # the user the credentials act as
 confluence-cli doctor                     # diagnose setup + connectivity
 confluence-cli skill install|status|path|show|uninstall  # manage the companion Skill
@@ -120,7 +121,9 @@ human prose and unrelated rich content intact. Follow
 
 Use the user's existing authorization for the requested change. Preparing a
 draft or running `--dry-run` does not require another approval; preserve the
-specific human-comment gate below. Report the answer or completed change with
+specific human-comment gate below. Writes run as the account the context's
+login authenticates as: after `auth reuse` points a context at another login,
+name its `account` to the user before the first write there. Report the answer or completed change with
 the relevant page link and supporting section/version. State limited search or
 history coverage plainly; do not present a partial result as exhaustive.
 
@@ -277,6 +280,11 @@ semantics, credential URL overrides, and failure recovery.
 
 ## Reuse existing authentication
 
-Before repeating login, preview `confluence-cli --use-context <target> auth reuse
---dry-run`, then apply. Keep the separate `auth status` check. See
+A context without a working login can adopt one already verified for the same
+service: another context's, or a password, API token or personal access token
+stored for the service (Cloud accepts only basic). Workspace tools apply this
+during setup. Elsewhere the CLI lists `auth reuse` ahead of any sign-in step,
+including after an HTTP 401, and its result names the next step and the login it
+used (`scheme`, `username`, `account`). A working login is never replaced
+automatically; `--from-context` and `--from-scheme` select one explicitly. See
 [reuse and ambiguity recovery](references/getting-started.md#reuse-existing-authentication).

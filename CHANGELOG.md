@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `auth reuse` looks across schemes. A context without a working login (its
+  token or password was rejected or is absent) adopts a login already verified
+  for the same service and deployment flavor under the other scheme: another
+  context's, or a secret stored for this service that no context points at any
+  more, paired with the usernames the service's contexts record when it is a
+  basic secret. Contexts under the destination's own scheme still come first.
+  Cloud accepts only basic, so a personal access token is never adopted there. A
+  working login is never replaced automatically. A username under `pat` is now
+  only a label: such a context is checked instead of being reported `unchanged`,
+  and a context on the same stored token no longer makes the command fail when
+  that token is gone. Checks the command did not make before run within ten
+  seconds (or `--timeout`), adopt only when the keychain itself showed the
+  destination has no working login, and otherwise leave the earlier answer. A
+  scheme supplied by flag, environment, `.env` or a credential variable keeps
+  reuse within it. The decision now comes from agent-cli-kit's shared `reuse`
+  package.
+- The `auth reuse` result adds `scheme`, `username`, `account`, `account_name`
+  and `next_steps` (`whoami`). `account` is the account the login authenticates
+  as, `accountId` on Cloud and `userKey` on Data Center, taken from the same
+  verification request; two credentials of one account count as one login.
+  `AUTH_REUSE_AMBIGUOUS` adds `details.candidates`.
+- `config set-context`, `auth guide`, missing-credential errors, `doctor` and
+  HTTP 401 errors list `auth reuse` before any sign-in step when the
+  configuration file shows that a stored login could apply.
+
+### Added
+
+- `auth reuse --from-scheme <scheme>` selects the credential stored for the
+  service under that scheme; with `--from-context`, paired with that context's
+  username.
+
 ## [0.23.2] - 2026-10-19
 
 ### Changed

@@ -1,9 +1,11 @@
 package app
 
 import (
+	"context"
 	"reflect"
 	"strings"
 
+	"github.com/angelmsger/agent-cli-kit/reuse"
 	"github.com/angelmsger/confluence-cli/internal/auth"
 	"github.com/angelmsger/confluence-cli/internal/config"
 	"github.com/angelmsger/confluence-cli/pkg/apiclient"
@@ -119,23 +121,45 @@ func completeLogin(s *appState, cfg config.Config, cred auth.Credential, service
 }
 
 func verifyCredential(s *appState, cfg config.Config, cred auth.Credential) error {
+	_, err := verifyCredentialWithin(context.Background(), s, cfg, cred)
+	return err
+}
+
+// verifyCredentialWithin verifies cred under parent, which may carry an earlier
+// deadline than the request timeout, and reports the account it authenticated
+// as from the same current-user response.
+func verifyCredentialWithin(parent context.Context, s *appState, cfg config.Config, cred auth.Credential) (reuse.Account, error) {
 	if err := cred.Validate(); err != nil {
-		return err
+		return reuse.Account{}, err
 	}
-	ctx, cancel := cmdContext(s)
+	ctx, cancel := context.WithTimeout(parent, s.timeout())
 	defer cancel()
-	client, _, err := apiclient.Build(ctx, apiclient.BuildParams{BaseURL: cfg.BaseURL, Flavor: cfg.Flavor, AuthDecorator: cred.Decorator(), Timeout: s.timeout(), MaxRetries: cfg.Defaults.MaxRetries})
+	client, flavor, err := apiclient.Build(ctx, apiclient.BuildParams{BaseURL: cfg.BaseURL, Flavor: cfg.Flavor, AuthDecorator: cred.Decorator(), Timeout: s.timeout(), MaxRetries: cfg.Defaults.MaxRetries})
 	if err != nil {
-		return err
+		return reuse.Account{}, err
 	}
 	user, err := client.CurrentUser(ctx)
 	if err != nil {
-		return err
+		return reuse.Account{}, err
 	}
 	if user == nil || (user.AccountID == "" && user.Username == "" && user.UserKey == "") || strings.EqualFold(user.Type, "anonymous") {
-		return cerrors.New(cerrors.CategoryAuth, "AUTH_IDENTITY_UNAVAILABLE", "the service did not return an authenticated user")
+		return reuse.Account{}, cerrors.New(cerrors.CategoryAuth, "AUTH_IDENTITY_UNAVAILABLE", "the service did not return an authenticated user")
 	}
-	return nil
+	return canonicalAccount(flavor, user), nil
+}
+
+// canonicalAccount is the account's stable identifier on its deployment:
+// accountId on Cloud, userKey (or the username where none is returned) on Data
+// Center. An empty ID means the account is unknown.
+func canonicalAccount(flavor apiclient.Flavor, user *apiclient.User) reuse.Account {
+	id := user.AccountID
+	if flavor != apiclient.FlavorCloud {
+		id = user.UserKey
+		if id == "" {
+			id = user.Username
+		}
+	}
+	return reuse.Account{ID: id, Name: user.DisplayName}
 }
 
 // Store recovery requires access to the existing credentials, not a new token.
