@@ -16,6 +16,7 @@ import (
 	"github.com/angelmsger/agent-cli-kit/reuse"
 	"github.com/angelmsger/confluence-cli/internal/auth"
 	"github.com/angelmsger/confluence-cli/internal/config"
+	"github.com/angelmsger/confluence-cli/pkg/apiclient"
 	"github.com/angelmsger/confluence-cli/pkg/constants"
 	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 	"github.com/spf13/cobra"
@@ -721,5 +722,43 @@ func TestDoctorOffersReuseOnlyForAuthentication(t *testing.T) {
 		if got := authUnhealthy(tc.cred, tc.conn); got != tc.want {
 			t.Errorf("authUnhealthy(%v, %v) = %v", tc.cred, tc.conn, got)
 		}
+	}
+}
+
+// A Data Center user without a userKey has no canonical account: its username
+// must not stand in for one, or it could equal another user's key.
+func TestCanonicalAccountDoesNotMixIdentifierKinds(t *testing.T) {
+	keyed := canonicalAccount(apiclient.FlavorDataCenter, &apiclient.User{UserKey: "k", Username: "alice"})
+	named := canonicalAccount(apiclient.FlavorDataCenter, &apiclient.User{Username: "k"})
+	if keyed.ID != "k" || named.ID != "" || named.Name != "k" {
+		t.Fatalf("keyed %+v, named %+v", keyed, named)
+	}
+}
+
+// doctor offers reuse when only the current-user probe is rejected.
+func TestDoctorOffersReuseWhenOnlyCurrentUserIsRejected(t *testing.T) {
+	keyring.MockInit()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "user/current") {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"results":[],"size":0,"limit":1,"start":0,"_links":{}}`))
+	}))
+	defer server.Close()
+	base := server.URL + "/deploy"
+	s, _, _ := reuseFixture(t,
+		config.NamedContext{Name: "personal", BaseURL: base, Flavor: "datacenter", Auth: config.AuthConfig{Scheme: "pat", Username: "existing-user"}},
+		config.NamedContext{Name: "team", BaseURL: base, Flavor: "datacenter", Auth: config.AuthConfig{Scheme: "pat"}},
+	)
+	s.store = auth.NewStore(s.cfgDir)
+	if _, err := auth.Save(base, auth.Credential{Scheme: "pat", Secret: "stale"}, s.store); err != nil {
+		t.Fatal(err)
+	}
+	s.resolved.Config.ReuseStep = "confluence-cli --use-context 'team' auth reuse"
+	report := runDoctor(s, true)
+	if len(report.NextSteps) != 1 || report.NextSteps[0] != s.resolved.Config.ReuseStep {
+		t.Fatalf("next steps %v, checks %+v", report.NextSteps, report.Checks)
 	}
 }

@@ -87,3 +87,13 @@ func validUnder(cfg Config) func(string) bool {
 		return ValidateService(c) == nil
 	}
 }
+
+// SchemeFlag is the scheme the invocation passed by flag, or "". Reuse repeats
+// it in every command it suggests; a scheme from the environment or .env
+// carries over by itself.
+func SchemeFlag(cfg Config, sources map[string]string) string {
+	if sources[fieldAuthScheme] == "flag" {
+		return cfg.Auth.Scheme
+	}
+	return ""
+}

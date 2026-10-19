@@ -103,6 +103,7 @@ func reuseAuthentication(s *appState, opts reuseOptions, services reuseServices)
 		Contexts:       config.ReuseContexts(file),
 		Runtime:        reuse.Context{Service: config.ReuseService(s.cfg()), Scheme: s.cfg().Auth.Scheme},
 		SchemeSupplied: config.SchemeSupplied(s.resolved.Sources),
+		SchemeFlag:     config.SchemeFlag(s.cfg(), s.resolved.Sources),
 		From:           opts.From,
 		FromScheme:     opts.FromScheme,
 		DryRun:         opts.DryRun,

@@ -121,9 +121,9 @@ human prose and unrelated rich content intact. Follow
 
 Use the user's existing authorization for the requested change. Preparing a
 draft or running `--dry-run` does not require another approval; preserve the
-specific human-comment gate below. Writes run as the account the context's
-login authenticates as: after `auth reuse` points a context at another login,
-name its `account` to the user before the first write there. Report the answer or completed change with
+specific human-comment gate below. When `auth reuse` adopted a login for the
+context, writes are made as its `account`: confirm that account with the user
+before the first write there. Report the answer or completed change with
 the relevant page link and supporting section/version. State limited search or
 history coverage plainly; do not present a partial result as exhaustive.
 

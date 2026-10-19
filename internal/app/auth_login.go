@@ -149,17 +149,19 @@ func verifyCredentialWithin(parent context.Context, s *appState, cfg config.Conf
 }
 
 // canonicalAccount is the account's stable identifier on its deployment:
-// accountId on Cloud, userKey (or the username where none is returned) on Data
-// Center. An empty ID means the account is unknown.
+// accountId on Cloud, userKey on Data Center. A username is not substituted
+// for a missing userKey: the two name different things, and a match between
+// them would merge distinct users. An empty ID means the account is unknown.
 func canonicalAccount(flavor apiclient.Flavor, user *apiclient.User) reuse.Account {
 	id := user.AccountID
 	if flavor != apiclient.FlavorCloud {
 		id = user.UserKey
-		if id == "" {
-			id = user.Username
-		}
 	}
-	return reuse.Account{ID: id, Name: user.DisplayName}
+	name := user.DisplayName
+	if name == "" {
+		name = user.Username
+	}
+	return reuse.Account{ID: id, Name: name}
 }
 
 // Store recovery requires access to the existing credentials, not a new token.

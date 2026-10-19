@@ -144,6 +144,10 @@ func runDoctor(s *appState, skipUpdate bool) doctorReport {
 	// the healthy verdict (some locked-down deployments restrict it).
 	if client != nil && reachable {
 		user, userErr := client.CurrentUser(doctorCtx)
+		if userErr != nil && connErr == nil {
+			// A rejected credential can surface only here; reuse may replace it.
+			connErr = userErr
+		}
 		checks = append(checks, doctorCheck{
 			Name: "current-user", OK: userErr == nil, Status: diagnosticStatus(userErr),
 			Detail: pick(userErr == nil,
