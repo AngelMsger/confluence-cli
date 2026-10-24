@@ -1,6 +1,7 @@
 package config
 
 import (
+	"maps"
 	"net/url"
 	"strings"
 
@@ -23,9 +24,22 @@ type ContextPlan = kit.ContextPlan[NamedContext, Defaults]
 
 // PlanServiceContext builds a non-secret, target-specific merge without side
 // effects: the service URL, flavor, auth scheme and credential page from
-// resolved. A changed server or flavor clears the detected flavor.
+// resolved. A changed server or flavor clears the detected flavor. When reuse
+// could adopt an existing login, the next steps lead with it.
 func PlanServiceContext(file File, name string, resolved *Resolved, overwrite, activate bool) (ContextPlan, error) {
-	return kit.PlanServiceContext(file, name, kit.Encode(resolved.Config), resolved.Sources, overwrite, activate)
+	plan, err := kit.PlanServiceContext(file, name, kit.Encode(resolved.Config), resolved.Sources, overwrite, activate)
+	if err != nil {
+		return ContextPlan{}, err
+	}
+	// The scheme a preset supplies is the context's own from now on, not a
+	// limit on what reuse may adopt.
+	sources := maps.Clone(resolved.Sources)
+	delete(sources, fieldAuthScheme)
+	planned, _ := plan.File.Context(plan.Context)
+	if step := reuseStep(StoredContext(planned, plan.File.Defaults), sources, plan.File, plan.Context); step != "" {
+		plan.NextSteps = append([]string{step}, plan.NextSteps...)
+	}
+	return plan, nil
 }
 
 // AuthGuide is an offline acquisition guide, not a capability or authentication probe.
@@ -53,6 +67,10 @@ func Guide(cfg Config, sources map[string]string) (AuthGuide, error) {
 		g.CredentialURL = base
 		g.Source = "fallback"
 		g.Instructions = []string{"Use your instance username and password if password authentication is enabled. For PAT authentication, select --auth-scheme pat instead."}
+	}
+	if cfg.ReuseStep != "" {
+		g.Instructions = append([]string{"This machine may already hold a login for this service, under this or another scheme. Before signing in, run `" + cfg.ReuseStep + "`: it verifies a stored login and points this context at it. No secret is copied."}, g.Instructions...)
+		g.NextSteps = append([]string{cfg.ReuseStep}, g.NextSteps...)
 	}
 
 	if cfg.Auth.CredentialURL != "" {

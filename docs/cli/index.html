@@ -309,18 +309,23 @@ same name already exists, Confluence stores the upload as a new version.</p>
       <h2>confluence-cli auth reuse</h2>
       <p class="short">Reuse an existing login in the selected context without signing in again</p>
       <pre>confluence-cli auth reuse [flags]</pre>
-      <p class="long">Match stored contexts by complete service URL, authentication scheme and service scope.
-Verify a matching stored credential before filling a missing personal identity in
-the selected context. Never copy secrets, replace an existing identity, activate
-a context, or read credentials from environment variables. Dry-run performs
-read-only verification and reports the same proposed association. An unchanged
-or unavailable result is not proof of authentication; use auth status to check.</p>
+      <p class="long">Find a login this machine already verified for the same service (complete URL
+and deployment flavor) and point the selected context at it. Contexts under the
+context&#39;s own scheme come first, then a credential under the other scheme,
+including one stored for this service that no context points at; Cloud accepts
+only basic. A working login is never replaced automatically; a username recorded
+under the pat scheme is only a label. The result reports the account the login
+authenticates as. Never copy secrets, activate a context, or read credentials
+from environment variables. Dry-run performs read-only verification and reports
+the same proposed association. An unchanged or unavailable result is not proof
+of authentication; use whoami to check.</p>
       <h3>Options</h3>
       <table>
         <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
         <tbody>
-        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>verify and preview the identity association without writing</td></tr>
-        <tr><td><code>--from-context</code></td><td></td><td>choose the source context when multiple identities match; list names with &#39;config get-contexts&#39;</td></tr>
+        <tr><td><code>--dry-run</code></td><td><code>false</code></td><td>verify and preview the association without writing</td></tr>
+        <tr><td><code>--from-context</code></td><td></td><td>choose the source context when several logins are available; list names with &#39;config get-contexts&#39;</td></tr>
+        <tr><td><code>--from-scheme</code></td><td></td><td>use the credential stored for this service under this scheme (pat or basic); with --from-context, paired with that context&#39;s username</td></tr>
         </tbody>
       </table>
 

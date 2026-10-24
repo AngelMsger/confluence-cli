@@ -13,6 +13,8 @@ run() {
 require() { [[ "$1" == *"$2"* ]] || { echo "FAIL: expected $2" >&2; exit 1; }; }
 out="$(run config set-context team --base-url https://offline.invalid/deploy --auth-scheme pat --flavor datacenter --dry-run)"
 require "$out" '"dry_run": true'
+# A context without an identity is offered reuse before any sign-in step.
+require "$out" "--use-context 'team' auth reuse"
 [[ ! -e "$WORK/config/config.yaml" ]]
 out="$(env -i PATH="$PATH" HOME="$WORK" NO_COLOR=1 CONFLUENCE_CLI_NO_UPDATE_NOTIFIER=1 CONFLUENCE_CONTEXT=unconfigured \
   CONFLUENCE_TOKEN=do-not-save CONFLUENCE_USERNAME=do-not-save \
@@ -23,6 +25,8 @@ require "$out" '"current_context": "team"'
 [[ ! -e "$WORK/config/credentials" ]]
 out="$(run config set-context team)"; require "$out" '"changed": false'
 out="$(run auth guide)"; require "$out" 'https://help.invalid/team-tokens'; require "$out" '"source": "file"'; require "$out" "--use-context 'team' auth login"
+require "$out" "--use-context 'team' auth reuse"
+[[ "$out" != *"--use-context 'team' --use-context"* ]] || { echo 'FAIL: auth guide repeated --use-context' >&2; exit 1; }
 if run config set-context team --base-url https://other.invalid >out.json 2>error.json; then
   echo 'FAIL: conflicting setup succeeded' >&2; exit 1
 fi

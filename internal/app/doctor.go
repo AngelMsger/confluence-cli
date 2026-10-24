@@ -28,9 +28,10 @@ type doctorCheck struct {
 
 // doctorReport is the result shape for `doctor`.
 type doctorReport struct {
-	Healthy bool           `json:"healthy"`
-	Checks  []doctorCheck  `json:"checks"`
-	Update  *update.Status `json:"update,omitempty"`
+	Healthy   bool           `json:"healthy"`
+	Checks    []doctorCheck  `json:"checks"`
+	NextSteps []string       `json:"next_steps,omitempty"`
+	Update    *update.Status `json:"update,omitempty"`
 }
 
 func newDoctorCmd(s *appState) *cobra.Command {
@@ -46,12 +47,16 @@ func newDoctorCmd(s *appState) *cobra.Command {
 				return err
 			}
 			if !report.Healthy {
+				steps := []string{
+					"Review the failing checks and their status/recovery_scope fields above.",
+					"When recovery_scope is host, retry `confluence-cli doctor` with access to the host user environment.",
+				}
+				// A stored login goes after the host retry and before any sign-in.
+				steps = append(append(steps, report.NextSteps...),
+					"Only configure credentials if the host retry also reports them missing.")
 				err := cerrors.New(cerrors.CategoryConfig, "DOCTOR_UNHEALTHY",
 					"one or more diagnostic checks failed").
-					WithNextSteps(
-						"Review the failing checks and their status/recovery_scope fields above.",
-						"When recovery_scope is host, retry `confluence-cli doctor` with access to the host user environment.",
-						"Only configure credentials if the host retry also reports them missing.")
+					WithNextSteps(steps...)
 				if reportNeedsHostRetry(report) {
 					err.WithRecovery(cerrors.Recovery{
 						Action: "retry_current_command", Scope: "host",
@@ -93,6 +98,7 @@ func runDoctor(s *appState, skipUpdate bool) doctorReport {
 		client    apiclient.Client
 		reachable bool
 		doctorCtx context.Context
+		connErr   error
 	)
 	if cfgOK && credOK {
 		ctx, cancel := cmdContext(s)
@@ -107,11 +113,11 @@ func runDoctor(s *appState, skipUpdate bool) doctorReport {
 			MaxRetries:    cfg.Defaults.MaxRetries,
 		})
 		if err != nil {
-			client = nil
+			client, connErr = nil, err
 			checks = append(checks, doctorCheck{Name: "connectivity", OK: false, Status: diagnosticStatus(err), Detail: detailOf(err)})
 		} else {
 			info, pingErr := client.Ping(ctx)
-			reachable = pingErr == nil
+			reachable, connErr = pingErr == nil, pingErr
 			checks = append(checks, doctorCheck{
 				Name: "connectivity", OK: reachable, Status: diagnosticStatus(pingErr),
 				Detail: pick(reachable,
@@ -138,6 +144,10 @@ func runDoctor(s *appState, skipUpdate bool) doctorReport {
 	// the healthy verdict (some locked-down deployments restrict it).
 	if client != nil && reachable {
 		user, userErr := client.CurrentUser(doctorCtx)
+		if userErr != nil && connErr == nil {
+			// A rejected credential can surface only here; reuse may replace it.
+			connErr = userErr
+		}
 		checks = append(checks, doctorCheck{
 			Name: "current-user", OK: userErr == nil, Status: diagnosticStatus(userErr),
 			Detail: pick(userErr == nil,
@@ -147,6 +157,11 @@ func runDoctor(s *appState, skipUpdate bool) doctorReport {
 	checks = append(checks, companionSkillDoctorCheck())
 
 	report := doctorReport{Healthy: healthy, Checks: checks}
+	if step := cfg.ReuseStep; step != "" && cfgOK && authUnhealthy(credErr, connErr) {
+		// A stored login may replace a missing or rejected one; reuse reads
+		// the same store, so an unreadable store is recovered on the host.
+		report.NextSteps = []string{step}
+	}
 
 	// Release-update check: informational only, it never affects Healthy and
 	// never fails the command — being out of date is not a misconfiguration.
@@ -227,6 +242,20 @@ func diagnosticRecoveryScope(err error) string {
 		return recovery.Scope
 	}
 	return ""
+}
+
+// authUnhealthy reports whether the credentials are missing or invalid, or
+// the server rejected them (HTTP 401), as opposed to an unreadable store, a
+// permission or a network failure.
+func authUnhealthy(credErr, connErr error) bool {
+	if credErr != nil {
+		return cerrors.AsCLIError(credErr).Code != "CREDENTIAL_STORE_INACCESSIBLE"
+	}
+	if connErr == nil {
+		return false
+	}
+	ce := cerrors.AsCLIError(connErr)
+	return ce.Category == cerrors.CategoryAuth && ce.HTTPStatus == 401
 }
 
 func reportNeedsHostRetry(report doctorReport) bool {

@@ -52,7 +52,10 @@ func newAuthGuideCmd(s *appState) *cobra.Command {
 			if name := s.resolved.ActiveContext; name != "" {
 				quoted := "'" + strings.ReplaceAll(name, "'", "'\"'\"'") + "'"
 				for i, step := range g.NextSteps {
-					g.NextSteps[i] = strings.Replace(step, " auth ", " --use-context "+quoted+" auth ", 1)
+					// The reuse step already names its context.
+					if !strings.Contains(step, " --use-context ") {
+						g.NextSteps[i] = strings.Replace(step, " auth ", " --use-context "+quoted+" auth ", 1)
+					}
 				}
 			}
 			return s.emit(g)

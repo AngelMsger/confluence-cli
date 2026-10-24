@@ -51,3 +51,22 @@ func TestCompanionSkillDoctorCheck(t *testing.T) {
 		t.Fatalf("loaded check = %+v", got)
 	}
 }
+
+// A credential the server rejects only at the current-user probe still makes
+// reuse worth offering; an outage or a 403 does not.
+func TestDoctorOffersReuseForARejectedLogin(t *testing.T) {
+	t.Parallel()
+	rejected := cerrors.New(cerrors.CategoryAuth, "AUTH_FAILED", "rejected").WithHTTPStatus(401)
+	if !authUnhealthy(nil, rejected) {
+		t.Fatal("a 401 did not offer reuse")
+	}
+	for _, err := range []error{
+		cerrors.New(cerrors.CategoryPermission, "FORBIDDEN", "denied").WithHTTPStatus(403),
+		cerrors.New(cerrors.CategoryNetwork, "NETWORK", "down"),
+		cerrors.New(cerrors.CategoryConfig, "CREDENTIAL_STORE_INACCESSIBLE", "hidden"),
+	} {
+		if authUnhealthy(nil, err) && cerrors.AsCLIError(err).Code != "CREDENTIAL_STORE_INACCESSIBLE" {
+			t.Fatalf("offered reuse for %v", err)
+		}
+	}
+}

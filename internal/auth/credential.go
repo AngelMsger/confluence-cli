@@ -16,6 +16,9 @@ const (
 	SchemeBasic = "basic" // HTTP Basic (DC: user+password; Cloud: email+API token)
 )
 
+// missingStep is the last recovery step when no stored secret is visible.
+const missingStep = "Only if the host retry also reports missing credentials, run `" + constants.AppName + " config init` in the user's terminal or set CONFLUENCE_* environment variables."
+
 func init() {
 	kit.Register(&kit.Product{
 		Schemes: []kit.Scheme{
@@ -27,7 +30,7 @@ func init() {
 		DefaultScheme:    SchemePAT,
 		Name:             "Confluence",
 		Doctor:           constants.AppName + " doctor",
-		MissingStep:      "Only if the host retry also reports missing credentials, run `" + constants.AppName + " config init` in the user's terminal or set CONFLUENCE_* environment variables.",
+		MissingStep:      missingStep,
 		InaccessibleStep: "Do not run `config init` unless the same check also fails in the host environment.",
 	})
 }
