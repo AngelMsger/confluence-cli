@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-10-27
+
 ### Changed
 
 - `auth reuse` looks across schemes. A context without a working login (its
@@ -33,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `config set-context`, `auth guide`, missing-credential errors, `doctor` and
   HTTP 401 errors list `auth reuse` before any sign-in step when the
   configuration file shows that a stored login could apply.
+- Update the companion Skill to `1.11.10` for `auth reuse`.
 
 ### Added
 
@@ -837,7 +840,8 @@ Initial release.
 - Distribution via npm (`@angelmsger/confluence-cli`), `go install`, prebuilt
   release binaries and `make install`.
 
-[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.23.2...HEAD
+[Unreleased]: https://github.com/angelmsger/confluence-cli/compare/v0.24.0...HEAD
+[0.24.0]: https://github.com/angelmsger/confluence-cli/compare/v0.23.2...v0.24.0
 [0.23.2]: https://github.com/angelmsger/confluence-cli/compare/v0.23.1...v0.23.2
 [0.23.1]: https://github.com/angelmsger/confluence-cli/compare/v0.23.0...v0.23.1
 [0.23.0]: https://github.com/angelmsger/confluence-cli/compare/v0.22.0...v0.23.0
