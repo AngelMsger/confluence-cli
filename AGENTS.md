@@ -129,19 +129,27 @@ Two orthogonal protections guard every operation that mutates remote state:
    method *before* any HTTP request is sent. `--allow-writes` (root
    persistent flag) overrides the posture for one invocation.
 
-When you add a new mutating method on `Client`:
+`Client` is the union of `Reader` and `Writer` (`pkg/apiclient/client.go`).
+Declare every new method in exactly one of them: anything that can change
+remote state goes in `Writer`, never in `Reader`, because the read-only
+wrapper delegates `Reader` unchanged. When you add a method to `Writer`:
 
-- Add the method override on `readOnlyClient` in `pkg/apiclient/readonly.go`
-  so the wrapper actually blocks it.
+- Add its blocking override on `readOnlyClient` in
+  `pkg/apiclient/readonly.go`; the build fails until you do.
 - Add a `DescribeWrite` case + a `--dry-run` branch on the calling command.
 - Add an e2e assertion for both the `--dry-run` happy path and the
-  `READONLY_BLOCKED` rejection (see `scripts/e2e.sh`).
-- Add a row to the wrapper's table test in
-  `pkg/apiclient/readonly_test.go`.
+  `READONLY_BLOCKED` rejection inside the read-only block of
+  `scripts/e2e.sh`, where the mock server's write log must stay empty.
+- Add a row to the wrapper's write table in
+  `pkg/apiclient/readonly_test.go`; the test fails until you do.
+
+A method added to `Reader` needs a canned answer on `recordingReader` and a
+row in the delegation test in the same file, which also fails until it has
+one.
 
 `--dry-run` must *not* be blocked by read-only mode. `DescribeWrite` may perform
-reads needed to build the request, but never sends the mutation. The wrapper
-intentionally does not override it. Keep preview/live payload parity tests for
+reads needed to build the request, but never sends the mutation. It is a
+`Reader` method, so the wrapper passes it through. Keep preview/live payload parity tests for
 both flavors, including `AddCommentReq` and threaded storage/wiki bodies.
 
 ## Preserve content during write recovery

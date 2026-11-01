@@ -1,6 +1,7 @@
 // Command mockserver is a minimal in-memory Confluence Data Center REST API,
 // used by scripts/e2e.sh to exercise confluence-cli end-to-end without a real
 // server. It prints its base URL on the first line of stdout, then serves.
+// When MOCK_WRITE_LOG names a file, every write request is appended to it.
 package main
 
 import (
@@ -11,6 +12,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 func main() {
@@ -22,10 +24,46 @@ func main() {
 	fmt.Printf("http://%s\n", ln.Addr().String())
 	os.Stdout.Sync()
 
-	if err := http.Serve(ln, routes()); err != nil {
+	handler := routes()
+	if path := os.Getenv("MOCK_WRITE_LOG"); path != "" {
+		handler = logWrites(handler, path)
+	}
+	if err := http.Serve(ln, handler); err != nil {
 		fmt.Fprintln(os.Stderr, "mockserver:", err)
 		os.Exit(1)
 	}
+}
+
+// logWrites appends "METHOD PATH" to the file at path for every request that
+// can change state, so scripts/e2e.sh can assert that read-only mode let no
+// write reach the server. A request that cannot be logged fails with 500
+// rather than going unrecorded.
+func logWrites(next http.Handler, path string) http.Handler {
+	var mu sync.Mutex
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+			mu.Lock()
+			err := appendLine(path, r.Method+" "+r.URL.Path)
+			mu.Unlock()
+			if err != nil {
+				http.Error(w, "mockserver: write log failed: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func appendLine(path, line string) error {
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	if err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintln(f, line); err != nil {
+		f.Close()
+		return err
+	}
+	return f.Close()
 }
 
 func routes() http.Handler {
@@ -232,6 +270,7 @@ func comment(id, body string) map[string]any {
 func attachment(id, title string) map[string]any {
 	return map[string]any{
 		"id": id, "type": "attachment", "title": title,
+		"container":  map[string]any{"id": "123", "type": "page"},
 		"metadata":   map[string]any{"mediaType": "text/plain"},
 		"extensions": map[string]any{"fileSize": 19},
 		"_links":     map[string]any{"download": "/download/attachments/123/" + title},

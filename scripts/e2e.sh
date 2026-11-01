@@ -73,7 +73,8 @@ MOCK_LOG="$MOCK_DIR/server.log"
 trap '[[ -z "${MOCK_PID:-}" ]] || kill "$MOCK_PID" 2>/dev/null || true; rm -rf "$MOCK_DIR"' EXIT
 # Build explicitly so cleanup owns the server PID rather than a go-run wrapper.
 go build -o "$MOCK_DIR/mockserver" ./test/mockserver || exit 1
-"$MOCK_DIR/mockserver" >"$MOCK_LOG" 2>/dev/null &
+WRITE_LOG="$MOCK_DIR/writes.log"
+MOCK_WRITE_LOG="$WRITE_LOG" "$MOCK_DIR/mockserver" >"$MOCK_LOG" 2>/dev/null &
 MOCK_PID=$!
 
 MOCK_URL=""
@@ -218,9 +219,13 @@ assert_err_contains "update notice includes Skill refresh" '"next_steps"' \
                                           env CONFLUENCE_CLI_SKILL="$SKILL_VERSION" "${CLI[@]}" page get 404
 assert_exit      "bad flag -> 2"          2                "${CLI[@]}" page get 123 --bogus
 
-# Read-only mode: env CONFLUENCE_CLI_READ_ONLY blocks writes; --allow-writes
-# overrides it; --dry-run remains usable.
+# Read-only mode: env CONFLUENCE_CLI_READ_ONLY blocks every write command before
+# any request is sent; --dry-run remains usable; --allow-writes overrides it.
+# The mock server's write log must stay empty until the first --allow-writes call.
 RO_ENV=(env CONFLUENCE_CLI_READ_ONLY=1)
+RO_FILE="$MOCK_DIR/attachment.txt"
+echo "attachment" >"$RO_FILE"
+: >"$WRITE_LOG"
 assert_err_contains "read-only blocks page delete"   "READONLY_BLOCKED" \
                                                      "${RO_ENV[@]}" "${CLI[@]}" page delete 123 --yes
 assert_err_contains "read-only error names --allow-writes" "--allow-writes" \
@@ -229,12 +234,50 @@ assert_exit         "read-only exit category=permission -> 5" 5 \
                                                      "${RO_ENV[@]}" "${CLI[@]}" page delete 123 --yes
 assert_contains     "read-only + --dry-run still previews" '"method": "DELETE"' \
                                                      "${RO_ENV[@]}" "${CLI[@]}" page delete 123 --yes --dry-run
-assert_contains     "--allow-writes overrides read-only"   "trashed" \
-                                                     "${RO_ENV[@]}" "${CLI[@]}" --allow-writes page delete 123 --yes
+assert_err_contains "read-only blocks page create"   "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" page create --space ENG --title "X" --body "<p>x</p>"
+assert_err_contains "read-only blocks page update"   "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" page update 123 --title "Renamed" --version 2
+assert_err_contains "read-only blocks page move"     "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" page move 123 --target-parent 201
+assert_err_contains "read-only blocks page copy"     "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" page copy 123 --title "Copy"
+assert_err_contains "read-only blocks page restore"  "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" page restore 123 --version 1
+assert_err_contains "read-only blocks page watch"    "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" page watch 123
+assert_err_contains "read-only blocks page unwatch"  "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" page unwatch 123
 assert_err_contains "read-only blocks comment add"   "READONLY_BLOCKED" \
                                                      "${RO_ENV[@]}" "${CLI[@]}" comment add 123 --body "x"
 assert_contains     "read-only permits comment preview" '"dry_run": true' \
                                                      "${RO_ENV[@]}" "${CLI[@]}" comment add 123 --body "x" --dry-run
+assert_err_contains "read-only blocks comment update" "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" comment update c1 --body "y"
+assert_err_contains "read-only blocks comment delete" "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" comment delete c1 --yes
+assert_err_contains "read-only blocks attachment upload" "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" attachment upload 123 --file "$RO_FILE"
+assert_err_contains "read-only blocks attachment update" "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" attachment update att1 --file "$RO_FILE"
+assert_err_contains "read-only blocks attachment delete" "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" attachment delete att1 --yes
+assert_err_contains "read-only blocks label add"     "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" label add 123 runbook
+assert_err_contains "read-only blocks label remove"  "READONLY_BLOCKED" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" label remove 123 runbook
+if [[ -s "$WRITE_LOG" ]]; then
+  fail "read-only sent no write request (server saw: $(tr '\n' ';' <"$WRITE_LOG"))"
+else
+  pass "read-only sent no write request"
+fi
+assert_contains     "--allow-writes overrides read-only"   "trashed" \
+                                                     "${RO_ENV[@]}" "${CLI[@]}" --allow-writes page delete 123 --yes
+if grep -qx "DELETE /rest/api/content/123" "$WRITE_LOG"; then
+  pass "write log records --allow-writes requests"
+else
+  fail "write log records --allow-writes requests"
+fi
 
 echo "==> multi-context checks"
 TMPCFG2="$(mktemp -d)"

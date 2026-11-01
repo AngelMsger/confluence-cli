@@ -418,9 +418,13 @@ Two orthogonal write-protections, layered on top of `--yes`:
    `READONLY_BLOCKED` (`category=permission`, exit code 5) from every
    mutating method before any HTTP request is sent. The root persistent
    flag `--allow-writes` overrides the posture for a single invocation.
-   `DescribeWrite` (used by `--dry-run`) is intentionally not
-   overridden by the wrapper, so previews still work under a locked
-   session.
+   `Client` is the union of two interfaces: `Reader` (lookups, listings,
+   probes and `DescribeWrite`) and `Writer` (every mutation). The wrapper
+   keeps the inner client only as a `Reader` and blocks each `Writer`
+   method itself, so a new write without a blocking override does not
+   compile, and no write can be forwarded. `DescribeWrite` (used by
+   `--dry-run`) is a `Reader` method, so previews still work under a
+   locked session.
 
 Out of scope: `config init`, `auth login|logout`, `skill install`, and
 `attachment download --output` are CLI self-configuration / local IO,
@@ -471,8 +475,10 @@ informational check that does not change connectivity health.
   Coverage includes config precedence, auth resolution and file
   permissions, CQL construction, offset / cursor pagination, both
   flavors of mapping normalization, every scope / detail combination of
-  rendering, every output format and `--fields`, errors mapping, and
-  urlref.
+  rendering, every output format and `--fields`, errors mapping,
+  read-only blocking of every mutator and pass-through of every read
+  (both tables checked against the `Writer` and `Reader` method sets),
+  and urlref.
 - **HTTP-layer tests**: `httptest.Server` drives every client method;
   assertions cover path / parameters / auth header / v2-to-v1
   fallback.
@@ -482,9 +488,10 @@ informational check that does not change connectivity health.
 - **End-to-end**: `scripts/e2e.sh` builds the binary against an
   in-process mock Confluence (covering v1, v2, and DC routes) and
   exercises every command, asserting stdout contract and exit codes.
-  The read-only / dry-run safety modes are covered here as well —
-  every blocked-write path is paired with its `--allow-writes` and
-  `--dry-run` counter-test.
+  The read-only / dry-run safety modes are covered here as well: every
+  write command is run under read-only, the mock server's write log
+  (`MOCK_WRITE_LOG`) must show that none reached it, and `--allow-writes`
+  and `--dry-run` counter-tests follow.
 - **Read-only live verification**: `make e2e-live` runs only
   `page get` / `search` / `space list` / `doctor` against a real
   instance.
