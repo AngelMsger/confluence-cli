@@ -7,15 +7,18 @@ import (
 )
 
 // NewReadOnly wraps inner so that every mutating method returns a
-// READONLY_BLOCKED error before any HTTP request is sent. Reads (every other
-// method on Client) and DescribeWrite (the --dry-run preview path) pass
+// READONLY_BLOCKED error before any HTTP request is sent. Reads (the Reader
+// half of Client, including DescribeWrite, the --dry-run preview path) pass
 // straight through, so safe inspection still works.
-func NewReadOnly(inner Client) Client { return &readOnlyClient{Client: inner} }
+func NewReadOnly(inner Client) Client { return &readOnlyClient{Reader: inner} }
 
-// readOnlyClient is the read-only enforcement layer. It embeds Client so every
-// non-mutating method is inherited unchanged; mutating methods are overridden
-// to return READONLY_BLOCKED.
-type readOnlyClient struct{ Client }
+// readOnlyClient is the read-only enforcement layer. It keeps inner only as a
+// Reader, so reads are delegated unchanged and no write can reach inner. Every
+// Writer method is overridden below to return READONLY_BLOCKED; the assertion
+// that follows stops compilation when a new Writer method lacks its override.
+type readOnlyClient struct{ Reader }
+
+var _ Client = (*readOnlyClient)(nil)
 
 // blocked returns the structured error for a blocked write. op names the
 // operation (e.g. "DeletePage") so the error message is precise about which

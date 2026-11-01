@@ -18,8 +18,19 @@ import (
 )
 
 // Client is the flavor-agnostic Confluence API surface. All methods return
-// normalized models; flavor-specific request shapes are hidden.
+// normalized models; flavor-specific request shapes are hidden. It is the
+// union of Reader and Writer, so every method is classified as one or the
+// other; NewReadOnly relies on that split.
 type Client interface {
+	Reader
+	Writer
+}
+
+// Reader is the part of Client that never changes remote state: lookups,
+// listings, connectivity probes, and the --dry-run preview. The read-only
+// wrapper delegates exactly this interface, so a method that can mutate
+// Confluence must never be declared here.
+type Reader interface {
 	Flavor() Flavor
 	BaseURL() string
 	Ping(ctx context.Context) (ServerInfo, error)
@@ -28,18 +39,9 @@ type Client interface {
 	ListChildren(ctx context.Context, id string, opt ListOpts) (ListResult[Page], error)
 	ListDescendants(ctx context.Context, id string, opt ListOpts) (ListResult[Page], error)
 
-	CreatePage(ctx context.Context, req CreatePageReq) (*Page, error)
-	UpdatePage(ctx context.Context, req UpdatePageReq) (*Page, error)
-	DeletePage(ctx context.Context, req DeletePageReq) error
-	MovePage(ctx context.Context, req MovePageReq) (*Page, error)
-	CopyPage(ctx context.Context, req CopyPageReq) (*Page, error)
-	DescribeWrite(ctx context.Context, op any) (WriteRequestPlan, error)
-
 	ListPageVersions(ctx context.Context, id string, opt ListOpts) (ListResult[PageVersion], error)
-	RestorePage(ctx context.Context, req RestorePageReq) (*Page, error)
 
 	WatchStatus(ctx context.Context, pageID string) (bool, error)
-	SetWatch(ctx context.Context, req WatchReq) error
 
 	Search(ctx context.Context, cql string, opt ListOpts) (ListResult[SearchHit], error)
 
@@ -47,9 +49,6 @@ type Client interface {
 	GetSpace(ctx context.Context, key string) (*Space, error)
 
 	ListComments(ctx context.Context, pageID string, opt ListOpts) (ListResult[Comment], error)
-	AddComment(ctx context.Context, req AddCommentReq) (*Comment, error)
-	UpdateComment(ctx context.Context, req UpdateCommentReq) (*Comment, error)
-	DeleteComment(ctx context.Context, req DeleteCommentReq) error
 
 	CurrentUser(ctx context.Context) (*User, error)
 	SearchUsers(ctx context.Context, opt UserSearchOpts) (ListResult[User], error)
@@ -58,11 +57,36 @@ type Client interface {
 	ListAttachments(ctx context.Context, pageID string, opt ListOpts) (ListResult[Attachment], error)
 	GetAttachment(ctx context.Context, id string) (*Attachment, error)
 	DownloadAttachment(ctx context.Context, att Attachment, w io.Writer) (DownloadMeta, error)
+
+	ListLabels(ctx context.Context, pageID string, opt ListOpts) (ListResult[Label], error)
+
+	// DescribeWrite returns the request a write would send, without sending
+	// it; --dry-run previews use it, so it stays usable in read-only mode.
+	DescribeWrite(ctx context.Context, op any) (WriteRequestPlan, error)
+}
+
+// Writer is the part of Client that changes remote state. The read-only
+// wrapper (NewReadOnly) blocks each method explicitly, so adding one here
+// without its blocking override fails compilation.
+type Writer interface {
+	CreatePage(ctx context.Context, req CreatePageReq) (*Page, error)
+	UpdatePage(ctx context.Context, req UpdatePageReq) (*Page, error)
+	DeletePage(ctx context.Context, req DeletePageReq) error
+	MovePage(ctx context.Context, req MovePageReq) (*Page, error)
+	CopyPage(ctx context.Context, req CopyPageReq) (*Page, error)
+
+	RestorePage(ctx context.Context, req RestorePageReq) (*Page, error)
+
+	SetWatch(ctx context.Context, req WatchReq) error
+
+	AddComment(ctx context.Context, req AddCommentReq) (*Comment, error)
+	UpdateComment(ctx context.Context, req UpdateCommentReq) (*Comment, error)
+	DeleteComment(ctx context.Context, req DeleteCommentReq) error
+
 	UploadAttachment(ctx context.Context, req UploadAttachmentReq) (*Attachment, error)
 	UpdateAttachment(ctx context.Context, req UpdateAttachmentReq) (*Attachment, error)
 	DeleteAttachment(ctx context.Context, req DeleteAttachmentReq) error
 
-	ListLabels(ctx context.Context, pageID string, opt ListOpts) (ListResult[Label], error)
 	AddLabels(ctx context.Context, req AddLabelsReq) ([]Label, error)
 	RemoveLabel(ctx context.Context, req RemoveLabelReq) error
 }
