@@ -21,6 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   passing through read-only mode. CLI behavior, output and errors are
   unchanged.
 
+### Fixed
+
+- `--verbose` now logs each HTTP request's method, URL and status on stderr,
+  for every command as well as `doctor`, the login check and flavor detection.
+  The flag was accepted but logged nothing, although the error guidance points
+  at it. It uses agent-cli-kit's transport log, which never writes headers or
+  bodies.
+
 ## [0.24.0] - 2026-10-27
 
 ### Changed
