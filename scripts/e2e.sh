@@ -106,7 +106,7 @@ assert_contains  "doctor --no-update-check skips it" '"healthy": true' \
 assert_contains  "page get"               "Welcome"        "${CLI[@]}" page get 123
 # --verbose logs one line per request (method, URL, status) on stderr: never on
 # stdout, which stays data, and never a credential.
-VERBOSE_ERR="$(mktemp)"
+VERBOSE_ERR="$MOCK_DIR/verbose.err"
 VERBOSE_OUT="$("${CLI[@]}" --verbose page get 123 2>"$VERBOSE_ERR")"
 if grep -Eq '^GET http://[^ ]+ -> 200$' "$VERBOSE_ERR" &&
   [[ "$VERBOSE_OUT" == *Welcome* && "$VERBOSE_OUT" != *" -> 200"* ]] &&
@@ -115,8 +115,12 @@ if grep -Eq '^GET http://[^ ]+ -> 200$' "$VERBOSE_ERR" &&
 else
   fail "--verbose logs each request on stderr only"; head -5 "$VERBOSE_ERR"
 fi
-assert_err_contains "--verbose doctor logs its requests" " -> 200" \
-                                          "${CLI[@]}" --verbose doctor --no-update-check
+if "${CLI[@]}" --verbose doctor --no-update-check >/dev/null 2>"$MOCK_DIR/verbose-doctor.err" &&
+  grep -Eq '^GET http://[^ ]+ -> 200$' "$MOCK_DIR/verbose-doctor.err"; then
+  pass "--verbose doctor logs its requests on stderr"
+else
+  fail "--verbose doctor logs its requests on stderr"; head -5 "$MOCK_DIR/verbose-doctor.err"
+fi
 assert_contains  "page get outline scope" '"scope_applied": "outline"' \
                                           "${CLI[@]}" page get 123 --scope outline
 assert_contains  "page get section scope" "Details"        "${CLI[@]}" page get 123 --scope section --section sec-2

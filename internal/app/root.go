@@ -127,7 +127,7 @@ func newRootCmdWithState() (*cobra.Command, *appState) {
 	pf.StringVar(&state.gflags.timeout, "timeout", "", "request timeout, e.g. 30s")
 	pf.StringVar(&state.gflags.configPath, "config", "", "config directory (default ~/.angelmsger/confluence, falling back to ~/.confluence when only that exists)")
 	pf.StringVar(&state.gflags.useContext, "use-context", "", "use a named context for this invocation")
-	pf.BoolVarP(&state.gflags.verbose, "verbose", "v", false, "log each HTTP request's method, URL and status on stderr")
+	pf.BoolVarP(&state.gflags.verbose, "verbose", "v", false, "log each request to the server (method, URL and status) on stderr")
 	pf.BoolVar(&state.gflags.pretty, "pretty", false,
 		"human-friendly mode for interactive terminal use only (agents/scripts should omit): TUI in `config init`, colorized JSON elsewhere; errors without a TTY")
 	pf.BoolVar(&state.gflags.allowWrites, "allow-writes", false,
