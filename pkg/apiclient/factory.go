@@ -2,6 +2,7 @@ package apiclient
 
 import (
 	"context"
+	"io"
 	"time"
 
 	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
@@ -18,6 +19,9 @@ type BuildParams struct {
 	Timeout       time.Duration
 	MaxRetries    int
 	PageSize      int
+	// Verbose, when non-nil, receives the --verbose request log: one line per
+	// request with its method, URL and status, never headers or bodies.
+	Verbose io.Writer
 }
 
 // Build assembles a ready-to-use Client: it constructs the HTTP transport,
@@ -35,6 +39,7 @@ func Build(ctx context.Context, p BuildParams) (Client, Flavor, error) {
 		Timeout:    p.Timeout,
 		MaxRetries: p.MaxRetries,
 		Decorators: []transport.Decorator{p.AuthDecorator},
+		Verbose:    p.Verbose,
 	})
 
 	flavor := Flavor(p.Flavor)

@@ -20,7 +20,7 @@ func (c *apiClient) Search(ctx context.Context, cql string, opt ListOpts) (ListR
 			Title:        firstNonEmpty(r.Content.Title, r.Title),
 			Excerpt:      r.Excerpt,
 			LastModified: r.LastModified,
-			URL:          c.absURL(r.Content.Links.WebUI),
+			URL:          c.resourceURL(r.Content.Links.WebUI),
 		}
 		if r.Content.Space != nil {
 			hit.SpaceKey = r.Content.Space.Key

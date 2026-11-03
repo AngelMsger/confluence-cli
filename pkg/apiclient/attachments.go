@@ -49,6 +49,12 @@ func (c *apiClient) DownloadAttachment(ctx context.Context, att Attachment, w io
 		return DownloadMeta{}, cerrors.Wrap(err, cerrors.CategoryUsage, "BAD_REQUEST",
 			"failed to build download request")
 	}
+	// Public attachment links omit userinfo. Restore the configured credentials
+	// only when downloading from that same origin.
+	if base, err := url.Parse(c.baseURL); err == nil && req.URL.User == nil &&
+		req.URL.Scheme == base.Scheme && req.URL.Host == base.Host {
+		req.URL.User = base.User
+	}
 	resp, err := c.http.Do(ctx, req)
 	if err != nil {
 		return DownloadMeta{}, cerrors.Wrap(err, cerrors.CategoryNetwork, "NETWORK",
