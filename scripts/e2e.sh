@@ -107,13 +107,15 @@ assert_contains  "page get"               "Welcome"        "${CLI[@]}" page get 
 # --verbose logs one line per request (method, URL, status) on stderr: never on
 # stdout, which stays data, and never a credential.
 VERBOSE_ERR="$MOCK_DIR/verbose.err"
-VERBOSE_OUT="$("${CLI[@]}" --verbose page get 123 2>"$VERBOSE_ERR")"
-if grep -Eq '^GET http://[^ ]+ -> 200$' "$VERBOSE_ERR" &&
+VERBOSE_OUT="$(CONFLUENCE_SERVER="http://verbose-user:e2e-url-secret@${MOCK_URL#http://}" "${CLI[@]}" --verbose page get 123 2>"$VERBOSE_ERR")"
+if grep -Eq '^GET http://verbose-user:xxxxx@[^ ]+ -> 200$' "$VERBOSE_ERR" &&
   [[ "$VERBOSE_OUT" == *Welcome* && "$VERBOSE_OUT" != *" -> 200"* ]] &&
+  ! grep -qF 'e2e-url-secret' "$VERBOSE_ERR" &&
+  [[ "$VERBOSE_OUT" != *e2e-url-secret* ]] &&
   ! grep -qF "$CONFLUENCE_PERSONAL_ACCESS_TOKEN" "$VERBOSE_ERR"; then
-  pass "--verbose logs each request on stderr only"
+  pass "--verbose logs on stderr only and masks the URL password"
 else
-  fail "--verbose logs each request on stderr only"; head -5 "$VERBOSE_ERR"
+  fail "--verbose logs on stderr only and masks the URL password"; head -5 "$VERBOSE_ERR"
 fi
 if "${CLI[@]}" --verbose doctor --no-update-check >/dev/null 2>"$MOCK_DIR/verbose-doctor.err" &&
   grep -Eq '^GET http://[^ ]+ -> 200$' "$MOCK_DIR/verbose-doctor.err"; then

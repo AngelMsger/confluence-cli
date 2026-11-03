@@ -1,6 +1,7 @@
 package apiclient
 
 import (
+	"net/url"
 	"strconv"
 	"strings"
 )
@@ -185,7 +186,7 @@ func (c *apiClient) mapPage(r rawContent) *Page {
 		Title:   r.Title,
 		Version: versionOf(r.Version),
 		Body:    bodyOf(r.Body),
-		URL:     c.absURL(r.Links.WebUI),
+		URL:     c.resourceURL(r.Links.WebUI),
 	}
 	if r.Space != nil {
 		p.SpaceKey = r.Space.Key
@@ -203,7 +204,7 @@ func (c *apiClient) mapComment(r rawContent, pageID string) *Comment {
 		PageID:  pageID,
 		Body:    bodyOf(r.Body),
 		Version: versionOf(r.Version),
-		URL:     c.absURL(r.Links.WebUI),
+		URL:     c.resourceURL(r.Links.WebUI),
 	}
 	if cm.PageID == "" && r.Container != nil {
 		cm.PageID = spaceIDString(r.Container.ID)
@@ -220,7 +221,7 @@ func (c *apiClient) mapAttachment(r rawContent, pageID string) *Attachment {
 		ID:          r.ID,
 		Title:       r.Title,
 		PageID:      pageID,
-		DownloadURL: c.absURL(r.Links.Download),
+		DownloadURL: c.resourceURL(r.Links.Download),
 	}
 	if r.Metadata != nil {
 		a.MediaType = r.Metadata.MediaType
@@ -244,7 +245,7 @@ func (c *apiClient) mapSpace(r rawSpace) *Space {
 		Key:  r.Key,
 		Name: r.Name,
 		Type: r.Type,
-		URL:  c.absURL(r.Links.WebUI),
+		URL:  c.resourceURL(r.Links.WebUI),
 	}
 }
 
@@ -254,4 +255,15 @@ func (c *apiClient) absURL(link string) string {
 		return link
 	}
 	return c.baseURL + link
+}
+
+// resourceURL omits credentials from links returned in resource models.
+// Request construction still uses absURL and retains the configured credentials.
+func (c *apiClient) resourceURL(link string) string {
+	resolved, err := url.Parse(c.absURL(link))
+	if err != nil {
+		return ""
+	}
+	resolved.User = nil
+	return resolved.String()
 }

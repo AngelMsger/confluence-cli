@@ -23,6 +23,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Mask passwords embedded in the server URL in `--verbose` request logs by
+  pinning agent-cli-kit's merged transport fix (`8e0dd08af52d`).
+- Omit URL credentials from resource links on both Cloud and Data Center.
+  Attachment downloads retain configured URL credentials only for the same origin.
+
 - `--verbose` now logs each request to the server (method, URL and status) on
   stderr, for every command as well as `doctor`, the login check and flavor
   detection. The flag was accepted but logged nothing, although the error
