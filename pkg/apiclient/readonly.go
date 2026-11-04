@@ -20,19 +20,16 @@ type readOnlyClient struct{ Reader }
 
 var _ Client = (*readOnlyClient)(nil)
 
-// blocked returns the structured error for a blocked write. op names the
-// operation (e.g. "DeletePage") so the error message is precise about which
-// call was refused.
+// blocked returns the family's READONLY_BLOCKED error for a refused write. op
+// names the operation (e.g. "DeletePage") so the message says which call was
+// refused. Turning read-only mode off is the user's decision, so the error
+// names the user's switches without offering to change them.
 func blocked(op string) *cerrors.CLIError {
-	return cerrors.Newf(cerrors.CategoryPermission, "READONLY_BLOCKED",
-		"operation %q blocked: read-only mode is enabled", op).
-		WithHint("Re-run with --allow-writes to permit writes for this invocation, "+
-			"or unset CONFLUENCE_CLI_READ_ONLY / defaults.read_only.").
-		WithNextSteps(
-			"Add --allow-writes to the command line",
-			"unset CONFLUENCE_CLI_READ_ONLY",
-			"Set defaults.read_only=false in ~/.angelmsger/confluence/config.yaml (or ~/.confluence/config.yaml on legacy installs)",
-		)
+	return cerrors.ReadOnlyBlocked(op, cerrors.ReadOnlyMode{
+		Env:        "CONFLUENCE_CLI_READ_ONLY",
+		ConfigFile: "~/.angelmsger/confluence/config.yaml",
+		DryRun:     true,
+	})
 }
 
 // Page writes.

@@ -4,8 +4,9 @@ import (
 	"context"
 	"io"
 	"net/http"
-	"strings"
 	"testing"
+
+	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 )
 
 func TestUploadAttachment(t *testing.T) {
@@ -135,6 +136,8 @@ func TestDescribeWriteAttachment(t *testing.T) {
 	}
 }
 
+// The server accepted the upload but named no attachment: the upload happened,
+// so the error must not invite a second one.
 func TestUploadAttachmentNoResult(t *testing.T) {
 	t.Parallel()
 	c, _ := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -144,7 +147,10 @@ func TestUploadAttachmentNoResult(t *testing.T) {
 	_, err := c.UploadAttachment(context.Background(), UploadAttachmentReq{
 		PageID: "1", FileName: "f.txt", Data: []byte("x"),
 	})
-	if err == nil || !strings.Contains(err.Error(), "no attachment") {
-		t.Errorf("expected an empty-result error, got %v", err)
+	ce := cerrors.AsCLIError(err)
+	if ce.Code != cerrors.CodeWriteSucceededResponseInvalid || ce.Retryable ||
+		len(ce.NextSteps) == 0 || ce.NextSteps[0] != "confluence-cli attachment list '1' --limit 25" {
+		t.Errorf("got %s retryable=%v next %q; want %s naming the attachment list",
+			ce.Code, ce.Retryable, ce.NextSteps, cerrors.CodeWriteSucceededResponseInvalid)
 	}
 }

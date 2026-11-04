@@ -91,8 +91,15 @@ func runBatch(s *appState, items []string, do func(item string) (any, error)) er
 		return emitErr
 	}
 	if failed > 0 {
-		return cerrors.Newf(last.Category, "BATCH_PARTIAL_FAILURE",
-			"%d of %d operations failed; see per-item results on stdout", failed, len(items))
+		// Every batch is a write, and the items marked ok were applied, so
+		// rerunning the whole batch would repeat them. Each failed item's own
+		// error says whether retrying that item is safe.
+		e := cerrors.Newf(last.Category, "BATCH_PARTIAL_FAILURE",
+			"%d of %d operations failed; see per-item results on stdout", failed, len(items)).
+			WithHint("Do not rerun the whole batch: the items marked ok were applied. " +
+				"Retry only failed items whose error is retryable, and check any whose outcome is unknown with a read first.")
+		e.Retryable = false
+		return e
 	}
 	return nil
 }

@@ -1,9 +1,7 @@
 package app
 
 import (
-	"bufio"
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -126,9 +124,6 @@ func resolvePageBody(cmd *cobra.Command, body, bodyFile, format string) (apiclie
 	}
 }
 
-// stdinIsTTY reports whether stdin is an interactive terminal.
-func stdinIsTTY() bool { return isTerminal(os.Stdin) }
-
 // confirmDelete enforces the delete safety guard: --yes skips it, a non-TTY
 // without --yes is refused, and a TTY prompts on stderr. prompt describes the
 // thing being deleted, e.g. "page 123 (moves it to the trash)".
@@ -141,9 +136,12 @@ func confirmDelete(prompt string, yes bool) error {
 			"delete requires --yes when stdin is not a terminal").
 			WithHint("Re-run with --yes to confirm the deletion.")
 	}
-	fmt.Fprintf(os.Stderr, "Delete %s? [y/N] ", prompt)
-	line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
-	if ans := strings.ToLower(strings.TrimSpace(line)); ans != "y" && ans != "yes" {
+	ok, err := prompter().Confirm("Delete " + prompt + "?")
+	if err != nil {
+		return cerrors.Wrap(err, cerrors.CategoryUsage, "DELETE_ABORTED",
+			"deletion cancelled: the confirmation could not be read")
+	}
+	if !ok {
 		return cerrors.New(cerrors.CategoryUsage, "DELETE_ABORTED", "deletion cancelled")
 	}
 	return nil

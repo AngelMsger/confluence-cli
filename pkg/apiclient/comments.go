@@ -81,8 +81,12 @@ func (c *apiClient) AddComment(ctx context.Context, req AddCommentReq) (*Comment
 	if err != nil {
 		return nil, err
 	}
+	target := newCommentWriteTarget(req.PageID)
 	var raw rawContent
-	if err := c.doJSON(ctx, method, path, nil, payload, &raw); err != nil {
+	if err := c.doWriteJSON(ctx, method, path, payload, &raw, target); err != nil {
+		return nil, err
+	}
+	if err := requireCreatedID(raw.ID, target); err != nil {
 		return nil, err
 	}
 	return c.mapComment(raw, req.PageID), nil

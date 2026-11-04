@@ -20,9 +20,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to the client without a blocking override fails to compile instead of
   passing through read-only mode. CLI behavior, output and errors are
   unchanged.
+- A write that fails after it may have reached Confluence (timeout, network
+  error, 429, 5xx, redirect) now reports "Write outcome is unknown for …",
+  `retryable: false`, and the read that shows the result as `next_steps`,
+  instead of a retryable error that invited a second page, comment or upload.
+  Version conflicts, 404s and other definite refusals are unchanged. This is
+  agent-cli-kit v0.6.0's shared write rule.
+- A create whose response cannot be decoded or names no ID reports
+  `WRITE_SUCCEEDED_RESPONSE_INVALID`: the write happened. An attachment upload
+  that returned no attachment used to report `ATTACH_NO_RESULT`.
+- `BATCH_PARTIAL_FAILURE` from a multi-item `page delete` or `comment delete`
+  is no longer retryable: the items marked `ok` were applied.
+- `READONLY_BLOCKED` now uses agent-cli-kit's shared wording: its next steps
+  are `--dry-run` and, only for a write the user authorized, `--allow-writes`.
+  It no longer suggests unsetting `CONFLUENCE_CLI_READ_ONLY` or
+  `defaults.read_only`.
 
 ### Fixed
 
+- Stdin on `/dev/null` is no longer taken for a terminal: `page delete` or
+  `comment delete` without `--yes` now fails with `DELETE_NEEDS_YES` instead
+  of prompting and reporting `DELETE_ABORTED`, and `auth login` refuses to
+  prompt. Terminal checks and prompts use agent-cli-kit's `terminal` package.
+- Only a 2xx response counts as success; a redirect the client does not follow
+  is an error instead of an empty result.
 - Mask passwords embedded in the server URL in `--verbose` request logs, with
   agent-cli-kit v0.6.0's transport.
 - Omit URL credentials from resource links on both Cloud and Data Center.

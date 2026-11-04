@@ -75,8 +75,17 @@ func (c *apiClient) CreatePage(ctx context.Context, req CreatePageReq) (*Page, e
 	if err != nil {
 		return nil, err
 	}
+	return c.createPage(ctx, method, path, payload, newPageWriteTarget(req.SpaceKey, req.Title))
+}
+
+// createPage sends a page create (also a copy) and returns the new page, which
+// must carry its ID.
+func (c *apiClient) createPage(ctx context.Context, method, path string, payload any, target cerrors.WriteTarget) (*Page, error) {
 	var raw rawContent
-	if err := c.doJSON(ctx, method, path, nil, payload, &raw); err != nil {
+	if err := c.doWriteJSON(ctx, method, path, payload, &raw, target); err != nil {
+		return nil, err
+	}
+	if err := requireCreatedID(raw.ID, target); err != nil {
 		return nil, err
 	}
 	return c.mapPage(raw), nil
@@ -136,7 +145,7 @@ func (c *apiClient) UpdatePage(ctx context.Context, req UpdatePageReq) (*Page, e
 		return nil, err
 	}
 	var raw rawContent
-	if err := c.doJSON(ctx, method, path, nil, payload, &raw); err != nil {
+	if err := c.doWriteJSON(ctx, method, path, payload, &raw, pageWriteTarget(req.ID)); err != nil {
 		return nil, err
 	}
 	return c.mapPage(raw), nil
@@ -164,16 +173,17 @@ func (c *apiClient) DeletePage(ctx context.Context, req DeletePageReq) error {
 			"a page ID is required to delete a page")
 	}
 	base := c.v1Base() + "/content/" + url.PathEscape(req.ID)
+	target := pageWriteTarget(req.ID)
 	if !req.Purge {
-		return c.doJSON(ctx, "DELETE", base, nil, nil, nil)
+		return c.doWriteJSON(ctx, "DELETE", base, nil, nil, target)
 	}
 	// Trash first; tolerate not-found in case the page is already trashed.
-	if err := c.doJSON(ctx, "DELETE", base, nil, nil, nil); err != nil {
+	if err := c.doWriteJSON(ctx, "DELETE", base, nil, nil, target); err != nil {
 		if ce := cerrors.AsCLIError(err); ce.Category != cerrors.CategoryNotFound {
 			return err
 		}
 	}
-	return c.doJSON(ctx, "DELETE", base+"?status=trashed", nil, nil, nil)
+	return c.doWriteJSON(ctx, "DELETE", base+"?status=trashed", nil, nil, target)
 }
 
 // buildMovePage assembles the PUT request for moving a page. It GETs the
@@ -221,7 +231,7 @@ func (c *apiClient) MovePage(ctx context.Context, req MovePageReq) (*Page, error
 		return nil, err
 	}
 	var raw rawContent
-	if err := c.doJSON(ctx, method, path, nil, payload, &raw); err != nil {
+	if err := c.doWriteJSON(ctx, method, path, payload, &raw, pageWriteTarget(req.ID)); err != nil {
 		return nil, err
 	}
 	return c.mapPage(raw), nil
@@ -231,17 +241,27 @@ func (c *apiClient) MovePage(ctx context.Context, req MovePageReq) (*Page, error
 // copy. v1 has no native copy endpoint, so a copy is a shallow re-create:
 // title and body only, no child pages or attachments.
 func (c *apiClient) buildCopyPage(ctx context.Context, req CopyPageReq) (method, path string, payload any, err error) {
+	create, err := c.copyCreateReq(ctx, req)
+	if err != nil {
+		return "", "", nil, err
+	}
+	return c.buildCreatePage(create)
+}
+
+// copyCreateReq resolves a copy into the create request it sends: the source
+// page's body, and its space and parent unless the copy names its own.
+func (c *apiClient) copyCreateReq(ctx context.Context, req CopyPageReq) (CreatePageReq, error) {
 	if req.SourceID == "" {
-		return "", "", nil, cerrors.New(cerrors.CategoryUsage, "PAGE_NO_ID",
+		return CreatePageReq{}, cerrors.New(cerrors.CategoryUsage, "PAGE_NO_ID",
 			"a source page ID is required to copy a page")
 	}
 	if req.Title == "" {
-		return "", "", nil, cerrors.New(cerrors.CategoryUsage, "PAGE_NO_TITLE",
+		return CreatePageReq{}, cerrors.New(cerrors.CategoryUsage, "PAGE_NO_TITLE",
 			"a title is required for the copied page")
 	}
 	src, err := c.GetPage(ctx, req.SourceID, GetPageOpts{WithBody: true, BodyFormat: "storage"})
 	if err != nil {
-		return "", "", nil, err
+		return CreatePageReq{}, err
 	}
 	create := CreatePageReq{
 		SpaceKey: req.SpaceKey,
@@ -258,20 +278,20 @@ func (c *apiClient) buildCopyPage(ctx context.Context, req CopyPageReq) (method,
 	if src.Body != nil {
 		create.Body.Value = src.Body.Value
 	}
-	return c.buildCreatePage(create)
+	return create, nil
 }
 
 // CopyPage creates a shallow copy of a page (title and body only).
 func (c *apiClient) CopyPage(ctx context.Context, req CopyPageReq) (*Page, error) {
-	method, path, payload, err := c.buildCopyPage(ctx, req)
+	create, err := c.copyCreateReq(ctx, req)
 	if err != nil {
 		return nil, err
 	}
-	var raw rawContent
-	if err := c.doJSON(ctx, method, path, nil, payload, &raw); err != nil {
+	method, path, payload, err := c.buildCreatePage(create)
+	if err != nil {
 		return nil, err
 	}
-	return c.mapPage(raw), nil
+	return c.createPage(ctx, method, path, payload, newPageWriteTarget(create.SpaceKey, create.Title))
 }
 
 // DescribeWrite returns the HTTP request a write operation would send, without

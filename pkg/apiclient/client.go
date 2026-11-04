@@ -179,7 +179,15 @@ func (c *apiClient) doJSON(ctx context.Context, method, path string, query url.V
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 400 {
+	return c.readResponse(resp, out)
+}
+
+// readResponse decodes a response into out. Only a 2xx acknowledges a request:
+// anything else, a redirect included, is an error. A decode error keeps the
+// response status, so a write the server acknowledged but whose body could not
+// be read is told apart from one that failed.
+func (c *apiClient) readResponse(resp *http.Response, out any) error {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return c.httpError(resp)
 	}
 	if out == nil {
@@ -187,7 +195,10 @@ func (c *apiClient) doJSON(ctx context.Context, method, path string, query url.V
 		return nil
 	}
 	rawResp, _ := io.ReadAll(resp.Body)
-	return decodeJSON(rawResp, out)
+	if err := decodeJSON(rawResp, out); err != nil {
+		return cerrors.AsCLIError(err).WithHTTPStatus(resp.StatusCode)
+	}
+	return nil
 }
 
 // decodeJSON unmarshals a server response body into out. On failure it surfaces
@@ -201,11 +212,9 @@ func decodeJSON(body []byte, out any) error {
 		}
 		return cerrors.Wrap(err, cerrors.CategoryParse, "DECODE",
 			fmt.Sprintf("could not decode the server response: %v", err)).
-			WithHint("The server's JSON did not match what confluence-cli expected; "+
+			WithHint("The server's JSON did not match what confluence-cli expected; " +
 				"this is likely a client bug, not a failed request.").
-			WithNextSteps(
-				"The operation may well have succeeded — verify with a read command.",
-				"Report it with this snippet: "+snippet)
+			WithNextSteps("Report it with this snippet: " + snippet)
 	}
 	return nil
 }
@@ -265,15 +274,7 @@ func (c *apiClient) doMultipart(ctx context.Context, method, path string, file m
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 400 {
-		return c.httpError(resp)
-	}
-	if out == nil {
-		_, _ = io.Copy(io.Discard, resp.Body)
-		return nil
-	}
-	rawResp, _ := io.ReadAll(resp.Body)
-	return decodeJSON(rawResp, out)
+	return c.readResponse(resp, out)
 }
 
 // httpError turns a non-2xx response into a classified CLIError.

@@ -196,6 +196,31 @@ assert_exit      "page update conflict -> 11" 11           "${CLI[@]}" page upda
 assert_err_contains "page conflict reads raw content" '--as raw' \
                                           "${CLI[@]}" page update 409 --title "X"
 assert_exit      "page delete needs --yes -> 2" 2          "${CLI[@]}" page delete 123 </dev/null
+# /dev/null is a character device but not a terminal: no prompt, a structured error.
+assert_err_contains "stdin on /dev/null is not a terminal" "DELETE_NEEDS_YES" \
+                                          "${CLI[@]}" page delete 123 </dev/null
+assert_err_contains "auth login refuses /dev/null stdin" "AUTH_LOGIN_NEEDS_TTY" \
+                                          "${CLI[@]}" auth login </dev/null
+# A write that fails after it was sent may have been applied: the error says
+# the outcome is unknown, is not retryable and names the read that shows it.
+WRITE_ERR="$("${CLI[@]}" page update 503 --title "X" --version 2 2>&1 >/dev/null)"
+if [[ "$WRITE_ERR" == *"Write outcome is unknown for page 503"* &&
+      "$WRITE_ERR" == *'"retryable": false'* &&
+      "$WRITE_ERR" == *"confluence-cli page get '503' --no-body"* ]]; then
+  pass "failed write reports an unknown outcome"
+else
+  fail "failed write reports an unknown outcome"; printf '%s\n' "$WRITE_ERR" | head -8
+fi
+# A batch whose first item was applied must not invite a rerun of the batch.
+BATCH_OUT="$MOCK_DIR/batch.out"
+BATCH_ERR="$("${CLI[@]}" page delete 123 503 --yes 2>&1 >"$BATCH_OUT")"
+if [[ "$BATCH_ERR" == *"BATCH_PARTIAL_FAILURE"* && "$BATCH_ERR" == *'"retryable": false'* ]] &&
+   jq -e '.items[0].ok and (.items[1].error.message | startswith("Write outcome is unknown for page 503"))' \
+     "$BATCH_OUT" >/dev/null; then
+  pass "partial batch failure is not retryable"
+else
+  fail "partial batch failure is not retryable"; printf '%s\n' "$BATCH_ERR" | head -8
+fi
 assert_contains  "page delete --yes"      "trashed"        "${CLI[@]}" page delete 123 --yes
 assert_contains  "page move dry-run"      '"dry_run": true' \
                                           "${CLI[@]}" page move 123 --target-parent 201 --dry-run
@@ -249,6 +274,14 @@ assert_err_contains "read-only blocks page delete"   "READONLY_BLOCKED" \
                                                      "${RO_ENV[@]}" "${CLI[@]}" page delete 123 --yes
 assert_err_contains "read-only error names --allow-writes" "--allow-writes" \
                                                      "${RO_ENV[@]}" "${CLI[@]}" page delete 123 --yes
+# Turning read-only mode off is the user's call: the error offers --allow-writes
+# only for an authorized write and never tells an agent to unset the switch.
+RO_ERR="$("${RO_ENV[@]}" "${CLI[@]}" page delete 123 --yes 2>&1 >/dev/null)"
+if [[ "$RO_ERR" == *"Only if the user authorized this write"* && "$RO_ERR" != *"unset CONFLUENCE_CLI_READ_ONLY"* ]]; then
+  pass "read-only error leaves the switch to the user"
+else
+  fail "read-only error leaves the switch to the user"; printf '%s\n' "$RO_ERR" | head -5
+fi
 assert_exit         "read-only exit category=permission -> 5" 5 \
                                                      "${RO_ENV[@]}" "${CLI[@]}" page delete 123 --yes
 assert_contains     "read-only + --dry-run still previews" '"method": "DELETE"' \

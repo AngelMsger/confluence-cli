@@ -49,5 +49,5 @@ func (c *apiClient) SetWatch(ctx context.Context, req WatchReq) error {
 	if err != nil {
 		return err
 	}
-	return c.doJSON(ctx, method, path, nil, nil, nil)
+	return c.doWriteJSON(ctx, method, path, nil, nil, watchWriteTarget(req.PageID))
 }

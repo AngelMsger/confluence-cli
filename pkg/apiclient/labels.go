@@ -82,7 +82,7 @@ func (c *apiClient) AddLabels(ctx context.Context, req AddLabelsReq) ([]Label, e
 		return nil, err
 	}
 	var raw rawLabelList
-	if err := c.doJSON(ctx, method, path, nil, payload, &raw); err != nil {
+	if err := c.doWriteJSON(ctx, method, path, payload, &raw, labelWriteTarget(req.PageID)); err != nil {
 		return nil, err
 	}
 	labels := make([]Label, 0, len(raw.Results))
@@ -113,5 +113,5 @@ func (c *apiClient) RemoveLabel(ctx context.Context, req RemoveLabelReq) error {
 	if err != nil {
 		return err
 	}
-	return c.doJSON(ctx, method, path, nil, nil, nil)
+	return c.doWriteJSON(ctx, method, path, nil, nil, labelWriteTarget(req.PageID))
 }

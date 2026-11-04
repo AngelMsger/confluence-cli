@@ -183,6 +183,11 @@ func routes() http.Handler {
 			http.Error(w, `{"message":"version conflict"}`, http.StatusConflict)
 			return
 		}
+		if id == "503" {
+			// A write that fails after it was sent: the outcome is unknown.
+			http.Error(w, `{"message":"service unavailable"}`, http.StatusServiceUnavailable)
+			return
+		}
 		var req struct {
 			Title   string `json:"title"`
 			Version struct {
@@ -195,6 +200,10 @@ func routes() http.Handler {
 		writeJSON(w, p)
 	})
 	mux.HandleFunc("DELETE /rest/api/content/{id}", func(w http.ResponseWriter, r *http.Request) {
+		if r.PathValue("id") == "503" {
+			http.Error(w, `{"message":"service unavailable"}`, http.StatusServiceUnavailable)
+			return
+		}
 		w.WriteHeader(http.StatusNoContent)
 	})
 	mux.HandleFunc("GET /download/", func(w http.ResponseWriter, r *http.Request) {

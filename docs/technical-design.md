@@ -343,8 +343,23 @@ network server parse internal`.
 write operations (`page update` / `comment update`). Read the current content
 and version, merge the intended edit while preserving concurrent changes, then
 retry with that version. Page edits use raw storage XHTML, not a rendered or
-scoped body. Transient and decoding errors after writes require checking the
-remote outcome before replay; `retryable` does not establish write replay safety.
+scoped body.
+
+Writes follow the family's write-outcome rule from agent-cli-kit
+(`errors.FromWrite`). Every write goes through `doWriteJSON` or, for uploads,
+`doWriteMultipart` with a write target (`pkg/apiclient/write_targets.go`): what
+it changes and a bounded read-only command that shows it. A definite refusal
+(usage, config, auth, permission, not found, conflict) is returned unchanged.
+Any other failure, including a timeout, network error, 429, 5xx, a non-2xx
+redirect or an internal error, becomes "Write outcome is unknown for …" with
+`retryable=false`, the original code, category and HTTP status, and the
+target's read as next steps. Only a 2xx acknowledges a request. A 2xx response
+that cannot be decoded, or a create (page, copy, comment, attachment upload)
+whose response names no ID, reports `WRITE_SUCCEEDED_RESPONSE_INVALID`. A batch
+write with failed items returns a non-retryable `BATCH_PARTIAL_FAILURE`: the
+items marked `ok` were applied. Comment and attachment targets read the item
+with `page get <id> --no-body`, since the v1 content endpoint serves any
+content ID.
 
 `pkg/errors` re-exports agent-cli-kit's `errors` model, which owns this
 exit-code map. Its `hints.go` maps each category to confluence-cli's default
