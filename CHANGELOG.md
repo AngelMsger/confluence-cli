@@ -51,10 +51,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   prompt. Terminal checks and prompts use agent-cli-kit's `terminal` package.
 - Only a 2xx response counts as success; a redirect the client does not follow
   is an error instead of an empty result.
-- A write that Confluence answered with a redirect it follows (a login page or
-  single sign-on proxy, or `http` to `https`) is an unknown outcome caused by
-  `HTTP_REDIRECTED`. The HTTP client follows such a redirect with a GET, and
-  the page it landed on used to confirm the write: a watch read as set.
+- A write that Confluence answered with a redirect (a login page or single
+  sign-on proxy, or `http` to `https`) is an unknown outcome with the
+  redirect's status and a hint on what a redirect usually means.
+  agent-cli-kit v0.7.0's transport returns a write's redirect instead of
+  following it. Before, a 301, 302 or 303 was followed with a GET and the page
+  it landed on confirmed the write (a watch read as set); a 307 or 308 sent
+  the write again to the new location.
 - `config init`'s plain prompts read through agent-cli-kit's `terminal`
   package: an answer cut short by a failed read (not the end of input) is an
   error, not an answer, so a broken stdin can no longer confirm a save.

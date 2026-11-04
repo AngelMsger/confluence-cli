@@ -2,7 +2,7 @@ package apiclient
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -134,9 +134,10 @@ func TestWriteAcknowledgedButUnusable(t *testing.T) {
 	}
 }
 
-// A redirect after a write is followed with a GET, so the final 200 answers
-// that GET (here a login page) and says nothing about the write. Before this
-// rule a watch, or an upload, that landed on a login page read as done.
+// The transport returns a write's redirect instead of following it, so a
+// redirect (here to a login page) is an unknown outcome with its status.
+// Before, a 302 was followed with a GET and a watch, or an upload, that landed
+// on a login page read as done; a 307 sent the write again.
 func TestRedirectedWriteIsAnUnknownOutcome(t *testing.T) {
 	cases := []struct {
 		name  string
@@ -151,25 +152,26 @@ func TestRedirectedWriteIsAnUnknownOutcome(t *testing.T) {
 		}},
 	}
 	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			c, _ := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path == "/login" {
-					w.Header().Set("Content-Type", "text/html")
-					_, _ = w.Write([]byte("<html>sign in</html>"))
-					return
+		for _, status := range []int{http.StatusFound, http.StatusTemporaryRedirect} {
+			t.Run(fmt.Sprintf("%s %d", tc.name, status), func(t *testing.T) {
+				var landed int
+				c, _ := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.URL.Path == "/login" {
+						landed++
+						w.Header().Set("Content-Type", "text/html")
+						_, _ = w.Write([]byte("<html>sign in</html>"))
+						return
+					}
+					http.Redirect(w, r, "/login", status)
+				}))
+				ce := cerrors.AsCLIError(tc.write(c))
+				if ce == nil || ce.Retryable || ce.HTTPStatus != status || landed != 0 ||
+					!strings.HasPrefix(ce.Message, "Write outcome is unknown") ||
+					!strings.Contains(ce.Hint, "answered it with a redirect") {
+					t.Fatalf("got %+v after %d login page requests; want an unknown outcome with the %d", ce, landed, status)
 				}
-				http.Redirect(w, r, "/login", http.StatusFound)
-			}))
-			err := tc.write(c)
-			ce := cerrors.AsCLIError(err)
-			if err == nil || ce.Retryable || !strings.HasPrefix(ce.Message, "Write outcome is unknown") {
-				t.Fatalf("got %v; want an unknown write outcome", err)
-			}
-			var cause *cerrors.CLIError
-			if !errors.As(errors.Unwrap(ce), &cause) || cause.Code != "HTTP_REDIRECTED" {
-				t.Fatalf("cause %+v; want HTTP_REDIRECTED", cause)
-			}
-		})
+			})
+		}
 	}
 }
 
