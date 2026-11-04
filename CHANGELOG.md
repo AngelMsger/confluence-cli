@@ -23,8 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Mask passwords embedded in the server URL in `--verbose` request logs by
-  pinning agent-cli-kit's merged transport fix (`8e0dd08af52d`).
+- Mask passwords embedded in the server URL in `--verbose` request logs, with
+  agent-cli-kit v0.6.0's transport.
 - Omit URL credentials from resource links on both Cloud and Data Center.
   Attachment downloads retain configured URL credentials only for the same origin.
 
