@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `page get --status trashed` reads a page's copy in the trash (not found once
+  it is purged); the default `current` reads the live page as before. Library
+  callers set `GetPageOpts.Status`. An uncertain `page delete --purge` names
+  this read next to the live one, since the live read is not found both for a
+  trashed and for a purged page.
 - `apiclient.Reader` and `apiclient.Writer`, the read and write halves of
   `apiclient.Client`, for library callers. `Client` keeps exactly the same
   methods and signatures.
@@ -20,9 +25,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to the client without a blocking override fails to compile instead of
   passing through read-only mode. CLI behavior, output and errors are
   unchanged.
+- A write that fails after it may have reached Confluence (timeout, network
+  error, 429, 5xx, redirect) now reports "Write outcome is unknown for …",
+  `retryable: false`, and the read that shows the result as `next_steps`,
+  instead of a retryable error that invited a second page, comment or upload.
+  Version conflicts, 404s and other definite refusals are unchanged. This is
+  agent-cli-kit v0.6.0's shared write rule.
+- A create whose response cannot be decoded or names no ID reports
+  `WRITE_SUCCEEDED_RESPONSE_INVALID`: the write happened. An attachment upload
+  that returned no attachment used to report `ATTACH_NO_RESULT`.
+- `BATCH_PARTIAL_FAILURE` from a multi-item `page delete` or `comment delete`
+  is no longer retryable: the items marked `ok` were applied. Its next step
+  points at each item's own `next_steps` instead of "retry". With `--dry-run`
+  it says nothing was sent, instead of claiming the items were applied.
+- `READONLY_BLOCKED` now uses agent-cli-kit's shared wording: its next steps
+  are `--dry-run` and, only for a write the user authorized, `--allow-writes`.
+  It no longer suggests unsetting `CONFLUENCE_CLI_READ_ONLY` or
+  `defaults.read_only`.
 
 ### Fixed
 
+- Stdin on `/dev/null` is no longer taken for a terminal: `page delete` or
+  `comment delete` without `--yes` now fails with `DELETE_NEEDS_YES` instead
+  of prompting and reporting `DELETE_ABORTED`, and `auth login` refuses to
+  prompt. Terminal checks and prompts use agent-cli-kit's `terminal` package.
+- Only a 2xx response counts as success; a redirect the client does not follow
+  is an error instead of an empty result.
+- A write that Confluence answered with a redirect it follows (a login page or
+  single sign-on proxy, or `http` to `https`) is an unknown outcome caused by
+  `HTTP_REDIRECTED`. The HTTP client follows such a redirect with a GET, and
+  the page it landed on used to confirm the write: a watch read as set.
+- `config init`'s plain prompts read through agent-cli-kit's `terminal`
+  package: an answer cut short by a failed read (not the end of input) is an
+  error, not an answer, so a broken stdin can no longer confirm a save.
 - Mask passwords embedded in the server URL in `--verbose` request logs, with
   agent-cli-kit v0.6.0's transport.
 - Omit URL credentials from resource links on both Cloud and Data Center.

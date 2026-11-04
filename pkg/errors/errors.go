@@ -29,6 +29,10 @@ type (
 	Payload = kit.Payload
 	// PayloadBody is the body of Payload.
 	PayloadBody = kit.PayloadBody
+	// WriteTarget names what a write changes and how to read its state back.
+	WriteTarget = kit.WriteTarget
+	// ReadOnlyMode names the switches that turn read-only mode on.
+	ReadOnlyMode = kit.ReadOnlyMode
 )
 
 // Categories.
@@ -70,4 +74,21 @@ var (
 	AsCLIError     = kit.AsCLIError
 	ExitCode       = kit.ExitCode
 	FromHTTPStatus = kit.FromHTTPStatus
+)
+
+// The family's write-outcome rule: a write whose outcome is unknown is
+// reconciled with a read before anything replays it. See agent-cli-kit/errors.
+const (
+	CodeWriteSucceededResponseInvalid = kit.CodeWriteSucceededResponseInvalid
+	CodeWriteSucceededReadFailed      = kit.CodeWriteSucceededReadFailed
+	CodeWriteResponseMissingID        = kit.CodeWriteResponseMissingID
+	CodeReadOnlyBlocked               = kit.CodeReadOnlyBlocked
+)
+
+var (
+	FromWrite            = kit.FromWrite
+	WriteSucceeded       = kit.WriteSucceeded
+	MissingWriteIdentity = kit.MissingWriteIdentity
+	ShellArg             = kit.ShellArg
+	ReadOnlyBlocked      = kit.ReadOnlyBlocked
 )

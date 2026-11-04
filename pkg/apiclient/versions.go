@@ -165,7 +165,7 @@ func (c *apiClient) RestorePage(ctx context.Context, req RestorePageReq) (*Page,
 		return nil, err
 	}
 	var raw rawContent
-	if err := c.doJSON(ctx, method, path, nil, payload, &raw); err != nil {
+	if err := c.doWriteJSON(ctx, method, path, payload, &raw, pageWriteTarget(req.ID)); err != nil {
 		return nil, err
 	}
 	return c.mapPage(raw), nil

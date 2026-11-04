@@ -72,7 +72,7 @@ func (c *apiClient) UpdateComment(ctx context.Context, req UpdateCommentReq) (*C
 		return nil, err
 	}
 	var raw rawContent
-	if err := c.doJSON(ctx, method, path, nil, payload, &raw); err != nil {
+	if err := c.doWriteJSON(ctx, method, path, payload, &raw, commentWriteTarget(req.ID)); err != nil {
 		return nil, err
 	}
 	return c.mapComment(raw, ""), nil
@@ -93,5 +93,5 @@ func (c *apiClient) DeleteComment(ctx context.Context, req DeleteCommentReq) err
 	if err != nil {
 		return err
 	}
-	return c.doJSON(ctx, method, path, nil, nil, nil)
+	return c.doWriteJSON(ctx, method, path, nil, nil, commentWriteTarget(req.ID))
 }

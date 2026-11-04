@@ -102,7 +102,11 @@ func routes() http.Handler {
 			writeJSON(w, attachment("att1", "spec.txt"))
 			return
 		}
-		writeJSON(w, page(id, "Welcome"))
+		p := page(id, "Welcome")
+		if r.URL.Query().Get("status") == "trashed" {
+			p["status"] = "trashed"
+		}
+		writeJSON(w, p)
 	})
 	mux.HandleFunc("GET /rest/api/content/{id}/child/page", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]any{
@@ -183,6 +187,11 @@ func routes() http.Handler {
 			http.Error(w, `{"message":"version conflict"}`, http.StatusConflict)
 			return
 		}
+		if id == "503" {
+			// A write that fails after it was sent: the outcome is unknown.
+			http.Error(w, `{"message":"service unavailable"}`, http.StatusServiceUnavailable)
+			return
+		}
 		var req struct {
 			Title   string `json:"title"`
 			Version struct {
@@ -195,6 +204,15 @@ func routes() http.Handler {
 		writeJSON(w, p)
 	})
 	mux.HandleFunc("DELETE /rest/api/content/{id}", func(w http.ResponseWriter, r *http.Request) {
+		if r.PathValue("id") == "503" {
+			http.Error(w, `{"message":"service unavailable"}`, http.StatusServiceUnavailable)
+			return
+		}
+		// trash503 moves to the trash, then fails to be purged.
+		if r.PathValue("id") == "trash503" && r.URL.Query().Get("status") == "trashed" {
+			http.Error(w, `{"message":"service unavailable"}`, http.StatusServiceUnavailable)
+			return
+		}
 		w.WriteHeader(http.StatusNoContent)
 	})
 	mux.HandleFunc("GET /download/", func(w http.ResponseWriter, r *http.Request) {

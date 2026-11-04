@@ -67,13 +67,13 @@ func newAuthLoginCmd(s *appState) *cobra.Command {
 			cred := auth.Credential{Scheme: cfg.Auth.Scheme, Username: cfg.Auth.Username}
 			var err error
 			if cred.Scheme == auth.SchemeBasic && cred.Username == "" {
-				cred.Username, err = promptLine("Username or email", "")
+				cred.Username, err = prompter().Line("Username or email", "")
 				if err != nil {
 					return err
 				}
 				cred.Username = config.NormalizeUsername(cred.Username)
 			}
-			cred.Secret, err = promptSecret(secretLabel(cred.Scheme))
+			cred.Secret, err = prompter().Secret(secretLabel(cred.Scheme))
 			if err != nil {
 				return err
 			}

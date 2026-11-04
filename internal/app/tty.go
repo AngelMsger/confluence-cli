@@ -1,20 +1,17 @@
 package app
 
-import "os"
+import (
+	"os"
 
-// isTerminal reports whether f is an interactive terminal. Uses the file's
-// stat mode rather than syscalls so behaviour is consistent with stdin checks
-// elsewhere in the project.
-func isTerminal(f *os.File) bool {
-	if f == nil {
-		return false
-	}
-	fi, err := f.Stat()
-	if err != nil {
-		return false
-	}
-	return fi.Mode()&os.ModeCharDevice != 0
-}
+	"github.com/angelmsger/agent-cli-kit/terminal"
+)
 
-func stdoutIsTTY() bool { return isTerminal(os.Stdout) }
-func stderrIsTTY() bool { return isTerminal(os.Stderr) }
+// The process's streams are interactive only when their descriptor is a TTY:
+// stdin on /dev/null (cron, CI, agent runners) or a pipe is not. The kit's
+// terminal.Is is the family's single definition.
+func stdinIsTTY() bool  { return terminal.Is(os.Stdin) }
+func stdoutIsTTY() bool { return terminal.Is(os.Stdout) }
+func stderrIsTTY() bool { return terminal.Is(os.Stderr) }
+
+// prompter asks on stderr and reads stdin, so stdout stays a clean data channel.
+func prompter() terminal.Prompter { return terminal.Prompter{In: os.Stdin, Out: os.Stderr} }

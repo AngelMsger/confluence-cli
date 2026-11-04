@@ -179,7 +179,20 @@ func (c *apiClient) doJSON(ctx context.Context, method, path string, query url.V
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 400 {
+	return c.readResponse(method, resp, out)
+}
+
+// readResponse decodes the response to a method request into out. Only a 2xx
+// acknowledges a request: anything else, a redirect included, is an error, and
+// so is a response to a request a followed redirect turned into another
+// method. A decode error keeps the response status, so a write the server
+// acknowledged but whose body could not be read is told apart from one that
+// failed.
+func (c *apiClient) readResponse(method string, resp *http.Response, out any) error {
+	if err := redirectedRequest(method, resp); err != nil {
+		return err
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return c.httpError(resp)
 	}
 	if out == nil {
@@ -187,7 +200,10 @@ func (c *apiClient) doJSON(ctx context.Context, method, path string, query url.V
 		return nil
 	}
 	rawResp, _ := io.ReadAll(resp.Body)
-	return decodeJSON(rawResp, out)
+	if err := decodeJSON(rawResp, out); err != nil {
+		return cerrors.AsCLIError(err).WithHTTPStatus(resp.StatusCode)
+	}
+	return nil
 }
 
 // decodeJSON unmarshals a server response body into out. On failure it surfaces
@@ -201,11 +217,9 @@ func decodeJSON(body []byte, out any) error {
 		}
 		return cerrors.Wrap(err, cerrors.CategoryParse, "DECODE",
 			fmt.Sprintf("could not decode the server response: %v", err)).
-			WithHint("The server's JSON did not match what confluence-cli expected; "+
+			WithHint("The server's JSON did not match what confluence-cli expected; " +
 				"this is likely a client bug, not a failed request.").
-			WithNextSteps(
-				"The operation may well have succeeded — verify with a read command.",
-				"Report it with this snippet: "+snippet)
+			WithNextSteps("Report it with this snippet: " + snippet)
 	}
 	return nil
 }
@@ -265,15 +279,7 @@ func (c *apiClient) doMultipart(ctx context.Context, method, path string, file m
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode >= 400 {
-		return c.httpError(resp)
-	}
-	if out == nil {
-		_, _ = io.Copy(io.Discard, resp.Body)
-		return nil
-	}
-	rawResp, _ := io.ReadAll(resp.Body)
-	return decodeJSON(rawResp, out)
+	return c.readResponse(method, resp, out)
 }
 
 // httpError turns a non-2xx response into a classified CLIError.
@@ -317,4 +323,24 @@ func extractAPIMessage(raw []byte) string {
 		}
 	}
 	return ""
+}
+
+// redirectedRequest reports a request that a followed redirect turned into
+// another method. The HTTP client follows a 301, 302 or 303 after a POST, PUT
+// or DELETE with a GET, so the final response answers that GET (often a login
+// page or a proxy), never the request sent, and a status or body read from it
+// would prove nothing. For a write, whether it was applied is unknown (a server
+// may also apply a write and then redirect to its result), so the error is not
+// a refusal and the write rule reports it as an unknown outcome.
+func redirectedRequest(method string, resp *http.Response) error {
+	if resp.Request == nil || resp.Request.Method == method {
+		return nil
+	}
+	e := cerrors.Newf(cerrors.CategoryServer, "HTTP_REDIRECTED",
+		"Confluence redirected the %s request to %s", method, resp.Request.URL.Redacted()).
+		WithHint("A followed redirect usually means a login page, a single sign-on proxy, " +
+			"or a base URL that should use https. Check --base-url, then run doctor.")
+	// The same request is redirected the same way again.
+	e.Retryable = false
+	return e
 }

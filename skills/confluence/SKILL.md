@@ -57,7 +57,7 @@ search first; do not guess the target.
 ## Commands
 
 ```
-confluence-cli page get <id|url>          # fetch + render a page body (-o writes body to a file)
+confluence-cli page get <id|url>          # fetch + render a page body (-o writes body to a file; --status trashed reads the trash copy)
 confluence-cli page children <id|url>     # direct child pages
 confluence-cli page descendants <id|url>  # all descendant pages
 confluence-cli page create                # create a page (--space --title)

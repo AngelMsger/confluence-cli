@@ -74,11 +74,10 @@ $ confluence-cli page delete 123 --yes
     "category": "permission",
     "code": "READONLY_BLOCKED",
     "message": "operation \"DeletePage\" blocked: read-only mode is enabled",
-    "hint": "Re-run with --allow-writes to permit writes for this invocation, or unset CONFLUENCE_CLI_READ_ONLY / defaults.read_only.",
+    "hint": "Read-only mode is on, so nothing was sent. The user turned it on (CONFLUENCE_CLI_READ_ONLY or defaults.read_only in ~/.angelmsger/confluence/config.yaml), and only the user turns it off. --allow-writes lifts it for one invocation and is for a write the user authorized.",
     "next_steps": [
-      "Add --allow-writes to the command line",
-      "unset CONFLUENCE_CLI_READ_ONLY",
-      "Set defaults.read_only=false in ~/.angelmsger/confluence/config.yaml"
+      "Add --dry-run to preview the request without sending it",
+      "Only if the user authorized this write, re-run with --allow-writes"
     ],
     "retryable": false
   }

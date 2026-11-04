@@ -66,7 +66,9 @@ Returns each block containing the term plus its nearest heading for context.
 | `raw` | the body's **untouched source** — no rendering (requires `--scope full`) |
 
 `--no-body` fetches metadata only. `--body-format storage|view` selects the
-source representation to fetch (default `storage`).
+source representation to fetch (default `storage`). `--status trashed` reads
+the page's copy in the trash instead of the live page (`current`, the
+default); it is not found once the page is purged.
 
 `--output <file>` (`-o`) writes the rendered (or `--as raw`) body to a file
 instead of inlining it. stdout then returns only metadata (`id`, `title`,

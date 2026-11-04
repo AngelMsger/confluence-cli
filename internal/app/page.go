@@ -1,9 +1,7 @@
 package app
 
 import (
-	"bufio"
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -126,9 +124,6 @@ func resolvePageBody(cmd *cobra.Command, body, bodyFile, format string) (apiclie
 	}
 }
 
-// stdinIsTTY reports whether stdin is an interactive terminal.
-func stdinIsTTY() bool { return isTerminal(os.Stdin) }
-
 // confirmDelete enforces the delete safety guard: --yes skips it, a non-TTY
 // without --yes is refused, and a TTY prompts on stderr. prompt describes the
 // thing being deleted, e.g. "page 123 (moves it to the trash)".
@@ -141,9 +136,12 @@ func confirmDelete(prompt string, yes bool) error {
 			"delete requires --yes when stdin is not a terminal").
 			WithHint("Re-run with --yes to confirm the deletion.")
 	}
-	fmt.Fprintf(os.Stderr, "Delete %s? [y/N] ", prompt)
-	line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
-	if ans := strings.ToLower(strings.TrimSpace(line)); ans != "y" && ans != "yes" {
+	ok, err := prompter().Confirm("Delete " + prompt + "?")
+	if err != nil {
+		return cerrors.Wrap(err, cerrors.CategoryUsage, "DELETE_ABORTED",
+			"deletion cancelled: the confirmation could not be read")
+	}
+	if !ok {
 		return cerrors.New(cerrors.CategoryUsage, "DELETE_ABORTED", "deletion cancelled")
 	}
 	return nil
@@ -159,6 +157,7 @@ func newPageGetCmd(s *appState) *cobra.Command {
 		as         string
 		noBody     bool
 		outputPath string
+		status     string
 	)
 	cmd := &cobra.Command{
 		Use:   "get <id|url>",
@@ -179,12 +178,22 @@ func newPageGetCmd(s *appState) *cobra.Command {
 			"  # get the untouched storage XHTML (macros and all)\n" +
 			"  confluence-cli page get 123456 --as raw\n\n" +
 			"  # a page URL works in place of an ID\n" +
-			"  confluence-cli page get https://wiki.example.com/pages/viewpage.action?pageId=123456",
+			"  confluence-cli page get https://wiki.example.com/pages/viewpage.action?pageId=123456\n\n" +
+			"  # is the page still in the trash, or purged (not found)?\n" +
+			"  confluence-cli page get 123456 --no-body --status trashed",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id, err := resolvePageID(args[0])
 			if err != nil {
 				return err
+			}
+			if status != "current" && status != "trashed" {
+				return cerrors.Newf(cerrors.CategoryUsage, "PAGE_BAD_STATUS",
+					"--status must be current or trashed, not %q", status)
+			}
+			readStatus := ""
+			if status == "trashed" {
+				readStatus = status
 			}
 			ctx, cancel := cmdContext(s)
 			defer cancel()
@@ -195,6 +204,7 @@ func newPageGetCmd(s *appState) *cobra.Command {
 			page, err := client.GetPage(ctx, id, apiclient.GetPageOpts{
 				WithBody:   !noBody,
 				BodyFormat: bodyFormat,
+				Status:     readStatus,
 			})
 			if err != nil {
 				return err
@@ -260,7 +270,10 @@ func newPageGetCmd(s *appState) *cobra.Command {
 	f.StringVar(&keyword, "keyword", "", "keyword (with --scope keyword)")
 	f.StringVar(&as, "as", "markdown", "output form: markdown, text or raw (unrendered source)")
 	f.BoolVar(&noBody, "no-body", false, "fetch metadata only, skip the body")
+	f.StringVar(&status, "status", "current",
+		"which copy to read: current (the live page) or trashed (its copy in the trash; not found once purged)")
 	enumComplete(cmd, "body-format", "storage", "view")
+	enumComplete(cmd, "status", "current", "trashed")
 	enumComplete(cmd, "detail", "simple", "with-ids", "full")
 	enumComplete(cmd, "scope", "full", "outline", "section", "keyword")
 	enumComplete(cmd, "as", "markdown", "text", "raw")
@@ -483,7 +496,7 @@ func newPageDeleteCmd(s *appState) *cobra.Command {
 			if purge {
 				status = "purged"
 			}
-			return runBatch(s, items, func(arg string) (any, error) {
+			return runBatch(s, items, dryRun, func(arg string) (any, error) {
 				id, rerr := resolvePageID(arg)
 				if rerr != nil {
 					return nil, rerr

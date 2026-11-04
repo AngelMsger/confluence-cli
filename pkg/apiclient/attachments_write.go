@@ -56,13 +56,13 @@ func (c *apiClient) UploadAttachment(ctx context.Context, req UploadAttachmentRe
 	if err != nil {
 		return nil, err
 	}
+	target := newAttachmentWriteTarget(req.PageID, req.FileName)
 	var raw rawContentList
-	if err := c.doMultipart(ctx, method, path, file, fields, &raw); err != nil {
+	if err := c.doWriteMultipart(ctx, method, path, file, fields, &raw, target); err != nil {
 		return nil, err
 	}
-	if len(raw.Results) == 0 {
-		return nil, cerrors.New(cerrors.CategoryParse, "ATTACH_NO_RESULT",
-			"Confluence returned no attachment in the upload response")
+	if len(raw.Results) == 0 || raw.Results[0].ID == "" {
+		return nil, cerrors.MissingWriteIdentity(target)
 	}
 	return c.mapAttachment(raw.Results[0], req.PageID), nil
 }
@@ -95,7 +95,7 @@ func (c *apiClient) UpdateAttachment(ctx context.Context, req UpdateAttachmentRe
 		return nil, err
 	}
 	var raw rawContent
-	if err := c.doMultipart(ctx, method, path, file, fields, &raw); err != nil {
+	if err := c.doWriteMultipart(ctx, method, path, file, fields, &raw, attachmentWriteTarget(req.AttachmentID)); err != nil {
 		return nil, err
 	}
 	return c.mapAttachment(raw, req.PageID), nil
@@ -116,5 +116,5 @@ func (c *apiClient) DeleteAttachment(ctx context.Context, req DeleteAttachmentRe
 	if err != nil {
 		return err
 	}
-	return c.doJSON(ctx, method, path, nil, nil, nil)
+	return c.doWriteJSON(ctx, method, path, nil, nil, attachmentWriteTarget(req.AttachmentID))
 }
