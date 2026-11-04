@@ -189,7 +189,7 @@ func (c *apiClient) doJSON(ctx context.Context, method, path string, query url.V
 // acknowledged but whose body could not be read is told apart from one that
 // failed.
 func (c *apiClient) readResponse(method string, resp *http.Response, out any) error {
-	if err := redirectedWrite(method, resp); err != nil {
+	if err := redirectedRequest(method, resp); err != nil {
 		return err
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -325,20 +325,20 @@ func extractAPIMessage(raw []byte) string {
 	return ""
 }
 
-// redirectedWrite reports a write that a redirect turned into another request.
-// The HTTP client follows a 301, 302 or 303 after a POST, PUT or DELETE with a
-// GET, so the final response answers that GET (often a login page or a proxy),
-// never the write, and a status or body read from it would prove nothing.
-// Whether the write was applied is unknown, so the error is not a refusal and
-// the write rule reports it as an unknown outcome. A server may also apply a
-// write and then redirect to its result.
-func redirectedWrite(method string, resp *http.Response) error {
+// redirectedRequest reports a request that a followed redirect turned into
+// another method. The HTTP client follows a 301, 302 or 303 after a POST, PUT
+// or DELETE with a GET, so the final response answers that GET (often a login
+// page or a proxy), never the request sent, and a status or body read from it
+// would prove nothing. For a write, whether it was applied is unknown (a server
+// may also apply a write and then redirect to its result), so the error is not
+// a refusal and the write rule reports it as an unknown outcome.
+func redirectedRequest(method string, resp *http.Response) error {
 	if resp.Request == nil || resp.Request.Method == method {
 		return nil
 	}
 	e := cerrors.Newf(cerrors.CategoryServer, "HTTP_REDIRECTED",
 		"Confluence redirected the %s request to %s", method, resp.Request.URL.Redacted()).
-		WithHint("A redirect after a write usually means a login page, a single sign-on proxy, " +
+		WithHint("A followed redirect usually means a login page, a single sign-on proxy, " +
 			"or a base URL that should use https. Check --base-url, then run doctor.")
 	// The same request is redirected the same way again.
 	e.Retryable = false
