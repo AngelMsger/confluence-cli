@@ -71,9 +71,9 @@ optional `recovery` object instead.
 - **rate_limit (7) / server (9) / network (8)** → for reads, wait and retry
   within the task's bounds, preferring a narrower query over `--all`.
 - **"Write outcome is unknown for …"** → a write failed after it may have
-  reached Confluence (timeout, network error, 429, 5xx, a redirect, which
-  usually means a login page or single sign-on proxy: cause
-  `HTTP_REDIRECTED`). It is `retryable=false`: do not repeat it. Run the read
+  reached Confluence (timeout, network error, 429, 5xx, or a redirect, a 3xx
+  `http_status` that usually means a login page or single sign-on proxy:
+  check the base URL with `doctor`). It is `retryable=false`: do not repeat it. Run the read
   in `next_steps` (`page get <id> --no-body` for a page, comment or attachment
   ID, `comment list`, `attachment list`, `label list`, `page watch-status`, or
   a title `search` for a new page; after `page delete --purge`, also

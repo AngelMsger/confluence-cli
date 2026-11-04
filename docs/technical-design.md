@@ -353,10 +353,12 @@ it changes and a bounded read-only command that shows it. A definite refusal
 Any other failure, including a timeout, network error, 429, 5xx, a non-2xx
 redirect or an internal error, becomes "Write outcome is unknown for …" with
 `retryable=false`, the original code, category and HTTP status, and the
-target's read as next steps. Only a 2xx acknowledges a request, and only
-when it answers the request sent: a same-origin 301, 302 or 303 is followed
-with a GET, so `readResponse` reports that response (often a login page) as
-`HTTP_REDIRECTED` (server), an unknown outcome. A 2xx response
+target's read as next steps. Only a 2xx acknowledges a request. The kit's
+transport follows a redirect only for a GET or HEAD, so a write's 3xx reaches
+`readResponse` as is and becomes an unknown outcome with that status.
+Following it would answer a different request: a GET to the redirect's
+target (often a login page) after a 301, 302 or 303, or the write sent again
+after a 307 or 308. A 2xx response
 that cannot be decoded, or a create (page, copy, comment, attachment upload)
 whose response names no ID, reports `WRITE_SUCCEEDED_RESPONSE_INVALID`. A batch
 write with failed items returns a non-retryable `BATCH_PARTIAL_FAILURE`: the
