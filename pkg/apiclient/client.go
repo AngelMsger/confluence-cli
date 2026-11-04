@@ -179,14 +179,19 @@ func (c *apiClient) doJSON(ctx context.Context, method, path string, query url.V
 	}
 	defer resp.Body.Close()
 
-	return c.readResponse(resp, out)
+	return c.readResponse(method, resp, out)
 }
 
-// readResponse decodes a response into out. Only a 2xx acknowledges a request:
-// anything else, a redirect included, is an error. A decode error keeps the
-// response status, so a write the server acknowledged but whose body could not
-// be read is told apart from one that failed.
-func (c *apiClient) readResponse(resp *http.Response, out any) error {
+// readResponse decodes the response to a method request into out. Only a 2xx
+// acknowledges a request: anything else, a redirect included, is an error, and
+// so is a response to a request a followed redirect turned into another
+// method. A decode error keeps the response status, so a write the server
+// acknowledged but whose body could not be read is told apart from one that
+// failed.
+func (c *apiClient) readResponse(method string, resp *http.Response, out any) error {
+	if err := redirectedWrite(method, resp); err != nil {
+		return err
+	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return c.httpError(resp)
 	}
@@ -274,7 +279,7 @@ func (c *apiClient) doMultipart(ctx context.Context, method, path string, file m
 	}
 	defer resp.Body.Close()
 
-	return c.readResponse(resp, out)
+	return c.readResponse(method, resp, out)
 }
 
 // httpError turns a non-2xx response into a classified CLIError.
@@ -318,4 +323,24 @@ func extractAPIMessage(raw []byte) string {
 		}
 	}
 	return ""
+}
+
+// redirectedWrite reports a write that a redirect turned into another request.
+// The HTTP client follows a 301, 302 or 303 after a POST, PUT or DELETE with a
+// GET, so the final response answers that GET (often a login page or a proxy),
+// never the write, and a status or body read from it would prove nothing.
+// Whether the write was applied is unknown, so the error is not a refusal and
+// the write rule reports it as an unknown outcome. A server may also apply a
+// write and then redirect to its result.
+func redirectedWrite(method string, resp *http.Response) error {
+	if resp.Request == nil || resp.Request.Method == method {
+		return nil
+	}
+	e := cerrors.Newf(cerrors.CategoryServer, "HTTP_REDIRECTED",
+		"Confluence redirected the %s request to %s", method, resp.Request.URL.Redacted()).
+		WithHint("A redirect after a write usually means a login page, a single sign-on proxy, " +
+			"or a base URL that should use https. Check --base-url, then run doctor.")
+	// The same request is redirected the same way again.
+	e.Retryable = false
+	return e
 }

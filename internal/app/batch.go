@@ -64,7 +64,7 @@ func collectBatchArgs(args []string, r io.Reader) ([]string, error) {
 // some fail, and returns a summarizing error so the process exit code still
 // reflects a partial failure. do should return the per-item success payload (or
 // nil) and an error; it is responsible for honoring --dry-run itself.
-func runBatch(s *appState, items []string, do func(item string) (any, error)) error {
+func runBatch(s *appState, items []string, dryRun bool, do func(item string) (any, error)) error {
 	if len(items) == 1 {
 		res, err := do(items[0])
 		if err != nil {
@@ -91,15 +91,27 @@ func runBatch(s *appState, items []string, do func(item string) (any, error)) er
 		return emitErr
 	}
 	if failed > 0 {
-		// Every batch is a write, and the items marked ok were applied, so
-		// rerunning the whole batch would repeat them. Each failed item's own
-		// error says whether retrying that item is safe.
-		e := cerrors.Newf(last.Category, "BATCH_PARTIAL_FAILURE",
-			"%d of %d operations failed; see per-item results on stdout", failed, len(items)).
-			WithHint("Do not rerun the whole batch: the items marked ok were applied. " +
-				"Retry only failed items whose error is retryable, and check any whose outcome is unknown with a read first.")
-		e.Retryable = false
-		return e
+		return batchPartialFailure(last.Category, failed, len(items), dryRun)
 	}
 	return nil
+}
+
+// batchPartialFailure summarizes a batch with failed items. In a live batch
+// the items marked ok were applied, so rerunning the whole batch would repeat
+// them: the error is not retryable and its next step points at each item's
+// own guidance. Its next steps are set explicitly, because the category's
+// defaults ("Retry later") would invite exactly that rerun. A --dry-run batch
+// sent nothing, so it says so instead.
+func batchPartialFailure(cat cerrors.Category, failed, total int, dryRun bool) error {
+	e := cerrors.Newf(cat, "BATCH_PARTIAL_FAILURE",
+		"%d of %d operations failed; see per-item results on stdout", failed, total)
+	if dryRun {
+		return e.WithHint("This was a --dry-run preview, so nothing was sent; the items marked ok show the requests they would send.").
+			WithNextSteps("Fix or drop the failed items, then preview again")
+	}
+	e = e.WithHint("Do not rerun the whole batch: the items marked ok were applied. " +
+		"Retry only failed items whose error is retryable, and check any whose outcome is unknown with a read first.").
+		WithNextSteps("Follow each failed item's own next_steps in the per-item results on stdout")
+	e.Retryable = false
+	return e
 }

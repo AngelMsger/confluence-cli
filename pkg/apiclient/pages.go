@@ -18,6 +18,9 @@ func (c *apiClient) GetPage(ctx context.Context, id string, opt GetPageOpts) (*P
 	}
 	q := url.Values{}
 	q.Set("expand", strings.Join(expand, ","))
+	if opt.Status != "" {
+		q.Set("status", opt.Status)
+	}
 
 	var raw rawContent
 	if err := c.getJSON(ctx, c.v1Base()+"/content/"+url.PathEscape(id), q, &raw); err != nil {

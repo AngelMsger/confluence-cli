@@ -353,13 +353,19 @@ it changes and a bounded read-only command that shows it. A definite refusal
 Any other failure, including a timeout, network error, 429, 5xx, a non-2xx
 redirect or an internal error, becomes "Write outcome is unknown for …" with
 `retryable=false`, the original code, category and HTTP status, and the
-target's read as next steps. Only a 2xx acknowledges a request. A 2xx response
+target's read as next steps. Only a 2xx acknowledges a request, and only
+when it answers the request sent: a same-origin 301, 302 or 303 is followed
+with a GET, so `readResponse` reports that response (often a login page) as
+`HTTP_REDIRECTED` (server), an unknown outcome. A 2xx response
 that cannot be decoded, or a create (page, copy, comment, attachment upload)
 whose response names no ID, reports `WRITE_SUCCEEDED_RESPONSE_INVALID`. A batch
 write with failed items returns a non-retryable `BATCH_PARTIAL_FAILURE`: the
-items marked `ok` were applied. Comment and attachment targets read the item
-with `page get <id> --no-body`, since the v1 content endpoint serves any
-content ID.
+items marked `ok` were applied (for `--dry-run`, previewed; nothing was sent).
+Comment and attachment targets read the item with `page get <id> --no-body`,
+since the v1 content endpoint serves any content ID. `page delete --purge`
+also names `page get <id> --no-body --status trashed`: the live read is not
+found both for a trashed and for a purged page, while the trash read shows a
+page that is still in the trash.
 
 `pkg/errors` re-exports agent-cli-kit's `errors` model, which owns this
 exit-code map. Its `hints.go` maps each category to confluence-cli's default

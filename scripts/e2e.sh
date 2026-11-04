@@ -222,6 +222,18 @@ else
   fail "partial batch failure is not retryable"; printf '%s\n' "$BATCH_ERR" | head -8
 fi
 assert_contains  "page delete --yes"      "trashed"        "${CLI[@]}" page delete 123 --yes
+# A purge whose removal from the trash has an unknown outcome names the trash
+# read, which tells a page still in the trash from a purged one (not found).
+PURGE_ERR="$("${CLI[@]}" page delete trash503 --purge --yes 2>&1 >/dev/null)"
+if [[ "$PURGE_ERR" == *"Write outcome is unknown for page trash503"* &&
+      "$PURGE_ERR" == *"confluence-cli page get 'trash503' --no-body --status trashed"* ]] &&
+   "${CLI[@]}" page get trash503 --no-body --status trashed | jq -e '.status == "trashed"' >/dev/null; then
+  pass "uncertain purge names the trash read"
+else
+  fail "uncertain purge names the trash read"; printf '%s\n' "$PURGE_ERR" | head -8
+fi
+assert_err_contains "page get rejects an unknown --status" "PAGE_BAD_STATUS" \
+                                          "${CLI[@]}" page get 123 --status deleted
 assert_contains  "page move dry-run"      '"dry_run": true' \
                                           "${CLI[@]}" page move 123 --target-parent 201 --dry-run
 assert_contains  "page move"              '"id"'           "${CLI[@]}" page move 123 --target-parent 201

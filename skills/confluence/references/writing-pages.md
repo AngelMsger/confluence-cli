@@ -114,6 +114,8 @@ confluence-cli page delete 12345 12346 --yes      # batch: several IDs at once
 from stdin. With more than one it returns an `{items, has_more}` aggregate with a
 per-page `ok`/`error`, deletes every one even if some fail, and exits non-zero on
 any failure. `--yes` / `--purge` / `--dry-run` apply to the whole batch.
+`page get <id> --no-body --status trashed` reads a page in the trash; it is not
+found once the page is purged.
 
 ## Move and copy
 

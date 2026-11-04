@@ -173,10 +173,10 @@ func (c *apiClient) DeletePage(ctx context.Context, req DeletePageReq) error {
 			"a page ID is required to delete a page")
 	}
 	base := c.v1Base() + "/content/" + url.PathEscape(req.ID)
-	target := pageWriteTarget(req.ID)
 	if !req.Purge {
-		return c.doWriteJSON(ctx, "DELETE", base, nil, nil, target)
+		return c.doWriteJSON(ctx, "DELETE", base, nil, nil, pageWriteTarget(req.ID))
 	}
+	target := purgeWriteTarget(req.ID)
 	// Trash first; tolerate not-found in case the page is already trashed.
 	if err := c.doWriteJSON(ctx, "DELETE", base, nil, nil, target); err != nil {
 		if ce := cerrors.AsCLIError(err); ce.Category != cerrors.CategoryNotFound {

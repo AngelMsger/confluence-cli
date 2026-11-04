@@ -741,6 +741,7 @@ Use --as raw to get the untouched source body instead.</p>
         <tr><td><code>--output, -o</code></td><td></td><td>write the page body to a file; stdout then carries only metadata (id, title, output_path, bytes)</td></tr>
         <tr><td><code>--scope</code></td><td><code>full</code></td><td>read scope: full, outline, section or keyword</td></tr>
         <tr><td><code>--section</code></td><td></td><td>section ID (with --scope section)</td></tr>
+        <tr><td><code>--status</code></td><td><code>current</code></td><td>which copy to read: current (the live page) or trashed (its copy in the trash; not found once purged)</td></tr>
         </tbody>
       </table>
       <h3>Examples</h3><pre><span class="c">  # render the whole page as Markdown</span>
@@ -754,7 +755,10 @@ Use --as raw to get the untouched source body instead.</p>
   confluence-cli page get 123456 --as raw
 
 <span class="c">  # a page URL works in place of an ID</span>
-  confluence-cli page get https://wiki.example.com/pages/viewpage.action?pageId=123456</pre>
+  confluence-cli page get https://wiki.example.com/pages/viewpage.action?pageId=123456
+
+<span class="c">  # is the page still in the trash, or purged (not found)?</span>
+  confluence-cli page get 123456 --no-body --status trashed</pre>
     </section>
 
     <section class="cmd" id="confluence-cli-page-history">

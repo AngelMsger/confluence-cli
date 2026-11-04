@@ -150,6 +150,9 @@ type GetPageOpts struct {
 	BodyFormat string
 	// WithBody requests the page body; false fetches metadata only.
 	WithBody bool
+	// Status is "" for the live page (the server's default, current) or
+	// "trashed" to read the page's copy in the trash.
+	Status string
 }
 
 // ListOpts controls a paginated listing.

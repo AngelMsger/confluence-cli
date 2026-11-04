@@ -229,7 +229,7 @@ func newCommentDeleteCmd(s *appState) *cobra.Command {
 					return cerr
 				}
 			}
-			return runBatch(s, items, func(arg string) (any, error) {
+			return runBatch(s, items, dryRun, func(arg string) (any, error) {
 				id, rerr := resolveCommentID(arg)
 				if rerr != nil {
 					return nil, rerr

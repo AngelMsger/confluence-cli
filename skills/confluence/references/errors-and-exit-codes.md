@@ -71,11 +71,14 @@ optional `recovery` object instead.
 - **rate_limit (7) / server (9) / network (8)** → for reads, wait and retry
   within the task's bounds, preferring a narrower query over `--all`.
 - **"Write outcome is unknown for …"** → a write failed after it may have
-  reached Confluence (timeout, network error, 429, 5xx, an unexpected
-  redirect). It is `retryable=false`: do not repeat it. Run the read in
-  `next_steps` (`page get <id> --no-body` for a page, comment or attachment
+  reached Confluence (timeout, network error, 429, 5xx, a redirect, which
+  usually means a login page or single sign-on proxy: cause
+  `HTTP_REDIRECTED`). It is `retryable=false`: do not repeat it. Run the read
+  in `next_steps` (`page get <id> --no-body` for a page, comment or attachment
   ID, `comment list`, `attachment list`, `label list`, `page watch-status`, or
-  a title `search` for a new page), follow pagination if needed, and repeat
+  a title `search` for a new page; after `page delete --purge`, also
+  `page get <id> --no-body --status trashed`, which shows a page still in the
+  trash and is not found once it is purged), follow pagination if needed, and repeat
   the write only if the read shows it did not happen. If the outcome stays
   uncertain, report that instead of replaying it.
 - **`WRITE_SUCCEEDED_RESPONSE_INVALID`** → the write happened, but its
@@ -96,4 +99,5 @@ optional `recovery` object instead.
   applied and the error is `retryable=false`: never rerun the whole batch.
   Retry only failed items whose own error is retryable or a definite refusal
   you have fixed (access, identifiers), and read any whose outcome is unknown
-  first.
+  first. With `--dry-run` nothing was sent; fix the failed items and preview
+  again.

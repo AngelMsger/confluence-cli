@@ -38,6 +38,18 @@ func pageWriteTarget(id string) cerrors.WriteTarget {
 	}
 }
 
+// purgeWriteTarget is page delete --purge, which trashes the page and then
+// removes its trashed copy. A live read is 404 both for a trashed and for a
+// purged page, so the trash read tells the two apart: it shows the page while
+// it is in the trash and is 404 once it is purged.
+func purgeWriteTarget(id string) cerrors.WriteTarget {
+	return cerrors.WriteTarget{
+		Description: "page " + id,
+		ReadSteps: []string{contentReadStep(id),
+			"confluence-cli page get " + cerrors.ShellArg(id) + " --no-body --status trashed"},
+	}
+}
+
 // newPageWriteTarget is for a create or copy: the new page has no ID yet, so
 // the read searches its space for the title.
 func newPageWriteTarget(space, title string) cerrors.WriteTarget {
