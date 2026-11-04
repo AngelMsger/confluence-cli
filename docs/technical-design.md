@@ -34,8 +34,10 @@ credential resolution, the configuration engine, and the code behind
 CLI in the family; confluence-cli supplies its own hints, User-Agent,
 keychain service name, auth schemes, settings table and release repository.
 `pkg/transport` re-exports the kit's retrying HTTP client with the User-Agent
-defaulted to `confluence-cli/<version>`; it keeps Go's default redirect policy,
-because attachment downloads may be redirected to another origin.
+defaulted to `confluence-cli/<version>`. It follows a read's redirect to any
+origin, because attachment downloads may be redirected to another origin, and
+it never follows a write's redirect: the 3xx comes back as an error, and the
+write reports its outcome as unknown (`cerrors.FromWrite`).
 
 ## 2. API flavor difference matrix
 
