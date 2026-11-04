@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
 	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
+	"github.com/angelmsger/confluence-cli/pkg/transport"
 )
 
 // A write that fails after it was sent may have been applied, so its error must
@@ -172,6 +174,27 @@ func TestRedirectedWriteIsAnUnknownOutcome(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// A library caller can pass its own HTTP client in Config.Transport, which
+// follows redirects by Go's policy. A write's redirect is still an unknown
+// outcome: the login page's 200 at the end of it never reads as done.
+func TestCallerClientRedirectedWriteIsAnUnknownOutcome(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/login" {
+			w.Header().Set("Content-Type", "text/html")
+			_, _ = w.Write([]byte("<html>sign in</html>"))
+			return
+		}
+		http.Redirect(w, r, "/login", http.StatusFound)
+	}))
+	t.Cleanup(srv.Close)
+	c := New(Config{Flavor: FlavorDataCenter, BaseURL: srv.URL,
+		Transport: transport.New(transport.Options{Doer: &http.Client{}})})
+	ce := cerrors.AsCLIError(c.SetWatch(context.Background(), WatchReq{PageID: "123", Watching: true}))
+	if ce == nil || ce.Retryable || ce.HTTPStatus != http.StatusFound || !strings.HasPrefix(ce.Message, "Write outcome is unknown") {
+		t.Fatalf("got %+v; want an unknown outcome with the 302", ce)
 	}
 }
 
