@@ -45,6 +45,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `pkg/transport`, for a library caller that passes its own HTTP client
+  (`Options.Doer`): a read with a body (a `RetryMethods` verb, or a request
+  marked with agent-cli-kit's `transport.AsRead`) that the client turned into
+  a GET on a 301, 302 or 303 is answered by that redirect, not by the GET's
+  page, and a transient failure of that page no longer retries the read. This
+  is agent-cli-kit v0.8.1. The CLI's own client never follows such a redirect,
+  so the CLI's behavior is unchanged.
 - Stdin on `/dev/null` is no longer taken for a terminal: `page delete` or
   `comment delete` without `--yes` now fails with `DELETE_NEEDS_YES` instead
   of prompting and reporting `DELETE_ABORTED`, and `auth login` refuses to
