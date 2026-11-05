@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/angelmsger/agent-cli-kit/doctor"
 	"github.com/angelmsger/agent-cli-kit/update"
 	"github.com/angelmsger/confluence-cli/internal/auth"
 	"github.com/angelmsger/confluence-cli/pkg/apiclient"
@@ -89,8 +90,8 @@ func runDoctor(s *appState, skipUpdate bool) doctorReport {
 	credOK := credErr == nil
 	checks = append(checks, doctorCheck{
 		Name: "credentials", OK: credOK,
-		Status: diagnosticStatus(credErr), RecoveryScope: diagnosticRecoveryScope(credErr),
-		Detail: pick(credOK, "scheme = "+cred.Scheme, detailOf(credErr)),
+		Status: doctor.Status(credErr), RecoveryScope: doctor.RecoveryScope(credErr),
+		Detail: pick(credOK, "scheme = "+cred.Scheme, doctor.Detail(credErr)),
 	})
 
 	// 3. Connectivity + flavor (only when prerequisites pass).
@@ -115,14 +116,14 @@ func runDoctor(s *appState, skipUpdate bool) doctorReport {
 		})
 		if err != nil {
 			client, connErr = nil, err
-			checks = append(checks, doctorCheck{Name: "connectivity", OK: false, Status: diagnosticStatus(err), Detail: detailOf(err)})
+			checks = append(checks, doctorCheck{Name: "connectivity", OK: false, Status: doctor.Status(err), Detail: doctor.Detail(err)})
 		} else {
 			info, pingErr := client.Ping(ctx)
 			reachable, connErr = pingErr == nil, pingErr
 			checks = append(checks, doctorCheck{
-				Name: "connectivity", OK: reachable, Status: diagnosticStatus(pingErr),
+				Name: "connectivity", OK: reachable, Status: doctor.Status(pingErr),
 				Detail: pick(reachable,
-					"reachable, flavor = "+string(info.Flavor), detailOf(pingErr)),
+					"reachable, flavor = "+string(info.Flavor), doctor.Detail(pingErr)),
 			})
 		}
 	} else {
@@ -150,9 +151,9 @@ func runDoctor(s *appState, skipUpdate bool) doctorReport {
 			connErr = userErr
 		}
 		checks = append(checks, doctorCheck{
-			Name: "current-user", OK: userErr == nil, Status: diagnosticStatus(userErr),
+			Name: "current-user", OK: userErr == nil, Status: doctor.Status(userErr),
 			Detail: pick(userErr == nil,
-				"authenticated as "+userDisplay(user), detailOf(userErr)),
+				"authenticated as "+userDisplay(user), doctor.Detail(userErr)),
 		})
 	}
 	checks = append(checks, companionSkillDoctorCheck())
@@ -214,37 +215,6 @@ func companionSkillDoctorCheck() doctorCheck {
 	}
 }
 
-func diagnosticStatus(err error) string {
-	if err == nil {
-		return "ok"
-	}
-	ce := cerrors.AsCLIError(err)
-	switch ce.Code {
-	case "CREDENTIAL_STORE_INACCESSIBLE":
-		return "inaccessible"
-	case "CREDENTIAL_NOT_VISIBLE_OR_MISSING":
-		return "missing_or_inaccessible"
-	}
-	switch ce.Category {
-	case cerrors.CategoryAuth, cerrors.CategoryPermission:
-		return "rejected_by_server"
-	case cerrors.CategoryNetwork, cerrors.CategoryServer:
-		return "unreachable"
-	default:
-		return "invalid"
-	}
-}
-
-func diagnosticRecoveryScope(err error) string {
-	if err == nil {
-		return ""
-	}
-	if recovery := cerrors.AsCLIError(err).Recovery; recovery != nil {
-		return recovery.Scope
-	}
-	return ""
-}
-
 // authUnhealthy reports whether the credentials are missing or invalid, or
 // the server rejected them (HTTP 401), as opposed to an unreadable store, a
 // permission or a network failure.
@@ -298,11 +268,4 @@ func userDisplay(u *apiclient.User) string {
 	default:
 		return u.AccountID
 	}
-}
-
-func detailOf(err error) string {
-	if err == nil {
-		return ""
-	}
-	return cerrors.AsCLIError(err).Message
 }

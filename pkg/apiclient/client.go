@@ -297,9 +297,21 @@ func (c *apiClient) httpError(resp *http.Response) error {
 				"Merge the intended edit into the current content; preserve unrelated changes and storage markup.",
 				"Retry the merged update with --version set to the version read; do not just advance the version on stale content.")
 	}
-	return cerrors.New(cat, "HTTP_"+http.StatusText(resp.StatusCode), msg).
+	e := cerrors.New(cat, "HTTP_"+http.StatusText(resp.StatusCode), msg).
 		WithHTTPStatus(resp.StatusCode)
+	if resp.StatusCode >= 300 && resp.StatusCode < 400 {
+		// The kit's transport returns a redirect it does not follow: a
+		// write's, a 304, or the tenth hop of a read. The kit's redirect rule
+		// reports it; for a write, the write rule then replaces its hint with
+		// its own.
+		loc, _ := resp.Location()
+		e = e.WithRedirect(loc, redirectGuide)
+	}
+	return e
 }
+
+// redirectGuide is what a redirect's error tells the user to check.
+var redirectGuide = cerrors.RedirectGuide{Setting: "--base-url", Steps: []string{"confluence-cli doctor"}}
 
 // extractAPIMessage best-effort extracts a human message from a Confluence
 // JSON error body (both v1 and v2 use a "message" field).

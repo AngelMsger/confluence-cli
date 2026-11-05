@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/angelmsger/agent-cli-kit/doctor"
 	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
 )
 
@@ -13,12 +14,12 @@ func TestDoctorCredentialRecoveryStatus(t *testing.T) {
 	t.Parallel()
 	err := cerrors.New(cerrors.CategoryConfig, "CREDENTIAL_STORE_INACCESSIBLE", "hidden").
 		WithRecovery(cerrors.Recovery{Action: "retry_current_command", Scope: "host"})
-	if got := diagnosticStatus(err); got != "inaccessible" {
-		t.Fatalf("diagnosticStatus() = %q, want inaccessible", got)
+	if got := doctor.Status(err); got != "inaccessible" {
+		t.Fatalf("doctor.Status() = %q, want inaccessible", got)
 	}
-	recoveryScope := diagnosticRecoveryScope(err)
+	recoveryScope := doctor.RecoveryScope(err)
 	if recoveryScope != "host" {
-		t.Fatalf("diagnosticRecoveryScope() = %q, want host", recoveryScope)
+		t.Fatalf("doctor.RecoveryScope() = %q, want host", recoveryScope)
 	}
 	report := doctorReport{Checks: []doctorCheck{{RecoveryScope: recoveryScope}}}
 	if !reportNeedsHostRetry(report) {
