@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
 	cerrors "github.com/angelmsger/confluence-cli/pkg/errors"
+	"github.com/angelmsger/confluence-cli/pkg/transport"
 )
 
 // A write that fails after it was sent may have been applied, so its error must
@@ -139,19 +141,7 @@ func TestWriteAcknowledgedButUnusable(t *testing.T) {
 // Before, a 302 was followed with a GET and a watch, or an upload, that landed
 // on a login page read as done; a 307 sent the write again.
 func TestRedirectedWriteIsAnUnknownOutcome(t *testing.T) {
-	cases := []struct {
-		name  string
-		write func(Client) error
-	}{
-		{"watch (JSON)", func(c Client) error {
-			return c.SetWatch(context.Background(), WatchReq{PageID: "123", Watching: true})
-		}},
-		{"upload attachment (multipart)", func(c Client) error {
-			_, err := c.UploadAttachment(context.Background(), UploadAttachmentReq{PageID: "123", FileName: "f.txt", Data: []byte("x")})
-			return err
-		}},
-	}
-	for _, tc := range cases {
+	for _, tc := range redirectedWrites {
 		for _, status := range []int{http.StatusFound, http.StatusTemporaryRedirect} {
 			t.Run(fmt.Sprintf("%s %d", tc.name, status), func(t *testing.T) {
 				var landed int
@@ -169,6 +159,54 @@ func TestRedirectedWriteIsAnUnknownOutcome(t *testing.T) {
 					!strings.HasPrefix(ce.Message, "Write outcome is unknown") ||
 					!strings.Contains(ce.Hint, "answered it with a redirect") {
 					t.Fatalf("got %+v after %d login page requests; want an unknown outcome with the %d", ce, landed, status)
+				}
+			})
+		}
+	}
+}
+
+// redirectedWrites are a JSON write and a multipart upload: the two paths a
+// write takes to the server.
+var redirectedWrites = []struct {
+	name  string
+	write func(Client) error
+}{
+	{"watch (JSON)", func(c Client) error {
+		return c.SetWatch(context.Background(), WatchReq{PageID: "123", Watching: true})
+	}},
+	{"upload attachment (multipart)", func(c Client) error {
+		_, err := c.UploadAttachment(context.Background(), UploadAttachmentReq{PageID: "123", FileName: "f.txt", Data: []byte("x")})
+		return err
+	}},
+}
+
+// A library caller can pass its own HTTP client in Config.Transport, which
+// follows redirects by Go's policy: a 302 with a GET, a 307 or 308 by sending
+// the write's body again. A write's redirect is still an unknown outcome with
+// the redirect's status: the login page's 200 at the end of it never reads as
+// done, and the write is not sent to its target again.
+func TestCallerClientRedirectedWriteIsAnUnknownOutcome(t *testing.T) {
+	for _, tc := range redirectedWrites {
+		for _, status := range []int{http.StatusFound, http.StatusTemporaryRedirect, http.StatusPermanentRedirect} {
+			t.Run(fmt.Sprintf("%s %d", tc.name, status), func(t *testing.T) {
+				var sent int
+				srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					if r.URL.Path == "/login" {
+						w.Header().Set("Content-Type", "text/html")
+						_, _ = w.Write([]byte("<html>sign in</html>"))
+						return
+					}
+					sent++
+					http.Redirect(w, r, "/login", status)
+				}))
+				t.Cleanup(srv.Close)
+				c := New(Config{Flavor: FlavorDataCenter, BaseURL: srv.URL,
+					Transport: transport.New(transport.Options{Doer: &http.Client{}})})
+				ce := cerrors.AsCLIError(tc.write(c))
+				if ce == nil || ce.Retryable || ce.HTTPStatus != status || sent != 1 ||
+					!strings.HasPrefix(ce.Message, "Write outcome is unknown") ||
+					!strings.Contains(ce.Hint, "answered it with a redirect") {
+					t.Fatalf("got %+v after %d sends; want an unknown outcome with the %d, sent once", ce, sent, status)
 				}
 			})
 		}
