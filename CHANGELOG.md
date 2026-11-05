@@ -58,6 +58,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   following it. Before, a 301, 302 or 303 was followed with a GET and the page
   it landed on confirmed the write (a watch read as set); a 307 or 308 sent
   the write again to the new location.
+- A library caller that passes its own HTTP client in `Config.Transport` (one
+  that follows redirects by Go's policy) gets the same answer for a redirected
+  write as the CLI: an unknown outcome with the redirect's status, never a
+  login page read as done. This is agent-cli-kit v0.8.0, which answers a write
+  with its first response whatever client sends it.
 - `config init`'s plain prompts read through agent-cli-kit's `terminal`
   package: an answer cut short by a failed read (not the end of input) is an
   error, not an answer, so a broken stdin can no longer confirm a save.
