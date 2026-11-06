@@ -61,7 +61,7 @@ func (c *apiClient) DownloadAttachment(ctx context.Context, att Attachment, w io
 			"attachment download failed")
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode >= 400 {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return DownloadMeta{}, c.httpError(resp)
 	}
 	n, err := io.Copy(w, resp.Body)

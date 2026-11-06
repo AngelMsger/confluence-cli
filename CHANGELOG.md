@@ -20,6 +20,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- A redirect the client does not follow is reported with agent-cli-kit
+  v0.9.0's family redirect rule (`CLIError.WithRedirect`): its own code
+  (`HTTP_<status text>`, server, exit 9), not retryable (the same request is
+  redirected again), a hint naming where it points (the scheme and host only)
+  and what a redirect usually means (a login page, a single sign-on proxy, or
+  a `--base-url` that should use https), and `doctor` as the next step; a 3xx
+  without a `Location` (a 300 or 304) gets a hint that the same request gets
+  the same answer. A write's redirect keeps the write rule's hint and read
+  steps. **Released output that changes for a read:** 0.24.0 reported a 300 or
+  304 as retryable with "Retry reads later", and a read that loops through 10
+  redirects as `NETWORK` (exit 8, retryable, a DNS/TLS/timeout hint), although
+  nothing retried it; the loop now reports its tenth redirect the same way.
+- An attachment download that gets a 3xx back is an error, not an empty
+  file. 0.24.0 took any status below 400 as the attachment.
+- `doctor` reports a check that got a redirect with status `redirected`
+  instead of `unreachable`, and its `detail` adds the redirect hint (where it
+  points, and to check `--base-url`); 0.24.0 showed only "Confluence returned
+  HTTP 302". The status and detail rules come from agent-cli-kit's `doctor`
+  package, shared by the family.
+- `pkg/errors` re-exports agent-cli-kit's `RedirectGuide`, which names the
+  setting and next steps a redirect's error gives.
+- Update the companion Skill to `1.11.11`: a redirect is not retryable, and
+  `doctor`'s `redirected` status.
 - The read-only wrapper (`apiclient.NewReadOnly`) now holds the inner client
   only as a `Reader` and blocks every `Writer` method itself, so a write added
   to the client without a blocking override fails to compile instead of

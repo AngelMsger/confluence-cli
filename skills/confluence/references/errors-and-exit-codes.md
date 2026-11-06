@@ -42,7 +42,7 @@ optional `recovery` object instead.
 | 6 | not_found | page/space/attachment does not exist (404); verify the ID, or `search` |
 | 7 | rate_limit | server throttling (429); wait, then retry a read; avoid `--all` on huge queries (a write: see below) |
 | 8 | network | DNS/TLS/timeout; check `--base-url`, run `doctor` (a write: see below) |
-| 9 | server | Confluence 5xx; retry reads later (a write: see below) |
+| 9 | server | Confluence 5xx; retry reads later (a write: see below). A 3xx `http_status` is a redirect the CLI does not follow: not retryable; the hint names where it points; check `--base-url`, run `doctor` |
 | 10 | parse | rendering or response decoding failed; inspect the error code and verify a write's outcome before resubmitting |
 | 11 | conflict | a write hit a version conflict (409); read current content and version, merge, then retry |
 

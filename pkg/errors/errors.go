@@ -31,6 +31,9 @@ type (
 	PayloadBody = kit.PayloadBody
 	// WriteTarget names what a write changes and how to read its state back.
 	WriteTarget = kit.WriteTarget
+	// RedirectGuide names the server URL setting and the next steps for a
+	// redirect the transport returned (see CLIError.WithRedirect).
+	RedirectGuide = kit.RedirectGuide
 	// ReadOnlyMode names the switches that turn read-only mode on.
 	ReadOnlyMode = kit.ReadOnlyMode
 )

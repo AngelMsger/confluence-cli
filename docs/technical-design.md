@@ -37,7 +37,13 @@ keychain service name, auth schemes, settings table and release repository.
 defaulted to `confluence-cli/<version>`. It follows a read's redirect to any
 origin, because attachment downloads may be redirected to another origin, and
 it never follows a write's redirect: the 3xx comes back as an error, and the
-write reports its outcome as unknown (`cerrors.FromWrite`).
+write reports its outcome as unknown (`cerrors.FromWrite`). Every 3xx that
+comes back (a write's, a 304, or a read's tenth hop) is built with the kit's
+redirect rule (`CLIError.WithRedirect`): not retryable, with a hint naming
+where it points (scheme and host) and `--base-url`; the write rule then puts
+its own hint on a write. Attachment downloads, too, take only a 2xx as the
+file. `doctor` reports a redirected check as `redirected` (agent-cli-kit's
+`doctor` package).
 
 ## 2. API flavor difference matrix
 

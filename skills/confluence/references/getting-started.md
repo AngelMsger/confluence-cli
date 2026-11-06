@@ -11,7 +11,10 @@ confluence-cli doctor
 
 `doctor` runs three checks — configuration, credentials, connectivity — and
 prints a JSON report. If `healthy` is `true`, you are ready. Otherwise each
-failing check's `detail` explains what to fix.
+failing check's `detail` explains what to fix. A check whose `status` is
+`redirected` reached a server that redirected it (usually a login page, a
+single sign-on proxy, or an `http` URL that should use https): its `detail`
+names where it points; fix `--base-url` rather than the credentials.
 
 ```bash
 confluence-cli auth status   # is a usable credential resolvable?
